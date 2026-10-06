@@ -1,0 +1,267 @@
+# SPDX-License-Identifier: GPL-3.0-or-later
+"""The material library: every preset is a generator plus slider values.
+
+Only values that differ from the generator defaults need to be listed.
+Colors are linear RGB (what Blender color pickers store internally).
+"""
+
+CATEGORIES = (
+    ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals'),
+    ('PAINT', 'Painted Metal', 'Painted, chipped and weathered metal'),
+)
+
+PRESETS = []
+
+
+def _add(pid, name, generator, desc, **values):
+    PRESETS.append(dict(id=pid, name=name, generator=generator, category=generator, desc=desc,
+                        values={key.replace('_', ' '): value for key, value in values.items()}))
+
+
+def get(preset_id):
+    for preset in PRESETS:
+        if preset['id'] == preset_id:
+            return preset
+    raise KeyError(preset_id)
+
+
+def find(name_or_id):
+    """Look a preset up by id or (case-insensitive) display name."""
+    key = name_or_id.strip().lower()
+    for preset in PRESETS:
+        if preset['id'] == key or preset['name'].lower() == key:
+            return preset
+    return None
+
+
+def by_category(category):
+    return [p for p in PRESETS if category in {'ALL', p['category']}]
+
+
+# Reflectance (F0) colors of real metals, linear RGB.
+STEEL = (0.56, 0.57, 0.58)
+STAINLESS = (0.60, 0.60, 0.59)
+CHROME = (0.62, 0.63, 0.64)
+ALUMINIUM = (0.91, 0.92, 0.92)
+GOLD = (1.0, 0.766, 0.336)
+SILVER = (0.972, 0.96, 0.915)
+COPPER = (0.955, 0.638, 0.538)
+BRASS = (0.91, 0.778, 0.423)
+BRONZE = (0.78, 0.52, 0.30)
+TITANIUM = (0.542, 0.497, 0.449)
+NICKEL = (0.66, 0.61, 0.53)
+ZINC = (0.70, 0.73, 0.76)
+
+PATINA_A = (0.20, 0.45, 0.36)
+PATINA_B = (0.05, 0.19, 0.14)
+RED_OXIDE = (0.26, 0.055, 0.03)
+GREY_PRIMER = (0.32, 0.32, 0.30)
+
+# ------------------------------------------------------------------ bare metal
+_add('chrome_polished', 'Polished Chrome', 'METAL',
+     'Mirror-like chrome plating with faint smudges.',
+     Metal_Color=CHROME, Roughness=0.03, Roughness_Variation=0.1, Color_Variation=0.03,
+     Scratches=0.06, Scratch_Scale=2.0, Smudges=0.15)
+_add('steel_polished', 'Polished Steel', 'METAL',
+     'Clean, shiny steel with light scratches.',
+     Metal_Color=STEEL, Roughness=0.1, Roughness_Variation=0.25, Color_Variation=0.08, Scratches=0.2)
+_add('steel_brushed', 'Brushed Stainless Steel', 'METAL',
+     'Kitchen-appliance style brushed stainless steel.',
+     Metal_Color=STAINLESS, Roughness=0.28, Brushed=1.0, Scratches=0.1, Roughness_Variation=0.15,
+     Color_Variation=0.05)
+_add('aluminium_brushed', 'Brushed Aluminium', 'METAL',
+     'Bright, finely brushed aluminium.',
+     Metal_Color=ALUMINIUM, Roughness=0.32, Brushed=0.9, Brush_Scale=220.0, Scratches=0.12,
+     Color_Variation=0.05)
+_add('aluminium_sandblasted', 'Sandblasted Aluminium', 'METAL',
+     'Matte, bead-blasted aluminium.',
+     Metal_Color=(0.88, 0.89, 0.9), Roughness=0.45, Grain=1.0, Pit_Scale=300.0, Roughness_Variation=0.1,
+     Scratches=0.05)
+_add('aluminium_anodized_blue', 'Anodized Aluminium Blue', 'METAL',
+     'Colored anodized aluminium with worn, bare edges.',
+     Metal_Color=(0.10, 0.22, 0.65), Roughness=0.3, Brushed=0.35, Scratches=0.1, Edge_Polish=0.6,
+     Edge_Color=ALUMINIUM)
+_add('aluminium_anodized_red', 'Anodized Aluminium Red', 'METAL',
+     'Red anodized aluminium with worn, bare edges.',
+     Metal_Color=(0.62, 0.04, 0.05), Roughness=0.28, Brushed=0.3, Scratches=0.1, Edge_Polish=0.6,
+     Edge_Color=ALUMINIUM)
+_add('aluminium_anodized_black', 'Anodized Aluminium Black', 'METAL',
+     'Black anodized aluminium, scuffed down to bare metal on edges.',
+     Metal_Color=(0.03, 0.03, 0.035), Roughness=0.35, Edge_Polish=0.8, Scratches=0.25,
+     Edge_Color=ALUMINIUM)
+_add('gold_polished', 'Polished Gold', 'METAL',
+     'Shiny yellow gold.',
+     Metal_Color=GOLD, Roughness=0.08, Scratches=0.08, Smudges=0.1, Color_Variation=0.05)
+_add('gold_brushed', 'Brushed Gold', 'METAL',
+     'Satin brushed gold.',
+     Metal_Color=GOLD, Roughness=0.25, Brushed=0.8, Scratches=0.05, Color_Variation=0.05)
+_add('silver_tarnished', 'Tarnished Silver', 'METAL',
+     'Old silverware: dark tarnish, polished edges.',
+     Metal_Color=SILVER, Roughness=0.12, Tarnish=0.6, Tarnish_Color=(0.3, 0.24, 0.16), Edge_Polish=0.9,
+     Edge_Color=SILVER, Scratches=0.15)
+_add('copper_polished', 'Polished Copper', 'METAL',
+     'Freshly polished copper with a hint of oxidation.',
+     Metal_Color=COPPER, Roughness=0.1, Tarnish=0.15, Tarnish_Color=(0.55, 0.35, 0.28), Scratches=0.12)
+_add('copper_hammered', 'Hammered Copper', 'METAL',
+     'Hand-hammered copper, like a cooking pot.',
+     Metal_Color=COPPER, Roughness=0.18, Hammered=1.0, Hammer_Scale=9.0, Tarnish=0.25,
+     Tarnish_Color=(0.5, 0.32, 0.25))
+_add('copper_verdigris', 'Copper Patina (Verdigris)', 'METAL',
+     'Weathered copper roof with green patina.',
+     Metal_Color=COPPER, Roughness=0.25, Tarnish=0.7, Tarnish_Color=(0.35, 0.2, 0.15), Rust=0.8,
+     Rust_Color=PATINA_A, Rust_Color_2=PATINA_B, Rust_Scale=3.0, Dirt=0.2, Edge_Polish=0.3,
+     Edge_Color=COPPER)
+_add('brass_polished', 'Polished Brass', 'METAL',
+     'Bright, polished brass.',
+     Metal_Color=BRASS, Roughness=0.08, Scratches=0.1, Smudges=0.1)
+_add('brass_aged', 'Aged Brass', 'METAL',
+     'Old brass hardware: tarnished, grimy, shiny where touched.',
+     Metal_Color=BRASS, Roughness=0.22, Tarnish=0.6, Tarnish_Color=(0.4, 0.32, 0.18), Dirt=0.3,
+     Edge_Polish=0.7, Edge_Color=(0.95, 0.83, 0.5), Scratches=0.25)
+_add('bronze_antique', 'Antique Bronze', 'METAL',
+     'Statue bronze with dark tarnish and green patina spots.',
+     Metal_Color=BRONZE, Roughness=0.35, Tarnish=0.7, Tarnish_Color=(0.3, 0.22, 0.13), Rust=0.12,
+     Rust_Color=PATINA_A, Rust_Color_2=PATINA_B, Dirt=0.3, Edge_Polish=0.6, Edge_Color=(0.85, 0.6, 0.38))
+_add('titanium_heat', 'Heat-Tinted Titanium', 'METAL',
+     'Rainbow temper colors, like a titanium exhaust.',
+     Metal_Color=TITANIUM, Roughness=0.2, Heat_Tint=1.0, Brushed=0.3)
+_add('steel_exhaust', 'Burnt Exhaust Steel', 'METAL',
+     'Heat-discolored steel with soot.',
+     Metal_Color=STEEL, Roughness=0.35, Heat_Tint=0.6, Heat_Tint_Scale=0.35, Tarnish=0.35,
+     Tarnish_Color=(0.25, 0.2, 0.18), Dirt=0.1)
+_add('gunmetal', 'Gunmetal', 'METAL',
+     'Dark grey metal with worn, shiny edges.',
+     Metal_Color=(0.22, 0.23, 0.25), Roughness=0.3, Edge_Polish=0.6, Edge_Color=STEEL, Scratches=0.3)
+_add('steel_blued', 'Blued Steel', 'METAL',
+     'Gun-blued steel, silver where it is worn.',
+     Metal_Color=(0.06, 0.08, 0.14), Roughness=0.18, Edge_Polish=1.0, Edge_Color=(0.6, 0.6, 0.6),
+     Scratches=0.35)
+_add('iron_cast', 'Cast Iron', 'METAL',
+     'Rough, pitted cast iron like a pan or engine block.',
+     Metal_Color=(0.18, 0.18, 0.18), Roughness=0.62, Pitting=0.8, Grain=0.9, Pit_Scale=60.0,
+     Color_Variation=0.25, Rust=0.06, Dirt=0.2, Scratches=0.1)
+_add('iron_wrought', 'Hammered Wrought Iron', 'METAL',
+     'Dark, forged iron with hammer marks.',
+     Metal_Color=(0.25, 0.25, 0.26), Roughness=0.45, Hammered=0.8, Hammer_Scale=6.0, Tarnish=0.6,
+     Tarnish_Color=(0.45, 0.43, 0.42), Edge_Polish=0.7, Edge_Color=(0.5, 0.5, 0.5), Scratches=0.15)
+_add('steel_galvanized', 'Galvanized Steel', 'METAL',
+     'Hot-dip galvanized steel with crystal spangle.',
+     Metal_Color=ZINC, Roughness=0.35, Spangle=1.0, Spangle_Scale=10.0, Dirt=0.2, Scratches=0.1)
+_add('zinc_weathered', 'Weathered Zinc', 'METAL',
+     'Dull zinc with white corrosion.',
+     Metal_Color=(0.60, 0.62, 0.64), Roughness=0.55, Spangle=0.3, Rust=0.35,
+     Rust_Color=(0.65, 0.66, 0.64), Rust_Color_2=(0.35, 0.36, 0.36), Rust_Scale=4.0, Dirt=0.3)
+_add('steel_rust_light', 'Lightly Rusted Steel', 'METAL',
+     'Steel starting to rust in patches.',
+     Metal_Color=STEEL, Roughness=0.35, Rust=0.3, Dirt=0.3, Scratches=0.2)
+_add('iron_rust_heavy', 'Heavily Rusted Iron', 'METAL',
+     'Iron almost completely eaten by rust.',
+     Metal_Color=STEEL, Roughness=0.5, Rust=0.85, Rust_Scale=2.5, Pitting=0.4, Dirt=0.4)
+_add('steel_corten', 'Weathering Steel (Corten)', 'METAL',
+     'Even, stable rust patina of architectural weathering steel.',
+     Rust=1.0, Rust_Color=(0.20, 0.065, 0.02), Rust_Color_2=(0.09, 0.03, 0.012), Rust_Scale=4.0,
+     Dirt=0.3, Scratches=0.0)
+_add('nickel_satin', 'Satin Nickel', 'METAL',
+     'Warm satin nickel, like bathroom fittings.',
+     Metal_Color=NICKEL, Roughness=0.22, Brushed=0.3, Scratches=0.08)
+_add('pewter', 'Pewter', 'METAL',
+     'Soft grey pewter with dull tarnish and smudges.',
+     Metal_Color=(0.58, 0.58, 0.57), Roughness=0.4, Tarnish=0.5, Tarnish_Color=(0.6, 0.6, 0.6),
+     Smudges=0.3, Dirt=0.25)
+
+# --------------------------------------------------------------- painted metal
+_add('paint_industrial_yellow', 'Chipped Industrial Yellow', 'PAINT',
+     'Machinery yellow, chipped on the edges, a bit rusty.',
+     Paint_Color=(0.75, 0.45, 0.0), Paint_Roughness=0.42, Wear=0.08, Edge_Wear=0.85, Primer=0.3,
+     Rust=0.35, Dirt=0.45, Scratches=0.3)
+_add('paint_military_olive', 'Military Olive Drab', 'PAINT',
+     'Matte olive drab, worn and dusty.',
+     Paint_Color=(0.085, 0.095, 0.04), Paint_Roughness=0.7, Wear=0.05, Edge_Wear=0.8, Primer=0.0,
+     Dirt=0.55, Scratches=0.4, Rust=0.15)
+_add('paint_desert_tan', 'Desert Tan Armor', 'PAINT',
+     'Sandy military tan, dusty and scuffed.',
+     Paint_Color=(0.42, 0.31, 0.17), Paint_Roughness=0.72, Wear=0.04, Edge_Wear=0.7, Primer=0.0,
+     Dirt=0.6, Dirt_Color=(0.18, 0.13, 0.08), Scratches=0.35, Rust=0.05)
+_add('paint_fire_red', 'Worn Fire-Engine Red', 'PAINT',
+     'Glossy red paint with grey primer showing through.',
+     Paint_Color=(0.55, 0.015, 0.01), Paint_Roughness=0.3, Wear=0.04, Edge_Wear=0.7, Primer=0.5,
+     Scratches=0.25, Rust=0.1, Dirt=0.2)
+_add('paint_car_blue', 'Metallic Car Paint Blue', 'PAINT',
+     'Showroom-new metallic blue with clear coat.',
+     Paint_Color=(0.02, 0.07, 0.35), Paint_Roughness=0.25, Paint_Metallic=0.55, Flakes=0.8,
+     Clear_Coat=1.0, Orange_Peel=0.15, Paint_Variation=0.05, Wear=0.0, Edge_Wear=0.0, Scratches=0.0,
+     Rust=0.0, Dirt=0.0)
+_add('paint_car_red', 'Candy Red Car Paint', 'PAINT',
+     'Deep red metallic paint with clear coat.',
+     Paint_Color=(0.45, 0.01, 0.015), Paint_Roughness=0.2, Paint_Metallic=0.6, Flakes=0.8,
+     Clear_Coat=1.0, Orange_Peel=0.15, Paint_Variation=0.05, Wear=0.0, Edge_Wear=0.0, Scratches=0.0,
+     Rust=0.0, Dirt=0.0)
+_add('paint_powder_black', 'Black Powder Coat', 'PAINT',
+     'Textured black powder coating, lightly scuffed.',
+     Paint_Color=(0.02, 0.02, 0.021), Paint_Roughness=0.5, Orange_Peel=0.8, Wear=0.01, Edge_Wear=0.3,
+     Primer=0.0, Scratches=0.05, Rust=0.0, Dirt=0.15)
+_add('paint_hammertone_green', 'Hammertone Green', 'PAINT',
+     'Classic hammered-finish machine paint.',
+     Paint_Color=(0.025, 0.13, 0.07), Paint_Metallic=0.55, Hammered=1.0, Paint_Roughness=0.3,
+     Wear=0.01, Edge_Wear=0.35, Primer=0.0, Rust=0.1, Dirt=0.2,
+     Scratches=0.05)
+
+_add('paint_hammertone_silver', 'Hammertone Silver', 'PAINT',
+     'Silver hammered-finish paint.',
+     Paint_Color=(0.35, 0.36, 0.37), Paint_Metallic=0.7, Hammered=1.0, Paint_Roughness=0.3,
+     Wear=0.01, Edge_Wear=0.35, Primer=0.0, Rust=0.05, Dirt=0.2,
+     Scratches=0.05)
+
+_add('paint_peeling_teal', 'Peeling Teal (Rusty)', 'PAINT',
+     'Old teal paint peeling off rusty metal.',
+     Paint_Color=(0.05, 0.25, 0.25), Wear=0.45, Edge_Wear=0.9, Primer=0.0, Rust=0.85, Rust_Spread=0.5,
+     Rust_Streaks=0.4, Fading=0.55, Dirt=0.4)
+_add('paint_ship_grey', 'Ship Hull Grey', 'PAINT',
+     'Navy grey with red primer and rust streaks.',
+     Paint_Color=(0.16, 0.18, 0.19), Paint_Roughness=0.5, Wear=0.06, Edge_Wear=0.6, Primer=0.4,
+     Primer_Color=RED_OXIDE, Rust=0.6, Rust_Spread=0.4, Rust_Streaks=0.8, Dirt=0.3)
+_add('paint_hazard_stripes', 'Hazard Stripes', 'PAINT',
+     'Yellow and black warning stripes, worn.',
+     Paint_Color=(0.78, 0.52, 0.0), Stripes=1.0, Stripe_Color=(0.015, 0.015, 0.015), Stripe_Width=0.1,
+     Wear=0.07, Edge_Wear=0.8, Rust=0.25, Dirt=0.35, Scratches=0.3)
+_add('paint_scifi_white', 'Sci-Fi White Panel', 'PAINT',
+     'Clean white hull paint with scuffed edges.',
+     Paint_Color=(0.78, 0.78, 0.76), Paint_Roughness=0.35, Wear=0.02, Edge_Wear=0.7, Primer=0.6,
+     Rust=0.0, Dirt=0.35, Dirt_Color=(0.06, 0.06, 0.06), Scratches=0.2, Metal_Color=(0.91, 0.92, 0.92),
+     Metal_Roughness=0.3)
+_add('paint_safety_orange', 'Safety Orange', 'PAINT',
+     'High-visibility orange, lightly worn.',
+     Paint_Color=(0.85, 0.18, 0.0), Paint_Roughness=0.4, Wear=0.03, Edge_Wear=0.6, Primer=0.3,
+     Rust=0.2, Dirt=0.3)
+_add('paint_faded_blue', 'Sun-Faded Blue', 'PAINT',
+     'Chalky, sun-bleached blue paint.',
+     Paint_Color=(0.03, 0.12, 0.42), Fading=0.75, Paint_Roughness=0.55, Wear=0.08, Edge_Wear=0.7,
+     Rust=0.3, Dirt=0.25)
+_add('paint_cream_enamel', 'Vintage Cream Enamel', 'PAINT',
+     'Glossy cream enamel chipped down to dark iron.',
+     Paint_Color=(0.68, 0.6, 0.42), Paint_Roughness=0.18, Wear=0.03, Edge_Wear=0.6, Primer=0.0,
+     Metal_Color=(0.18, 0.18, 0.18), Rust=0.5, Rust_Spread=0.3, Dirt=0.3)
+_add('paint_matte_black_worn', 'Worn Matte Black', 'PAINT',
+     'Black finish rubbed through to bright steel on every edge.',
+     Paint_Color=(0.018, 0.018, 0.018), Paint_Roughness=0.55, Wear=0.02, Edge_Wear=1.0, Primer=0.0,
+     Scratches=0.5, Rust=0.0, Dirt=0.1, Metal_Color=(0.6, 0.6, 0.6), Metal_Roughness=0.25)
+_add('paint_tractor_green', 'Old Tractor Green', 'PAINT',
+     'Faded farm-machine green with rust breaking through.',
+     Paint_Color=(0.04, 0.22, 0.05), Paint_Roughness=0.45, Wear=0.15, Edge_Wear=0.8, Primer=0.3,
+     Rust=0.6, Rust_Spread=0.4, Rust_Streaks=0.3, Fading=0.4, Dirt=0.5)
+_add('paint_mint_vintage', 'Vintage Mint Green', 'PAINT',
+     'Retro mint paint, chipped and a little rusty.',
+     Paint_Color=(0.32, 0.58, 0.42), Paint_Roughness=0.3, Wear=0.08, Edge_Wear=0.7, Primer=0.0,
+     Rust=0.5, Dirt=0.3, Fading=0.3)
+_add('paint_navy_machinery', 'Navy Blue Machinery', 'PAINT',
+     'Dark blue machine paint, oily and worn.',
+     Paint_Color=(0.015, 0.03, 0.12), Paint_Roughness=0.4, Wear=0.05, Edge_Wear=0.8, Primer=0.4,
+     Rust=0.3, Dirt=0.5)
+_add('paint_red_primer', 'Red Oxide Primer', 'PAINT',
+     'Bare red primer coat with light rust.',
+     Paint_Color=(0.22, 0.045, 0.025), Paint_Roughness=0.75, Wear=0.06, Edge_Wear=0.6, Primer=0.0,
+     Rust=0.4, Dirt=0.3)
+_add('paint_rusted_through', 'Rusted-Through Paint', 'PAINT',
+     'Grey paint that has mostly lost the fight against rust.',
+     Paint_Color=(0.35, 0.33, 0.30), Wear=0.6, Edge_Wear=1.0, Primer=0.2, Rust=1.0, Rust_Spread=0.8,
+     Rust_Streaks=0.6, Fading=0.4, Dirt=0.5)

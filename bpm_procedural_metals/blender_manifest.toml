@@ -1,0 +1,18 @@
+schema_version = "1.0.0"
+
+id = "bpm_procedural_metals"
+version = "1.0.0"
+name = "BPM - Procedural Metals"
+tagline = "Procedural metal and painted metal materials with 1-click baking"
+maintainer = "verdictzero"
+type = "add-on"
+website = "https://github.com/verdictzero/bpm"
+
+tags = ["Material", "Bake"]
+
+blender_version_min = "4.2.0"
+
+license = ["SPDX:GPL-3.0-or-later"]
+
+[permissions]
+files = "Save baked textures to a folder of your choice"
