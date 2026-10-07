@@ -263,7 +263,8 @@ def overlay_operators():
     assert bpy.ops.bpm.overlay_seed(index=0) == {'FINISHED'}
     assert bpy.ops.bpm.remove_overlay(index=0) == {'FINISHED'}
     assert [n.label for n in L.overlay_stack(a.active_material)] == ['Heavy Dust']
-    assert bpy.ops.bpm.set_value(socket='Metal Color', value=0.0) in ({'FINISHED'}, {'CANCELLED'})
+    assert bpy.ops.bpm.set_value(socket='Metal Color', value=0.0) == {'CANCELLED'}, 'only for number sockets'
+    assert bpy.ops.bpm.set_value(socket='Nope', value=0.0) == {'CANCELLED'}
     # the weave buttons
     a.data.materials[0] = L.create_material('fabric_canvas')
     assert bpy.ops.bpm.set_value(socket='Weave', value=3.0) == {'FINISHED'}
@@ -288,7 +289,8 @@ def overlays_are_baked():
     plain = read_png(os.path.join(out_a, 'Cube_BaseColor.png'))
     dusty = read_png(os.path.join(out_b, 'Cube_BaseColor.png'))
     rough = read_png(os.path.join(out_b, 'Cube_Roughness.png'))
-    covered = dusty[..., 3] > 0.5
+    covered = plain[..., 0] > 0.08  # texels inside the UV islands (the background stays black)
+    assert 0.2 < covered.mean() < 0.9, covered.mean()
     assert dusty[..., 0][covered].mean() > plain[..., 0][covered].mean() + 0.2, 'dust missing from the bake'
     assert rough[..., 0][covered].mean() > 0.6
     assert os.path.exists(os.path.join(out_b, 'Cube_Height.png'))

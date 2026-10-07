@@ -1,9 +1,9 @@
 # BPM – Procedural Materials for Blender
 
-130 ready-made materials for Blender — **bare metal, painted metal, wood, plastic,
+120 ready-made materials for Blender — **bare metal, painted metal, wood, plastic,
 leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and H.R.
-Giger-style biomechanical surfaces** — plus **dirt and dust overlays** that you can
-stack on top of *any* material. Every material has plain sliders you can tweak, and a
+Giger-style biomechanical surfaces** — plus 10 **dirt and dust overlays** that you
+can stack on top of *any* material. Every material has plain sliders you can tweak, and a
 **one-click bake** turns it into normal image textures (Base Color, Metallic,
 Roughness, Normal, Height, AO) for game engines or any other software.
 
@@ -66,6 +66,8 @@ on top of whatever material the object already has — a BPM material or any oth
 material that uses a Principled BSDF (most do).
 
 The **Dirt & Dust Overlays** panel lists the layers of the active object's material:
+
+<img src="docs/screenshot_overlays.png" width="300" alt="The Dirt & Dust Overlays panel">
 
 * the 👁 button hides / shows a layer (compare with and without),
 * the arrows change the order (the top layer covers the ones below),
@@ -270,7 +272,7 @@ bpm_procedural_metals/   the add-on (Blender extension)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 130 presets (generator + slider values [+ overlays])
+  presets.py             the 130 presets: 120 materials + 10 overlays
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
   ui.py, operators.py    sidebar panels and buttons

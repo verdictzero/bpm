@@ -25,7 +25,7 @@ FABRIC_PARAMS = [
     C.fac('Roughness', 0.8, 'Fabric', 'Glossiness (0 = glossy, 1 = matte)', key=True),
     C.fac('Thread Variation', 0.3, 'Fabric', 'Uneven threads and slubs'),
     C.fac('Color Variation', 0.15, 'Fabric', 'Blotchy, uneven dye'),
-    C.fac('Fuzz', 0.5, 'Fabric', 'Soft, fuzzy sheen of cloth (render only)'),
+    C.fac('Fuzz', 0.35, 'Fabric', 'Soft, fuzzy sheen of cloth (render only)'),
     # -- Weave
     C.Param('Weave', 'FLOAT', 0.0, 0.0, 4.0, 'Weave',
             'Weave pattern: 0 = plain, 1 = twill (carbon fiber), 2 = denim twill, 3 = basket '
@@ -129,8 +129,8 @@ def build_fabric(b, I, gout, tile):
     hf = b.mul(profile(ft, w_weft), b.madd(b.math('SINE', b.mul(fs, math.pi)), 0.2, 0.8))
     # ripstop: thicker threads every few threads
     rip = b.mul(I['Ripstop'], rip_on)
-    rip_c = b.mul(b.math('LESS_THAN', b.wrap(ci, every), 0.5), rip)
-    rip_r = b.mul(b.math('LESS_THAN', b.wrap(ri, every), 0.5), rip)
+    rip_c = b.mul(b.math('LESS_THAN', b.wrap(ci, every), 1.5), rip)  # doubled threads
+    rip_r = b.mul(b.math('LESS_THAN', b.wrap(ri, every), 1.5), rip)
     hw = b.mul(hw, b.madd(rip_c, 0.35, b.madd(top, -0.7, 1.0)))
     hf = b.mul(hf, b.madd(rip_r, 0.35, b.madd(top, 0.7, 0.3)))
     weft_vis = b.math('GREATER_THAN', hf, hw)
@@ -152,7 +152,7 @@ def build_fabric(b, I, gout, tile):
     shine = I['Fiber Shine']
     col_f = b.color_scale(col_f, b.madd(shine, 0.7, 1.0))
     col = b.mix_color(weft_vis, col_w, col_f)
-    col = b.color_scale(col, b.madd(rip_vis, 0.18, 1.0))
+    col = b.color_scale(col, b.madd(rip_vis, 0.4, 1.0))
     shade = b.madd(b.smoothstep(0.0, 0.6, h), 0.65, 0.35)  # gaps and thread edges are darker
     col = b.color_scale(col, b.mul(shade, b.madd(stri, 0.12, 0.94)))
     zc = S.znoise(2.5, 1, detail=4.0, roughness=0.55, label='Dye Variation')
@@ -181,7 +181,7 @@ def build_fabric(b, I, gout, tile):
 
     # ---- relief (resin is smooth on the outside)
     relief = b.mul(b.mul(I['Weave Depth'], b.madd(resin, -0.85, 1.0)), b.div(b.mul(ts, 0.35), FABRIC_BUMP))
-    h_macro = b.madd(b.sub(h, 0.5), relief, b.madd(rip_vis, 0.06, 0.5))
+    h_macro = b.madd(b.sub(h, 0.5), relief, b.madd(rip_vis, 0.12, 0.5))
     h_micro = b.mul(b.mul(b.sub(stri, 0.5), 0.3), b.mul(I['Weave Depth'], b.madd(resin, -0.85, 1.0)))
     h_micro = b.madd(pill, 0.4, h_micro)
 
@@ -196,7 +196,8 @@ def build_fabric(b, I, gout, tile):
 
 SPEC = dict(
     label='Fabric', category='FABRIC', params=FABRIC_PARAMS, outputs=FABRIC_OUTPUTS, build=build_fabric,
-    links={'Sheen': 'Sheen Weight', 'Coat': 'Coat Weight', 'Anisotropic': 'Anisotropic', 'Tangent': 'Tangent'},
+    links={'Sheen': 'Sheen Weight', 'Coat': 'Coat Weight', 'Anisotropic': 'Anisotropic', 'Tangent': 'Tangent',
+           'Base Color': 'Sheen Tint'},  # cloth sheen takes the color of the fibers
     bsdf={'Coat Roughness': 0.02, 'Sheen Roughness': 0.35},
     display=('Warp Color', 0.0, 'Roughness'), fit=0.3, bump=FABRIC_BUMP,
 )

@@ -11,6 +11,7 @@ from bpy.props import EnumProperty, FloatProperty, FloatVectorProperty, IntPrope
 from . import bake as B
 from . import library as L
 from . import presets as P
+from .nodebuilder import set_socket_value
 
 
 def _selected_material_objects(context):
@@ -204,9 +205,10 @@ class BPM_OT_set_value(bpy.types.Operator):
 
     def execute(self, context):
         obj, mat, node = L.active_bpm_material(context)
-        if node is None or self.socket not in node.inputs:
+        sock = node.inputs.get(self.socket) if node is not None else None
+        if sock is None or sock.type not in {'VALUE', 'INT'}:
             return {'CANCELLED'}
-        node.inputs[self.socket].default_value = self.value
+        set_socket_value(sock, self.value)
         return {'FINISHED'}
 
 

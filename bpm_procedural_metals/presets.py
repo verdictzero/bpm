@@ -493,12 +493,12 @@ _add('fabric_canvas_olive', 'Olive Canvas Tarp', 'FABRIC',
      Stains=0.4, Dirt=0.5, Fading=0.2, overlays=[overlay('DIRT', Amount=0.4, Patches=0.4)])
 _add('fabric_denim', 'Blue Denim', 'FABRIC',
      'Indigo denim twill.',
-     thumb=FABRIC_THUMB, Weave=2.0, Warp_Color=(0.012, 0.03, 0.09), Weft_Color=(0.30, 0.30, 0.28),
-     Thread_Size=0.0008, Fading=0.15, Yarn_Twist=0.6)
+     thumb=FABRIC_THUMB, Weave=2.0, Warp_Color=(0.02, 0.045, 0.13), Weft_Color=(0.22, 0.22, 0.20),
+     Thread_Size=0.0008, Fading=0.1, Yarn_Twist=0.6, Fuzz=0.25)
 _add('fabric_denim_worn', 'Worn Denim', 'FABRIC',
      'Washed-out, faded denim.',
-     thumb=FABRIC_THUMB, Weave=2.0, Warp_Color=(0.02, 0.05, 0.13), Weft_Color=(0.35, 0.35, 0.33),
-     Thread_Size=0.0008, Fading=0.7, Pilling=0.2, Yarn_Twist=0.6)
+     thumb=FABRIC_THUMB, Weave=2.0, Warp_Color=(0.03, 0.07, 0.18), Weft_Color=(0.28, 0.28, 0.26),
+     Thread_Size=0.0008, Fading=0.55, Pilling=0.2, Yarn_Twist=0.6)
 _add('fabric_carbon_twill', 'Carbon Fiber (Twill)', 'FABRIC',
      'Glossy 2x2 twill carbon fiber in clear resin.',
      thumb=CARBON_THUMB, Weave=1.0, Warp_Color=(0.02, 0.02, 0.022), Weft_Color=(0.02, 0.02, 0.022),
