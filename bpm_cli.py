@@ -1,5 +1,5 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Run BPM Procedural Metals from the command line (no Blender window needed).
+"""Run BPM Procedural Materials from the command line (no Blender window needed).
 
 Examples (use the path to your Blender executable instead of "blender"):
 

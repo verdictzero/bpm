@@ -99,6 +99,7 @@ _FOLD = {
     'SQRT': lambda a, b, c: math.sqrt(a) if a > 0.0 else 0.0,
     'LOGARITHM': lambda a, b, c: math.log(a, b) if a > 0.0 and b > 0.0 and b != 1.0 else 0.0,
     'GREATER_THAN': lambda a, b, c: 1.0 if a > b else 0.0,
+    'WRAP': lambda a, b, c: (a - c) - (b - c) * math.floor((a - c) / (b - c)) + c if b != c else c,
     'LESS_THAN': lambda a, b, c: 1.0 if a < b else 0.0,
 }
 
@@ -441,6 +442,26 @@ class Builder:
         if feature == 'SMOOTH_F1':
             self.feed(find_socket(inputs, 'Smoothness'), smoothness)
         return node
+
+    def white_noise(self, vector, w=None, dims='3D', label=None):
+        """Random value (and color) per distinct input: (value, color) sockets."""
+        def make():
+            node = self.node('ShaderNodeTexWhiteNoise', label=label, noise_dimensions=dims)
+            self.feed(find_socket(node.inputs, 'Vector'), vector)
+            if w is not None:
+                self.feed(find_socket(node.inputs, 'W'), w)
+            return node.outputs['Value'], node.outputs['Color']
+        return self._memoized('white' + dims, (vector, w), make)
+
+    def floor(self, a):
+        return self.math('FLOOR', a)
+
+    def fract(self, a):
+        return self.math('FRACT', a)
+
+    def wrap(self, a, period):
+        """a modulo period (period > 0), always positive."""
+        return self.math('WRAP', a, period, 0.0)
 
     def bump(self, height, strength=1.0, distance=1.0, normal=None, invert=False, label=None):
         node = self.node('ShaderNodeBump', label=label, invert=invert)

@@ -16,7 +16,9 @@ def studio_hdri(name='courtyard.exr'):
     return path if os.path.exists(path) else None
 
 
-def setup(size=256, samples=48, hdri='forest.exr', transparent=True, shape='cube', strength=1.0):
+def setup(size=256, samples=48, hdri='forest.exr', transparent=True, shape='cube', strength=1.0, zoom=1.0):
+    """Studio scene with one preview object.  `zoom` < 1 shrinks object and camera together,
+    so the object looks the same on screen but material details appear bigger."""
     bpy.ops.wm.read_factory_settings(use_empty=True)
     scene = bpy.context.scene
     scene.render.engine = 'CYCLES'
@@ -41,16 +43,18 @@ def setup(size=256, samples=48, hdri='forest.exr', transparent=True, shape='cube
         build_hdri_world(world.node_tree, hdri, strength)
 
     obj = make_shape(shape)
+    obj.scale = (zoom, zoom, zoom)
 
     cam_data = bpy.data.cameras.new('Camera')
     cam_data.lens = 85
     cam = bpy.data.objects.new('Camera', cam_data)
     scene.collection.objects.link(cam)
-    cam.location = (5.2, -5.2, 4.1)
+    cam.location = (5.2 * zoom, -5.2 * zoom, 4.1 * zoom)
+    cam_data.clip_start = 0.01 * zoom
     track = cam.constraints.new('TRACK_TO')
     target = bpy.data.objects.new('Target', None)
     scene.collection.objects.link(target)
-    target.location = (0.0, 0.0, -0.05)
+    target.location = (0.0, 0.0, -0.05 * zoom)
     track.target = target
     track.track_axis = 'TRACK_NEGATIVE_Z'
     track.up_axis = 'UP_Y'
@@ -147,6 +151,8 @@ def make_shape(shape='cube'):
         obj = bpy.context.active_object
         for poly in obj.data.polygons:
             poly.use_smooth = True
+    elif shape == 'steps':
+        obj = make_steps()
     elif shape == 'cylinder':
         bpy.ops.mesh.primitive_cylinder_add(radius=0.9, depth=1.7, vertices=64)
         obj = bpy.context.active_object
@@ -159,6 +165,32 @@ def make_shape(shape='cube'):
     else:
         raise ValueError(shape)
     obj.name = 'Preview'
+    return obj
+
+
+def make_steps():
+    """A small staircase block: corners and crevices show off dirt and dust."""
+    import bmesh
+    bm = bmesh.new()
+
+    def box(x0, y0, z0, x1, y1, z1):
+        result = bmesh.ops.create_cube(bm, size=1.0)
+        for v in result['verts']:
+            v.co.x = x0 if v.co.x < 0 else x1
+            v.co.y = y0 if v.co.y < 0 else y1
+            v.co.z = z0 if v.co.z < 0 else z1
+
+    box(-0.9, -0.9, -0.9, 0.9, 0.9, -0.3)
+    box(-0.9, -0.3, -0.3, 0.9, 0.9, 0.3)
+    box(-0.9, 0.3, 0.3, 0.9, 0.9, 0.9)
+    box(-0.25, -0.9, -0.3, 0.25, -0.5, 0.2)
+    mesh = bpy.data.meshes.new('Steps')
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new('Preview', mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    bpy.context.view_layer.objects.active = obj
+    obj.rotation_euler = (0.0, 0.0, 0.6)
     return obj
 
 

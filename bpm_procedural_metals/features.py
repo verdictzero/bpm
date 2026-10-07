@@ -11,6 +11,7 @@ Two coordinate modes are supported:
   texture sets.
 """
 
+import copy
 import math
 
 from .nodebuilder import TAU, is_socket
@@ -41,9 +42,17 @@ def _offset(index):
 class Space:
     """Hands out texture coordinates for object space or seamless tiles."""
 
-    def __init__(self, b, tile, scale, seed, tile_size=1.0):
+    def __init__(self, b, tile, scale, seed, tile_size=1.0, salt=0):
+        """`salt` (an integer) changes how the coordinates are computed, not their values.
+
+        Cycles merges identical nodes of different node groups.  The merged
+        coordinate nodes then stay alive on the shader stack for a long time,
+        so a material with overlays on top could run out of stack.  Overlays
+        use their own salt, which keeps their nodes apart.
+        """
         self.b = b
         self.tile = tile
+        self.salt = salt
         self.dims = '4D' if tile else '3D'
         self._trig = {}
         self._seed_vec = b.vscale((1.731, 2.337, 3.119), seed)
@@ -56,9 +65,25 @@ class Space:
             self.P = None
         else:
             obj = b.texcoord().outputs['Object']
-            axes = [b.vmath('LENGTH', b.vector_transform(axis)) for axis in ((1, 0, 0), (0, 1, 0), (0, 0, 1))]
+            f = float(1 + salt)
+            axes = [b.vmath('LENGTH', b.vector_transform(axis)) for axis in ((f, 0, 0), (0, f, 0), (0, 0, f))]
             meters = b.vmath('MULTIPLY', obj, b.combine(*axes))
-            self.P = b.vscale(meters, scale)
+            self.P = b.vscale(meters, scale if not salt else b.div(scale, f))
+
+    def warped(self, offset):
+        """A copy of this space with shifted coordinates (organic warping).
+
+        offset: a vector (object mode, pattern units) or a (du, dv) pair of
+        periodic UV shifts (tile mode, so the result stays seamless).
+        """
+        other = copy.copy(self)
+        other._trig = {}
+        if self.tile:
+            du, dv = offset
+            other.u, other.v = self.b.add(self.u, du), self.b.add(self.v, dv)
+        else:
+            other.P = self.b.vadd(self.P, offset)
+        return other
 
     # -- internals ------------------------------------------------------------
     def _offsets(self, index):
@@ -85,6 +110,8 @@ class Space:
             a, c = b.madd(v, -2.0, u), b.madd(u, 2.0, v)
         else:
             raise ValueError(key)
+        if self.salt:  # whole turns: same values, different nodes (see __init__)
+            a, c = b.add(a, float(self.salt)), b.add(c, float(self.salt))
         au = b.mul(a, TAU)
         av = b.mul(c, TAU)
         result = (b.math('COSINE', au), b.math('SINE', au), b.math('COSINE', av), b.math('SINE', av))
@@ -92,13 +119,16 @@ class Space:
         return result
 
     # -- public ---------------------------------------------------------------
-    def sample(self, freq, offset, aniso=None, base=None, direction=None):
+    def sample(self, freq, offset, aniso=None, base=None, direction=None, jitter=None):
         """Return (vector, w) for a texture lookup at `freq` features per meter.
 
         aniso     : per-axis frequency multipliers (x, y[, z]); in tile mode x maps
                     to U and y to V.
         base      : custom base coordinates (object mode only).
         direction : rotation (object mode) or lattice direction name (tile mode).
+        jitter    : scalar that shifts the lookup into an unrelated part of the
+                    noise; a different value per board / panel makes every one
+                    look different (stays seamless in tile mode).
         """
         b = self.b
         off, off_w = self._offsets(offset)
@@ -110,6 +140,8 @@ class Space:
                 f = b.combine(freq, freq, freq)
             else:
                 f = b.vscale(tuple(aniso) + (1.0,) * (3 - len(aniso)), freq)
+            if jitter is not None:
+                off = b.vadd(off, b.vscale((1.0, 1.618, 2.414), jitter))
             return b.vmadd(p, f, off), None
         cu, su, cv, sv = self.trig(direction if isinstance(direction, str) else None)
         radius = b.mul(self.k, freq)
@@ -117,12 +149,12 @@ class Space:
         rx = b.mul(radius, ax)
         ry = b.mul(radius, ay)
         vec = b.vmadd(b.combine(cu, su, cv), b.combine(rx, rx, ry), off)
-        w = b.madd(sv, ry, off_w)
+        w = b.madd(sv, ry, off_w if jitter is None else b.add(off_w, jitter))
         return vec, w
 
     def noise(self, freq, offset, detail=2.0, roughness=0.5, distortion=0.0, aniso=None, base=None,
-              direction=None, lacunarity=2.0, kind='FBM', label=None):
-        vec, w = self.sample(freq, offset, aniso, base, direction)
+              direction=None, lacunarity=2.0, kind='FBM', jitter=None, label=None):
+        vec, w = self.sample(freq, offset, aniso, base, direction, jitter)
         return self.b.noise(vec, w=w, scale=1.0, detail=detail, roughness=roughness, distortion=distortion,
                             lacunarity=lacunarity, dims=self.dims, kind=kind, label=label)
 
@@ -131,8 +163,9 @@ class Space:
         n = self.noise(freq, offset, detail=detail, roughness=roughness, **kwargs)
         return zscore(self.b, n, noise_sigma(detail))
 
-    def voronoi(self, freq, offset, feature='F1', randomness=1.0, smoothness=1.0, aniso=None, label=None):
-        vec, w = self.sample(freq, offset, aniso)
+    def voronoi(self, freq, offset, feature='F1', randomness=1.0, smoothness=1.0, aniso=None, base=None,
+                jitter=None, label=None):
+        vec, w = self.sample(freq, offset, aniso, base, None, jitter)
         return self.b.voronoi_node(vec, w=w, scale=1.0, feature=feature, randomness=randomness,
                                    smoothness=smoothness, dims=self.dims, label=label)
 

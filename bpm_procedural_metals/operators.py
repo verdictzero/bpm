@@ -6,7 +6,7 @@ import random
 import traceback
 
 import bpy
-from bpy.props import FloatVectorProperty, IntProperty, StringProperty
+from bpy.props import EnumProperty, FloatProperty, FloatVectorProperty, IntProperty, StringProperty
 
 from . import bake as B
 from . import library as L
@@ -18,6 +18,12 @@ def _selected_material_objects(context):
     if not objs and L.can_have_material(context.active_object):
         objs = [context.active_object]
     return objs
+
+
+def _fit(node, objects, generator, settings):
+    """Scale the preset's pattern size to the objects (keeps the preset's own Scale as a factor)."""
+    if settings.fit_to_object and 'Scale' in node.inputs:
+        node.inputs['Scale'].default_value *= L.fit_scale(objects, generator)
 
 
 def _redraw(context):
@@ -41,6 +47,8 @@ class BPM_OT_apply_preset(bpy.types.Operator):
         if preset is None:
             self.report({'ERROR'}, 'Pick a material in the gallery first.')
             return {'CANCELLED'}
+        if P.is_overlay(preset):
+            return bpy.ops.bpm.add_overlay(preset=preset['id'])
         settings = context.scene.bpm
         if context.mode == 'EDIT_MESH':
             return self._apply_to_faces(context, preset, settings)
@@ -49,8 +57,7 @@ class BPM_OT_apply_preset(bpy.types.Operator):
             self.report({'ERROR'}, 'Select an object first (left-click it in the 3D view).')
             return {'CANCELLED'}
         mat = L.create_material(preset['id'])
-        if settings.fit_to_object:
-            L.find_bpm_node(mat).inputs['Scale'].default_value = L.fit_scale(objs)
+        _fit_material(mat, objs, settings)
         for obj in objs:
             B.restore_procedural(obj)  # drop a baked material that might be shown
             L.assign_material(obj, mat)
@@ -63,13 +70,19 @@ class BPM_OT_apply_preset(bpy.types.Operator):
             self.report({'ERROR'}, 'Edit Mode: the active object must be a mesh.')
             return {'CANCELLED'}
         mat = L.create_material(preset['id'])
-        if settings.fit_to_object:
-            L.find_bpm_node(mat).inputs['Scale'].default_value = L.fit_scale([obj])
+        _fit_material(mat, [obj], settings)
         obj.data.materials.append(mat)
         obj.active_material_index = len(obj.material_slots) - 1
         bpy.ops.object.material_slot_assign()
         self.report({'INFO'}, 'Applied "%s" to the selected faces.' % preset['name'])
         return {'FINISHED'}
+
+
+def _fit_material(mat, objects, settings):
+    node = L.find_bpm_node(mat)
+    _fit(node, objects, node.node_tree['bpm_generator'], settings)
+    for overlay in L.overlay_stack(mat):
+        _fit(overlay, objects, overlay.node_tree['bpm_generator'], settings)
 
 
 class BPM_OT_gallery_step(bpy.types.Operator):
@@ -107,6 +120,8 @@ class BPM_OT_load_preset(bpy.types.Operator):
         preset = P.find(self.preset)
         if mat is None or preset is None:
             return {'CANCELLED'}
+        if P.is_overlay(preset):
+            return bpy.ops.bpm.add_overlay(preset=preset['id'])
         L.load_preset_into(mat, preset['id'])
         self.report({'INFO'}, 'Loaded "%s".' % preset['name'])
         return {'FINISHED'}
@@ -157,7 +172,7 @@ class BPM_OT_fit_scale(bpy.types.Operator):
             return {'CANCELLED'}
         users = [o for o in _selected_material_objects(context)
                  if any(slot.material == mat for slot in o.material_slots)] or [obj]
-        node.inputs['Scale'].default_value = L.fit_scale(users)
+        node.inputs['Scale'].default_value = L.fit_scale(users, node.node_tree['bpm_generator'])
         return {'FINISHED'}
 
 
@@ -169,6 +184,23 @@ class BPM_OT_set_vector(bpy.types.Operator):
 
     socket: StringProperty()
     value: FloatVectorProperty(size=3)
+
+    def execute(self, context):
+        obj, mat, node = L.active_bpm_material(context)
+        if node is None or self.socket not in node.inputs:
+            return {'CANCELLED'}
+        node.inputs[self.socket].default_value = self.value
+        return {'FINISHED'}
+
+
+class BPM_OT_set_value(bpy.types.Operator):
+    """Pick this option"""
+    bl_idname = 'bpm.set_value'
+    bl_label = 'Set Option'
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
+
+    socket: StringProperty()
+    value: FloatProperty()
 
     def execute(self, context):
         obj, mat, node = L.active_bpm_material(context)
@@ -226,6 +258,128 @@ class BPM_OT_preview_material(bpy.types.Operator):
                 for space in area.spaces:
                     if space.type == 'VIEW_3D':
                         space.shading.type = 'MATERIAL'
+        return {'FINISHED'}
+
+
+# ------------------------------------------------------------------ overlays
+def _overlay_items(self, context):
+    items = [(p['id'], p['name'], p['desc']) for p in P.PRESETS if P.is_overlay(p)]
+    _overlay_items.cache = items
+    return items
+
+
+def _plain_material(obj):
+    """A simple material for objects that have none, so dirt can go on top of it."""
+    mat = bpy.data.materials.new('Material')
+    L.ensure_node_tree(mat)
+    L.assign_material(obj, mat)
+    return mat
+
+
+class BPM_OT_add_overlay(bpy.types.Operator):
+    """Layer dirt or dust on top of the material of the selected objects"""
+    bl_idname = 'bpm.add_overlay'
+    bl_label = 'Add Dirt or Dust'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    preset: EnumProperty(items=_overlay_items, name='Overlay')
+
+    def execute(self, context):
+        preset = P.find(self.preset)
+        if preset is None or not P.is_overlay(preset):
+            return {'CANCELLED'}
+        objs = _selected_material_objects(context)
+        if not objs:
+            self.report({'ERROR'}, 'Select an object first (left-click it in the 3D view).')
+            return {'CANCELLED'}
+        done, users = [], {}
+        for obj in objs:
+            B.restore_procedural(obj)  # dirt goes on the procedural material, not the baked one
+            mat = obj.active_material or _plain_material(obj)
+            users.setdefault(mat, []).append(obj)
+        settings = context.scene.bpm
+        for mat, mat_objs in users.items():
+            if mat.library is not None:
+                self.report({'WARNING'}, '"%s" is linked from another file and cannot be changed.' % mat.name)
+                continue
+            try:
+                node = L.add_overlay(mat, preset['generator'], L.preset_values(preset))
+            except L.OverlayError as exc:
+                self.report({'WARNING'}, str(exc))
+                continue
+            node.label = preset['name']
+            _fit(node, mat_objs, preset['generator'], settings)
+            done.append(mat)
+        if not done:
+            return {'CANCELLED'}
+        self.report({'INFO'}, 'Added "%s" on top of %d material%s.' % (preset['name'], len(done),
+                                                                       's' * (len(done) > 1)))
+        return {'FINISHED'}
+
+
+class _OverlayOperator:
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
+    index: IntProperty()
+
+    def _target(self, context):
+        obj = context.active_object
+        mat = obj.active_material if L.can_have_material(obj) else None
+        stack = L.overlay_stack(mat)
+        if not 0 <= self.index < len(stack):
+            return mat, None
+        return mat, stack[self.index]
+
+
+class BPM_OT_remove_overlay(_OverlayOperator, bpy.types.Operator):
+    """Remove this layer of dirt / dust"""
+    bl_idname = 'bpm.remove_overlay'
+    bl_label = 'Remove Overlay'
+
+    def execute(self, context):
+        mat, node = self._target(context)
+        if node is None:
+            return {'CANCELLED'}
+        L.remove_overlay(mat, node)
+        return {'FINISHED'}
+
+
+class BPM_OT_move_overlay(_OverlayOperator, bpy.types.Operator):
+    """Move this layer up (on top of the others) or down"""
+    bl_idname = 'bpm.move_overlay'
+    bl_label = 'Move Overlay'
+
+    step: IntProperty(default=1)
+
+    def execute(self, context):
+        mat, node = self._target(context)
+        if node is None or not L.move_overlay(mat, self.index, self.step):
+            return {'CANCELLED'}
+        return {'FINISHED'}
+
+
+class BPM_OT_toggle_overlay(_OverlayOperator, bpy.types.Operator):
+    """Hide or show this layer (compare with / without it)"""
+    bl_idname = 'bpm.toggle_overlay'
+    bl_label = 'Show / Hide Overlay'
+
+    def execute(self, context):
+        mat, node = self._target(context)
+        if node is None:
+            return {'CANCELLED'}
+        L.toggle_overlay(node)
+        return {'FINISHED'}
+
+
+class BPM_OT_overlay_seed(_OverlayOperator, bpy.types.Operator):
+    """Pick a new random variation of this layer"""
+    bl_idname = 'bpm.overlay_seed'
+    bl_label = 'New Variation'
+
+    def execute(self, context):
+        mat, node = self._target(context)
+        if node is None:
+            return {'CANCELLED'}
+        node.inputs['Seed'].default_value = round(random.uniform(0.0, 100.0), 2)
         return {'FINISHED'}
 
 
@@ -399,9 +553,15 @@ CLASSES = (
     BPM_OT_randomize_seed,
     BPM_OT_fit_scale,
     BPM_OT_set_vector,
+    BPM_OT_set_value,
     BPM_OT_make_unique,
     BPM_OT_preview_cycles,
     BPM_OT_preview_material,
+    BPM_OT_add_overlay,
+    BPM_OT_remove_overlay,
+    BPM_OT_move_overlay,
+    BPM_OT_toggle_overlay,
+    BPM_OT_overlay_seed,
     BPM_OT_bake,
     BPM_OT_open_folder,
     BPM_OT_show_procedural,

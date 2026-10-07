@@ -27,11 +27,11 @@ class BPM_Settings(bpy.types.PropertyGroup):
     # --- library
     category: EnumProperty(
         name='Category',
-        items=[('ALL', 'All', 'Show every material')] + [(c[0], c[1], c[2]) for c in P.CATEGORIES],
+        items=[('ALL', 'All', 'Show every material')] + [(c[0], c[3], c[2]) for c in P.CATEGORIES],
         default='ALL')
     fit_to_object: BoolProperty(
         name='Fit Pattern Size to Object', default=True,
-        description='Scale scratches, chips and rust to the size of the selected object(s)')
+        description='Adapt the pattern size (scratches, grain, dirt...) to the size of the selected object(s)')
     show_all_settings: BoolProperty(
         name='Show All Settings', default=False,
         description='Show every setting of the material, not just the most important ones')

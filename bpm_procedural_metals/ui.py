@@ -8,6 +8,7 @@ import bpy
 from . import bake as B
 from . import generators as G
 from . import library as L
+from . import overlays as O
 from . import presets as P
 from . import previews
 
@@ -30,6 +31,15 @@ def _draw_socket(layout, node, param):
     if sock.is_linked:
         layout.label(text='%s: (connected in node editor)' % param.name, icon='LINKED')
         return
+    if isinstance(param.ui, tuple) and param.ui[0] == 'ENUM':
+        layout.label(text=param.name)
+        grid = layout.grid_flow(row_major=True, columns=3, even_columns=True, align=True)
+        current = round(sock.default_value)
+        for label, value in param.ui[1]:
+            op = grid.operator('bpm.set_value', text=label, depress=current == round(value))
+            op.socket = param.name
+            op.value = value
+        return
     if param.ui == 'AXIS':
         row = layout.row(align=True)
         row.label(text=param.name)
@@ -50,14 +60,15 @@ class BPM_PT_library(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = CATEGORY
-    bl_label = 'Procedural Metals'
+    bl_label = 'Material Library'
 
     def draw(self, context):
         layout = self.layout
         settings = context.scene.bpm
         wm = context.window_manager
 
-        layout.row().prop(settings, 'category', expand=True)
+        grid = layout.grid_flow(row_major=True, columns=3, even_columns=True, align=True)
+        grid.prop(settings, 'category', expand=True)
         row = layout.row(align=True)
         row.operator('bpm.gallery_step', text='', icon='TRIA_LEFT').step = -1
         row.template_icon_view(wm, 'bpm_gallery', show_labels=True, scale=7.0, scale_popup=6.0)
@@ -66,12 +77,18 @@ class BPM_PT_library(bpy.types.Panel):
         preset = P.find(wm.bpm_gallery) if wm.bpm_gallery not in {'', 'NONE'} else None
         if preset is not None:
             box = layout.box()
-            box.label(text=preset['name'], icon='MATERIAL')
+            overlay = P.is_overlay(preset)
+            box.label(text=preset['name'], icon='MOD_OCEAN' if overlay else 'MATERIAL')
             _wrap(box, context, preset['desc'])
+            if overlay:
+                _wrap(box, context, 'Goes on top of the material the object already has.', 'INFO')
             col = layout.column(align=True)
             col.scale_y = 1.6
-            label = 'Apply to Selected Faces' if context.mode == 'EDIT_MESH' else 'Apply to Selected'
-            col.operator('bpm.apply_preset', text=label, icon='CHECKMARK').preset = preset['id']
+            if overlay:
+                col.operator('bpm.apply_preset', text='Add on Top of Material', icon='ADD').preset = preset['id']
+            else:
+                label = 'Apply to Selected Faces' if context.mode == 'EDIT_MESH' else 'Apply to Selected'
+                col.operator('bpm.apply_preset', text=label, icon='CHECKMARK').preset = preset['id']
             layout.prop(settings, 'fit_to_object')
 
 
@@ -94,7 +111,8 @@ class BPM_PT_adjust(bpy.types.Panel):
             return
         if node is None:
             _wrap(layout, context, 'The active material is not a BPM material. Pick one in the gallery '
-                                   'above and click "Apply to Selected".', 'INFO')
+                                   'above and click "Apply to Selected". Dirt and dust overlays work on '
+                                   'any material.', 'INFO')
             return
 
         generator = node.node_tree['bpm_generator']
@@ -137,6 +155,69 @@ class BPM_PT_adjust(bpy.types.Panel):
             row.operator('bpm.preview_material', icon='SHADING_TEXTURE')
         else:
             row.operator('bpm.preview_cycles', icon='SHADING_RENDERED')
+
+
+class BPM_PT_overlays(bpy.types.Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = CATEGORY
+    bl_label = 'Dirt & Dust Overlays'
+
+    def draw(self, context):
+        layout = self.layout
+        obj = context.active_object
+        if not L.can_have_material(obj):
+            _wrap(layout, context, 'Select an object to add dirt or dust to its material.', 'INFO')
+            return
+        mat = obj.active_material
+        if L.is_baked_material(mat):
+            _wrap(layout, context, 'This object shows its baked textures. Overlays are added to the '
+                                   'procedural material (switch back with "Back to Procedural").', 'INFO')
+        row = layout.row()
+        row.scale_y = 1.3
+        row.operator_menu_enum('bpm.add_overlay', 'preset', text='Add Dirt or Dust', icon='ADD')
+        if mat is None or L.is_baked_material(mat):
+            return
+        stack = L.overlay_stack(mat)
+        if not stack:
+            _wrap(layout, context, 'Layers of dirt or dust stack on top of any material and are '
+                                   'included when you bake.')
+            return
+        for index in reversed(range(len(stack))):  # top layer first
+            self._draw_overlay(context, layout, stack[index], index, len(stack))
+
+    def _draw_overlay(self, context, layout, node, index, count):
+        box = layout.box()
+        row = box.row(align=True)
+        hidden = L.overlay_hidden(node)
+        row.operator('bpm.toggle_overlay', text='', icon='HIDE_ON' if hidden else 'HIDE_OFF',
+                     emboss=False).index = index
+        row.label(text=node.label or node.node_tree.name)
+        sub = row.row(align=True)
+        sub.enabled = index < count - 1
+        op = sub.operator('bpm.move_overlay', text='', icon='TRIA_UP')
+        op.index, op.step = index, 1
+        sub = row.row(align=True)
+        sub.enabled = index > 0
+        op = sub.operator('bpm.move_overlay', text='', icon='TRIA_DOWN')
+        op.index, op.step = index, -1
+        row.operator('bpm.overlay_seed', text='', icon='FILE_REFRESH').index = index
+        row.operator('bpm.remove_overlay', text='', icon='X').index = index
+        if hidden:
+            return
+        generator = node.node_tree['bpm_generator']
+        params = [p for p in G.params_for(generator) if p.panel != O.BELOW]
+        col = box.column(align=True)
+        for p in params:
+            if p.key:
+                _draw_socket(col, node, p)
+        header, body = box.panel('bpm_overlay_%s' % node.name, default_closed=True)
+        header.label(text='More Settings')
+        if body is not None:
+            col = body.column(align=True)
+            for p in params:
+                if not p.key:
+                    _draw_socket(col, node, p)
 
 
 class BPM_OT_load_preset_menu(bpy.types.Operator):
@@ -255,6 +336,8 @@ class BPM_PT_help(bpy.types.Panel):
             '1. Select your object (left-click it).',
             '2. Pick a material in the gallery and click "Apply to Selected".',
             '3. Change the look with the sliders in "Adjust Material".',
+            'Want it dirty or dusty? Use "Add Dirt or Dust": the layers go on top of any material, '
+            'even ones that are not from BPM.',
             '4. Click "Bake" to turn it into image textures. They are saved next to your .blend file '
             '(or in BPM_Textures in your home folder if the file was never saved).',
             'Switch the 3D view to Material Preview (Z key > Material Preview) to see the materials.',
@@ -265,7 +348,7 @@ class BPM_PT_help(bpy.types.Panel):
             _wrap(layout, context, text)
 
 
-CLASSES = (BPM_OT_load_preset_menu, BPM_PT_library, BPM_PT_adjust, BPM_PT_bake, BPM_PT_help)
+CLASSES = (BPM_OT_load_preset_menu, BPM_PT_library, BPM_PT_adjust, BPM_PT_overlays, BPM_PT_bake, BPM_PT_help)
 
 
 def register():

@@ -49,7 +49,7 @@ def sheet(presets, path, cols=6, cell=200, label_h=34):
 
 def main():
     os.makedirs(DOCS, exist_ok=True)
-    for cat, label, _ in P.CATEGORIES:
+    for cat, *_ in P.CATEGORIES:
         sheet(P.by_category(cat), os.path.join(DOCS, 'gallery_%s.png' % cat.lower()))
 
 

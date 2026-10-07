@@ -177,34 +177,8 @@ def uv_stats(mesh, uv_layer):
 
 
 # ---------------------------------------------------------- material rigs
-def _surface_link(out):
-    links = [l for l in out.inputs['Surface'].links if not getattr(l, 'is_muted', False)]
-    return links[0] if links else None
-
-
-def find_principled(tree, out):
-    """The Principled BSDF that feeds the material output (searching upstream)."""
-    if out is None:
-        return None
-    link = _surface_link(out)
-    if link is None:
-        return None
-    stack, seen = [link.from_node], set()
-    while stack:
-        node = stack.pop(0)
-        if node in seen:
-            continue
-        seen.add(node)
-        if node.bl_idname == 'ShaderNodeBsdfPrincipled':
-            return node
-        for inp in node.inputs:
-            if inp.type == 'SHADER':
-                for l in inp.links:
-                    stack.append(l.from_node)
-    for node in tree.nodes:
-        if node.bl_idname == 'ShaderNodeBsdfPrincipled':
-            return node
-    return None
+_surface_link = L._surface_link
+find_principled = L.find_principled
 
 
 class MaterialRig:
@@ -242,17 +216,7 @@ class MaterialRig:
     def source(self, key):
         """Socket or constant that holds the value of a map (None = not available)."""
         if key == 'HEIGHT':
-            if self.bpm is not None:
-                return self.bpm.outputs['Height']
-            disp = self.out.inputs.get('Displacement')
-            if disp is not None and disp.is_linked:
-                link = disp.links[0]
-                node = link.from_node
-                if node.bl_idname == 'ShaderNodeDisplacement':
-                    h = node.inputs['Height']
-                    return h.links[0].from_socket if h.is_linked else h.default_value
-                return link.from_socket
-            return None
+            return L.height_source(self.mat, self.out)
         name = MAPS[key][3]
         if self.bsdf is not None:
             sock = self.bsdf.inputs[name]
@@ -959,8 +923,10 @@ class TileBakeJob(Job):
                 values = L.read_values(node)
                 values['Tile Size'] = size
                 L.build_material(temp_mat, node.node_tree['bpm_generator'], values, tile=True)
+                L.copy_overlays(mat, temp_mat, tile=True, extra={'Tile Size': size})
                 mesh.materials.clear()
                 mesh.materials.append(temp_mat)
+                values['_bump'] = G.GENERATORS[node.node_tree['bpm_generator']]['bump']
                 yield from self._bake_tile(plane, temp_mat, mat, name, state, samples, values)
                 mesh.materials.clear()
                 bpy.data.materials.remove(temp_mat)
@@ -1020,7 +986,7 @@ class TileBakeJob(Job):
         size = int(s.resolution)
         height = _pixels(height_img)[:, 0].reshape(size, size)
         scale = max(float(values.get('Scale', 1.0)), 1e-6)
-        rgb = normal_from_height(height, float(s.tile_size) / size, G.MACRO_BUMP / scale,
+        rgb = normal_from_height(height, float(s.tile_size) / size, values.get('_bump', G.MACRO_BUMP) / scale,
                                  float(values.get('Bump Strength', 1.0)), s.normal_directx)
         img = _new_image('BPM_tmp_%s_Normal' % name, size, False, s.use_16bit)
         out = np.ones((size * size, 4), dtype=np.float32)

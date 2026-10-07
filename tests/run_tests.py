@@ -71,6 +71,16 @@ def read_png(path):
     return px.reshape(h, w, 4)
 
 
+def seam_ok(a):
+    """False if the texture has a visible seam where it wraps around."""
+    for axis in (0, 1):
+        steps = np.abs(np.diff(a, axis=axis)).mean(axis=(1 - axis, 2))  # one value per row/column step
+        wrap = np.abs(np.take(a, 0, axis=axis) - np.take(a, -1, axis=axis)).mean()
+        if wrap > 1.25 * steps.max() + 1e-4:
+            return False
+    return True
+
+
 def generic_material(base=(0.5, 0.5, 0.5, 1.0), metallic=0.25, roughness=0.75):
     mat = bpy.data.materials.new('Generic')
     tree = L.ensure_node_tree(mat)
@@ -121,9 +131,18 @@ def presets_are_valid():
                 assert p.min <= value <= p.max, '%s: %s=%s out of range' % (preset['id'], key, value)
             if p.kind == 'COLOR':
                 assert len(value) in (3, 4) and all(0.0 <= c <= 1.0 for c in value), preset['id']
-    assert len(P.PRESETS) >= 40, 'expected a big library'
-    for cat, _label, _desc in P.CATEGORIES:
+        for gen, values in preset['overlays']:
+            assert G.is_overlay(gen), preset['id']
+            names = {p.name for p in G.params_for(gen)}
+            assert set(values) <= names, '%s: unknown overlay values %s' % (preset['id'], set(values) - names)
+        base = preset['thumb'].get('base')
+        assert base is None or not P.is_overlay(P.get(base)), preset['id']
+        assert P.is_overlay(preset) == G.is_overlay(preset['generator']), preset['id']
+    assert len(P.PRESETS) >= 120, 'expected a big library'
+    for cat, *_rest in P.CATEGORIES:
         assert P.by_category(cat), cat
+    for gen in G.GENERATORS:
+        assert any(p['generator'] == gen for p in P.PRESETS), 'no preset uses ' + gen
 
 
 @test
@@ -141,11 +160,138 @@ def every_preset_renders():
     scene.camera = cam
     obj = add_cube()
     for preset in P.PRESETS:
-        mat = L.create_material(preset['id'])
+        if P.is_overlay(preset):
+            mat = generic_material()
+            L.add_overlay(mat, preset['generator'], L.preset_values(preset))
+            assert len(L.overlay_stack(mat)) == 1
+        else:
+            mat = L.create_material(preset['id'])
+            assert L.find_bpm_node(mat) is not None
+            assert len(L.overlay_stack(mat)) == len(preset['overlays'])
         obj.data.materials.clear()
         obj.data.materials.append(mat)
         bpy.ops.render.render()
-        assert L.find_bpm_node(mat) is not None
+
+
+def bsdf_source(mat, name):
+    sock = L.find_principled(mat.node_tree).inputs[name]
+    return sock.links[0].from_node if sock.is_linked else None
+
+
+@test
+def overlay_stack_operations():
+    fresh_scene()
+    mat = L.create_material('paint_industrial_yellow')
+    group = L.find_bpm_node(mat)
+    dirt = L.add_overlay(mat, 'DIRT')
+    dust = L.add_overlay(mat, 'DUST', {'Amount': 0.9})
+    assert L.overlay_stack(mat) == [dirt, dust]
+    assert bsdf_source(mat, 'Base Color') == dust and bsdf_source(mat, 'Coat Weight') == dust
+    assert dust.inputs['Base Color'].links[0].from_node == dirt
+    assert dirt.inputs['Height'].links[0].from_node == group
+    assert L.height_source(mat).node == dust
+    assert abs(dust.inputs['Amount'].default_value - 0.9) < 1e-6
+    assert L.find_bpm_node(mat) == group, 'overlays must not be mistaken for the material'
+    # reorder, hide / show
+    assert L.move_overlay(mat, 0, 1)
+    assert [n.node_tree['bpm_generator'] for n in L.overlay_stack(mat)] == ['DUST', 'DIRT']
+    top = L.overlay_stack(mat)[1]
+    L.toggle_overlay(top)
+    assert top.inputs['Opacity'].default_value == 0.0 and L.overlay_hidden(top)
+    L.toggle_overlay(top)
+    assert top.inputs['Opacity'].default_value == 1.0 and not L.overlay_hidden(top)
+    # loading a preset of another family keeps the user's overlays
+    L.load_preset_into(mat, 'wood_oak_floor')
+    assert L.generator_of(mat) == 'WOOD'
+    assert [n.node_tree['bpm_generator'] for n in L.overlay_stack(mat)] == ['DUST', 'DIRT']
+    assert bsdf_source(mat, 'Base Color').node_tree['bpm_generator'] == 'DIRT'
+    # removing everything restores the plain wiring
+    for node in list(L.overlay_stack(mat)):
+        L.remove_overlay(mat, node)
+    assert bsdf_source(mat, 'Base Color') == L.find_bpm_node(mat)
+    assert bsdf_source(mat, 'Normal') == L.find_bpm_node(mat)
+    # preset overlays are replaced when another preset is loaded, user overlays stay
+    mat = L.create_material('plastic_dirty_bin')
+    assert [n.node_tree['bpm_generator'] for n in L.overlay_stack(mat)] == ['DIRT']
+    L.add_overlay(mat, 'DUST')
+    L.load_preset_into(mat, 'plastic_retro_beige')
+    gens = [n.node_tree['bpm_generator'] for n in L.overlay_stack(mat)]
+    assert sorted(gens) == ['DUST', 'DUST'], gens
+    # a plain material: unconnected values are carried over and restored
+    mat = generic_material((0.1, 0.2, 0.8, 1.0), 0.0, 0.3)
+    node = L.add_overlay(mat, 'DUST')
+    assert abs(node.inputs['Roughness'].default_value - 0.3) < 1e-6
+    assert tuple(node.inputs['Base Color'].default_value)[:3] == (0.1, 0.2, 0.8) or \
+        abs(node.inputs['Base Color'].default_value[2] - 0.8) < 1e-6
+    L.remove_overlay(mat, node)
+    bsdf = L.find_principled(mat.node_tree)
+    assert not bsdf.inputs['Base Color'].is_linked and abs(bsdf.inputs['Roughness'].default_value - 0.3) < 1e-6
+    # no Principled BSDF: clear error
+    mat = bpy.data.materials.new('Emit')
+    tree = L.ensure_node_tree(mat)
+    tree.nodes.clear()
+    out = tree.nodes.new('ShaderNodeOutputMaterial')
+    tree.links.new(tree.nodes.new('ShaderNodeEmission').outputs[0], out.inputs['Surface'])
+    try:
+        L.add_overlay(mat, 'DIRT')
+    except L.OverlayError:
+        pass
+    else:
+        raise AssertionError('expected an OverlayError')
+
+
+@test
+def overlay_operators():
+    fresh_scene()
+    a = add_cube('A')
+    b = add_cube('B', location=(4, 0, 0))
+    a.data.materials.append(L.create_material('steel_polished'))
+    for o in (a, b):
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = a
+    # from the gallery: an overlay preset goes on top instead of replacing the material
+    assert bpy.ops.bpm.apply_preset(preset='dust_heavy') == {'FINISHED'}
+    assert L.generator_of(a.active_material) == 'METAL'
+    assert len(L.overlay_stack(a.active_material)) == 1
+    assert b.active_material is not None and len(L.overlay_stack(b.active_material)) == 1, \
+        'objects without a material get a plain one'
+    assert bpy.ops.bpm.add_overlay(preset='dirt_mud') == {'FINISHED'}
+    assert [n.label for n in L.overlay_stack(a.active_material)] == ['Heavy Dust', 'Mud Splatter']
+    assert bpy.ops.bpm.move_overlay(index=1, step=-1) == {'FINISHED'}
+    assert [n.label for n in L.overlay_stack(a.active_material)] == ['Mud Splatter', 'Heavy Dust']
+    assert bpy.ops.bpm.toggle_overlay(index=0) == {'FINISHED'}
+    assert bpy.ops.bpm.overlay_seed(index=0) == {'FINISHED'}
+    assert bpy.ops.bpm.remove_overlay(index=0) == {'FINISHED'}
+    assert [n.label for n in L.overlay_stack(a.active_material)] == ['Heavy Dust']
+    assert bpy.ops.bpm.set_value(socket='Metal Color', value=0.0) in ({'FINISHED'}, {'CANCELLED'})
+    # the weave buttons
+    a.data.materials[0] = L.create_material('fabric_canvas')
+    assert bpy.ops.bpm.set_value(socket='Weave', value=3.0) == {'FINISHED'}
+    assert L.find_bpm_node(a.active_material).inputs['Weave'].default_value == 3.0
+
+
+@test
+def overlays_are_baked():
+    """Dust must show up in the baked color map and give a height map to plain materials."""
+    fresh_scene()
+    obj = add_cube()
+    mat = generic_material((0.02, 0.02, 0.02, 1.0), 0.0, 0.3)
+    obj.data.materials.append(mat)
+    out_a = os.path.join(TMP, 'ov_a')
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [obj], settings(maps={'BASE_COLOR', 'HEIGHT'}, output_dir=out_a,
+                                                             assign_baked=False)))
+    assert not os.path.exists(os.path.join(out_a, 'Cube_Height.png')), 'plain material has no height'
+    L.add_overlay(mat, 'DUST', {'Amount': 1.0, 'Top Facing': 0.0})
+    out_b = os.path.join(TMP, 'ov_b')
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [obj], settings(maps={'BASE_COLOR', 'HEIGHT', 'ROUGHNESS'},
+                                                             output_dir=out_b, assign_baked=False)))
+    plain = read_png(os.path.join(out_a, 'Cube_BaseColor.png'))
+    dusty = read_png(os.path.join(out_b, 'Cube_BaseColor.png'))
+    rough = read_png(os.path.join(out_b, 'Cube_Roughness.png'))
+    covered = dusty[..., 3] > 0.5
+    assert dusty[..., 0][covered].mean() > plain[..., 0][covered].mean() + 0.2, 'dust missing from the bake'
+    assert rough[..., 0][covered].mean() > 0.6
+    assert os.path.exists(os.path.join(out_b, 'Cube_Height.png'))
 
 
 @test
@@ -408,14 +554,6 @@ def tiles_are_seamless():
     job = B.TileBakeJob(bpy.context, mats, settings(resolution=128))
     B.run_to_end(job)
     assert len(job.written) == 15, job.written
-    def seam_ok(a):
-        for axis in (0, 1):
-            steps = np.abs(np.diff(a, axis=axis)).mean(axis=(1 - axis, 2))  # one value per row/column step
-            wrap = np.abs(np.take(a, 0, axis=axis) - np.take(a, -1, axis=axis)).mean()
-            if wrap > 1.25 * steps.max() + 1e-4:
-                return False
-        return True
-
     for path in job.written:
         a = read_png(path)[..., :3].astype(np.float64)
         assert seam_ok(a), 'visible seam in ' + os.path.basename(path)
@@ -423,6 +561,26 @@ def tiles_are_seamless():
     rust = read_png([p for p in job.written if p.endswith('Heavily_Rusted_Iron_BaseColor.png')][0])[..., :3]
     assert not seam_ok(rust[:, :80].astype(np.float64)), 'seam check cannot detect seams'
     assert len(job.tile_materials) == 3
+
+
+@test
+def new_families_tile_seamlessly():
+    """Every family (and overlays on top) must bake to seamless tiles."""
+    fresh_scene()
+    ids = ('wood_barn_red', 'plastic_dirty_bin', 'leather_sofa', 'fabric_carbon_twill', 'bio_xeno_tubes',
+           'wood_walnut')
+    mats = [L.create_material(pid) for pid in ids]
+    L.add_overlay(mats[-1], 'DUST', {'Amount': 0.8})
+    job = B.TileBakeJob(bpy.context, mats, settings(resolution=128, maps={'BASE_COLOR', 'NORMAL', 'HEIGHT'}))
+    B.run_to_end(job)
+    assert len(job.written) == 3 * len(ids), job.written
+    for path in job.written:
+        a = read_png(path)[..., :3].astype(np.float64)
+        assert seam_ok(a), 'visible seam in ' + os.path.basename(path)
+        if path.endswith('BaseColor.png'):
+            assert a.std() > 0.003, 'flat texture: ' + os.path.basename(path)
+    walnut = read_png([p for p in job.written if p.endswith('Varnished_Walnut_BaseColor.png')][0])
+    assert walnut[..., 0].mean() > 0.35, 'the dust overlay must be in the tile'
 
 
 @test
@@ -497,6 +655,13 @@ def command_line_tool():
     res = subprocess.run(cmd[:6] + ['tile', '--preset', 'does-not-exist'], capture_output=True, text=True,
                          timeout=300)
     assert res.returncode != 0 and 'Unknown preset' in (res.stdout + res.stderr)
+    res = subprocess.run(cmd[:6] + ['tile', '--preset', 'Kevlar (Aramid)', '--overlay', 'dust_light,dirt_grime',
+                                    '--size', '32', '--quality', 'fast', '--maps', 'basecolor', '--out', out],
+                         capture_output=True, text=True, timeout=600)
+    assert res.returncode == 0, res.stdout[-2000:] + res.stderr[-2000:]
+    assert os.path.exists(os.path.join(out, 'Kevlar_Aramid_Tile', 'Kevlar_Aramid_BaseColor.png'))
+    res = subprocess.run(cmd[:6] + ['list'], capture_output=True, text=True, timeout=300)
+    assert 'carbon' in res.stdout and 'dust_light' in res.stdout
 
 
 STACK_SCRIPT = r'''
@@ -507,17 +672,24 @@ from bpm_procedural_metals import library as L
 bpy.ops.wm.read_factory_settings(use_empty=True)
 addon.register()
 scene = bpy.context.scene; scene.render.engine = 'CYCLES'; scene.cycles.samples = 1
+from bpm_procedural_metals import generators as G
 bpy.ops.mesh.primitive_cube_add(); ob = bpy.context.active_object
-for gen in ('METAL', 'PAINT'):
+combos = [(gen, ()) for gen in G.material_generators()]
+combos += [(gen, ('DIRT', 'DUST')) for gen in G.material_generators()]
+for gen, overlays in combos:
     for tile in (False, True):
-        for mode in ('full', 'normal'):
-            mat = bpy.data.materials.new('STACK_%%s_%%s_%%s' %% (gen, int(tile), mode))
+        # tile bakes only use emission passes (their normal maps are computed from the height)
+        for mode in (('full',) if tile else ('full', 'normal')):
+            mat = bpy.data.materials.new('STACK_%%s%%s_%%s_%%s' %% (gen, ''.join('+' + o for o in overlays),
+                                                                   int(tile), mode))
             ob.data.materials.clear(); ob.data.materials.append(mat)
             L.build_material(mat, gen, L.default_values(gen), tile=tile)
-            nt = mat.node_tree; grp = L.find_bpm_node(mat); out = L.output_node(nt)
+            for o in overlays:
+                L.add_overlay(mat, o, tile=tile)
+            nt = mat.node_tree; out = L.output_node(nt); bsdf = L.find_principled(nt)
             if mode == 'normal':
                 d = nt.nodes.new('ShaderNodeBsdfDiffuse')
-                nt.links.new(grp.outputs['Normal'], d.inputs['Normal'])
+                nt.links.new(bsdf.inputs['Normal'].links[0].from_socket, d.inputs['Normal'])
                 nt.links.new(d.outputs[0], out.inputs['Surface'])
             img = bpy.data.images.new('t', 8, 8); tex = nt.nodes.new('ShaderNodeTexImage'); tex.image = img
             nt.nodes.active = tex

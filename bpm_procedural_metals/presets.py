@@ -3,19 +3,43 @@
 
 Only values that differ from the generator defaults need to be listed.
 Colors are linear RGB (what Blender color pickers store internally).
+A material preset can bring overlays (dirt, dust) along; overlay presets
+are layered on top of whatever material an object already has.
 """
 
+# (id, label, description, short label for the category buttons)
 CATEGORIES = (
-    ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals'),
-    ('PAINT', 'Painted Metal', 'Painted, chipped and weathered metal'),
+    ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals', 'Metal'),
+    ('PAINT', 'Painted Metal', 'Painted, chipped and weathered metal', 'Painted'),
+    ('WOOD', 'Wood', 'Raw, varnished, painted, weathered and charred wood', 'Wood'),
+    ('PLASTIC', 'Plastic', 'Glossy, matte and textured plastic, new, old or dirty', 'Plastic'),
+    ('LEATHER', 'Leather', 'Smooth, pebbled, suede, patent, croc and worn leather', 'Leather'),
+    ('FABRIC', 'Fabric & Composites', 'Canvas, denim, nylon, carbon fiber, kevlar...', 'Fabric'),
+    ('ORGANIC', 'Biomechanical', 'Giger-style organic machinery: ribs, tubes, bone, slime', 'Organic'),
+    ('OVERLAY', 'Dirt & Dust', 'Layers of dirt or dust that go on top of any material', 'Dirt & Dust'),
 )
+
+# generator -> gallery category
+GENERATOR_CATEGORY = {
+    'METAL': 'METAL', 'PAINT': 'PAINT', 'WOOD': 'WOOD', 'PLASTIC': 'PLASTIC', 'LEATHER': 'LEATHER',
+    'FABRIC': 'FABRIC', 'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY',
+}
 
 PRESETS = []
 
 
-def _add(pid, name, generator, desc, **values):
-    PRESETS.append(dict(id=pid, name=name, generator=generator, category=generator, desc=desc,
-                        values={key.replace('_', ' '): value for key, value in values.items()}))
+def _names(values):
+    return {key.replace('_', ' '): value for key, value in values.items()}
+
+
+def _add(pid, name, generator, desc, overlays=(), thumb=None, **values):
+    PRESETS.append(dict(id=pid, name=name, generator=generator, category=GENERATOR_CATEGORY[generator],
+                        desc=desc, values=_names(values), overlays=list(overlays), thumb=thumb or {}))
+
+
+def overlay(generator, **values):
+    """An overlay that comes with a material preset: (generator, values)."""
+    return (generator, _names(values))
 
 
 def get(preset_id):
@@ -36,6 +60,10 @@ def find(name_or_id):
 
 def by_category(category):
     return [p for p in PRESETS if category in {'ALL', p['category']}]
+
+
+def is_overlay(preset):
+    return preset['category'] == 'OVERLAY'
 
 
 # Reflectance (F0) colors of real metals, linear RGB.
@@ -265,3 +293,343 @@ _add('paint_rusted_through', 'Rusted-Through Paint', 'PAINT',
      'Grey paint that has mostly lost the fight against rust.',
      Paint_Color=(0.35, 0.33, 0.30), Wear=0.6, Edge_Wear=1.0, Primer=0.2, Rust=1.0, Rust_Spread=0.8,
      Rust_Streaks=0.6, Fading=0.4, Dirt=0.5)
+
+# ------------------------------------------------------------------------ wood
+OAK = (0.50, 0.27, 0.11)
+OAK_RING = (0.26, 0.11, 0.042)
+PINE = (0.72, 0.47, 0.21)
+PINE_RING = (0.42, 0.20, 0.065)
+WALNUT = (0.15, 0.068, 0.03)
+WALNUT_RING = (0.055, 0.024, 0.01)
+WOOD_THUMB = dict(zoom=0.5)
+SOLID_THUMB = dict(zoom=0.3)
+
+_add('wood_oak_floor', 'Oak Floorboards', 'WOOD',
+     'Satin varnished oak planks, like a living room floor.',
+     thumb=WOOD_THUMB, Varnish=0.6, Varnish_Roughness=0.15, Pores=0.4, Dirt=0.15)
+_add('wood_walnut', 'Varnished Walnut', 'WOOD',
+     'Dark, glossy walnut furniture wood.',
+     thumb=SOLID_THUMB, Wood_Color=WALNUT, Ring_Color=WALNUT_RING, Planks=0.0, Varnish=1.0, Pores=0.5,
+     Ring_Contrast=0.85, Knots=0.05, Dirt=0.05)
+_add('wood_pine_raw', 'Knotty Pine', 'WOOD',
+     'Raw, light pine boards with knots.',
+     thumb=WOOD_THUMB, Wood_Color=PINE, Ring_Color=PINE_RING, Knots=0.5, Pores=0.0, Ring_Contrast=0.7,
+     Plank_Width=0.2, Gap_Width=0.003, Roughness=0.65)
+_add('wood_maple_curly', 'Curly Maple', 'WOOD',
+     'Lacquered flame maple with shimmering stripes, like a guitar top.',
+     thumb=SOLID_THUMB, Wood_Color=(0.70, 0.45, 0.20), Ring_Color=(0.55, 0.32, 0.12), Figure=1.0,
+     Planks=0.0, Varnish=1.0, Pores=0.0, Ring_Contrast=0.25, Knots=0.0, Dirt=0.0, Edge_Wear=0.0)
+_add('wood_cherry', 'Cherry Furniture', 'WOOD',
+     'Warm reddish cherry wood with a satin finish.',
+     thumb=SOLID_THUMB, Wood_Color=(0.40, 0.13, 0.05), Ring_Color=(0.20, 0.05, 0.016), Planks=0.0,
+     Varnish=0.8, Varnish_Roughness=0.12, Pores=0.15, Knots=0.03, Dirt=0.05, Ring_Contrast=0.8)
+_add('wood_mahogany', 'Polished Mahogany', 'WOOD',
+     'Deep red-brown mahogany with a mirror polish.',
+     thumb=SOLID_THUMB, Wood_Color=(0.25, 0.07, 0.03), Ring_Color=(0.10, 0.025, 0.01), Planks=0.0,
+     Varnish=1.0, Varnish_Roughness=0.04, Pores=0.6, Figure=0.3, Knots=0.0, Dirt=0.0, Ring_Contrast=0.8)
+_add('wood_ebony', 'Ebony', 'WOOD',
+     'Nearly black, dense, polished ebony.',
+     thumb=SOLID_THUMB, Wood_Color=(0.022, 0.016, 0.013), Ring_Color=(0.006, 0.005, 0.004),
+     Ring_Contrast=0.6, Planks=0.0, Varnish=1.0, Pores=0.2, Knots=0.0, Dirt=0.0)
+_add('wood_teak_deck', 'Teak Boat Deck', 'WOOD',
+     'Narrow teak deck planks with dark caulked seams.',
+     thumb=WOOD_THUMB, Wood_Color=(0.33, 0.17, 0.06), Ring_Color=(0.18, 0.08, 0.025), Plank_Width=0.06,
+     Plank_Length=4.0, Gap_Width=0.004, Weathering=0.25, Knots=0.05, Dirt=0.3)
+_add('wood_pallet', 'Shipping Pallet Wood', 'WOOD',
+     'Rough, cheap, dirty planks of a shipping pallet or crate.',
+     thumb=WOOD_THUMB, Wood_Color=(0.55, 0.38, 0.20), Ring_Color=(0.35, 0.20, 0.08), Roughness=0.75,
+     Plank_Width=0.1, Gap_Width=0.008, Knots=0.4, Fibers=0.8, Cracks=0.3, Edge_Wear=0.5, Dirt=0.4,
+     Plank_Variation=0.8, Weathering=0.15)
+_add('wood_barn_red', 'Peeling Barn Red', 'WOOD',
+     'Old barn boards with flaking red paint over grey wood.',
+     thumb=WOOD_THUMB, Grain_Direction=(0.0, 0.0, 1.0), Plank_Direction=(1.0, 0.0, 0.0), Plank_Width=0.2,
+     Plank_Length=6.0, Gap_Width=0.004, Paint=1.0, Paint_Color=(0.33, 0.035, 0.022), Paint_Wear=0.45,
+     Paint_Roughness=0.7, Weathering=0.7, Cracks=0.4, Dirt=0.35, Knots=0.3)
+_add('wood_white_painted', 'White Painted Planks', 'WOOD',
+     'Off-white painted wood paneling, slightly worn.',
+     thumb=WOOD_THUMB, Grain_Direction=(0.0, 0.0, 1.0), Plank_Direction=(1.0, 0.0, 0.0), Plank_Width=0.12,
+     Plank_Length=6.0, Paint=1.0, Paint_Color=(0.78, 0.77, 0.72), Paint_Wear=0.06, Paint_Roughness=0.45,
+     Weathering=0.3, Dirt=0.2)
+_add('wood_weathered', 'Weathered Grey Wood', 'WOOD',
+     'Silver-grey fence boards bleached by sun and rain.',
+     thumb=WOOD_THUMB, Weathering=1.0, Cracks=0.5, Plank_Width=0.18, Knots=0.3, Dirt=0.3, Edge_Wear=0.4,
+     Roughness=0.8)
+_add('wood_driftwood', 'Driftwood', 'WOOD',
+     'Pale, smooth, sea-washed wood with raised grain.',
+     thumb=WOOD_THUMB, Weathering=1.0, Weathered_Color=(0.45, 0.42, 0.37), Planks=0.0, Cracks=0.3,
+     Distortion=0.8, Fibers=1.0, Edge_Wear=0.6, Knots=0.25, Dirt=0.1)
+_add('wood_charred', 'Charred Wood (Shou Sugi Ban)', 'WOOD',
+     'Deeply burnt black boards with crackled, alligator-skin char.',
+     thumb=WOOD_THUMB, Burn=1.0, Plank_Width=0.15, Gap_Width=0.003, Dirt=0.0)
+_add('wood_scorched', 'Scorched Planks', 'WOOD',
+     'Planks with burnt, blackened patches.',
+     thumb=WOOD_THUMB, Burn=0.55, Plank_Width=0.15, Dirt=0.25, Weathering=0.2)
+
+# --------------------------------------------------------------------- plastic
+PLASTIC_THUMB = dict(zoom=0.5)
+DIRTY_THUMB = dict(zoom=0.5, shape='steps')
+
+_add('plastic_glossy_red', 'Glossy Red Plastic', 'PLASTIC',
+     'Shiny, new injection-molded plastic.',
+     thumb=PLASTIC_THUMB, Roughness=0.15, Scratches=0.05, Scuffs=0.05, Dirt=0.0)
+_add('plastic_matte_black', 'Textured Black Plastic', 'PLASTIC',
+     'Matte black plastic with a fine molded texture, like electronics.',
+     thumb=dict(zoom=0.2), Plastic_Color=(0.018, 0.018, 0.019), Roughness=0.5, Stipple=0.8, Scuffs=0.2,
+     Scratches=0.1)
+_add('plastic_white_abs', 'White ABS', 'PLASTIC',
+     'Clean white plastic housing.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.75, 0.75, 0.72), Roughness=0.3, Scratches=0.08, Smudges=0.15)
+_add('plastic_toy_yellow', 'Toy Brick Yellow', 'PLASTIC',
+     'Bright, glossy toy plastic.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.85, 0.55, 0.0), Roughness=0.12, Scratches=0.08, Smudges=0.1,
+     Scuffs=0.05, Dirt=0.0)
+_add('plastic_piano_black', 'Piano Black', 'PLASTIC',
+     'Deep, glossy lacquered black with fingerprints.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.01, 0.01, 0.01), Roughness=0.05, Clear_Coat=1.0, Smudges=0.35,
+     Scratches=0.15, Scuffs=0.0, Dirt=0.0)
+_add('plastic_dashboard', 'Car Dashboard', 'PLASTIC',
+     'Soft-touch black plastic with an embossed leather grain.',
+     thumb=dict(zoom=0.15), Plastic_Color=(0.03, 0.03, 0.032), Leather_Grain=1.0, Grain_Scale=150.0,
+     Roughness=0.6, Scuffs=0.2, Dirt=0.15)
+_add('plastic_rubber_grip', 'Ribbed Rubber Grip', 'PLASTIC',
+     'Matte black rubber with grip ridges.',
+     thumb=dict(zoom=0.07), Plastic_Color=(0.02, 0.02, 0.02), Roughness=0.8, Ribs=1.0, Rib_Spacing=0.004,
+     Stipple=0.3, Scuffs=0.3, Scratches=0.0, Dirt=0.2)
+_add('plastic_translucent', 'Translucent Orange', 'PLASTIC',
+     'Glowing, see-through looking orange plastic.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.8, 0.25, 0.02), Subsurface=0.8, Roughness=0.25, Dirt=0.0)
+_add('plastic_recycled', 'Recycled Plastic', 'PLASTIC',
+     'Mottled green plastic with colored flecks.',
+     thumb=dict(zoom=0.25), Plastic_Color=(0.10, 0.25, 0.12), Speckles=0.6, Speckle_Color=(0.7, 0.7, 0.6),
+     Color_Variation=0.5, Roughness=0.5, Stipple=0.3)
+_add('plastic_faded_blue', 'Sun-Faded Blue Plastic', 'PLASTIC',
+     'Chalky outdoor plastic bleached by the sun.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.03, 0.12, 0.42), Fading=0.6, Roughness=0.45, Scuffs=0.3,
+     Dirt=0.2)
+_add('plastic_retro_beige', 'Yellowed Retro Beige', 'PLASTIC',
+     'An old computer case: yellowed, scuffed and a bit dusty.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.62, 0.58, 0.48), Yellowing=0.7, Roughness=0.45, Stipple=0.3,
+     Scratches=0.15, Dirt=0.35, Grime=0.4, overlays=[overlay('DUST', Amount=0.35)])
+_add('plastic_dirty_white', 'Dirty White Plastic', 'PLASTIC',
+     'Scuffed white plastic with grime in every corner.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.7, 0.7, 0.66), Roughness=0.4, Scuffs=0.4, Scratches=0.3, Dirt=0.6,
+     Grime=0.5, Edge_Whitening=0.4, overlays=[overlay('DIRT', Amount=0.55, Streaks=0.3)])
+_add('plastic_dirty_bin', 'Grimy Garbage Bin', 'PLASTIC',
+     'Faded green bin plastic covered in grime and streaks.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.04, 0.08, 0.04), Stipple=0.5, Roughness=0.55, Dirt=0.7, Grime=0.8,
+     Fading=0.3, Scuffs=0.5, overlays=[overlay('DIRT', Amount=0.8, Streaks=0.6, Ground_Grime=0.8)])
+_add('plastic_dirty_toy', 'Old Dusty Toy', 'PLASTIC',
+     'A faded, scratched toy that sat in the attic.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.6, 0.1, 0.05), Roughness=0.35, Fading=0.4, Scuffs=0.5,
+     Scratches=0.4, Dirt=0.5, Grime=0.4, overlays=[overlay('DUST', Amount=0.5, Wipes=0.2)])
+_add('plastic_garden_chair', 'Weathered Garden Chair', 'PLASTIC',
+     'White outdoor plastic, sun-faded with dirty rain streaks.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.7, 0.7, 0.68), Fading=0.4, Roughness=0.45, Dirt=0.5, Grime=0.6,
+     Scuffs=0.3, overlays=[overlay('DIRT', Amount=0.6, Streaks=0.8, Patches=0.3)])
+
+# --------------------------------------------------------------------- leather
+LEATHER_THUMB = dict(zoom=0.15)
+
+_add('leather_brown', 'Brown Leather', 'LEATHER',
+     'Classic pebbled brown leather, like a jacket or bag.',
+     thumb=LEATHER_THUMB)
+_add('leather_black', 'Black Leather', 'LEATHER',
+     'Soft black leather with creases.',
+     thumb=LEATHER_THUMB, Leather_Color=(0.012, 0.011, 0.011), Crease_Color=(0.003, 0.003, 0.003),
+     Roughness=0.45, Wrinkles=0.6)
+_add('leather_saddle', 'Smooth Saddle Leather', 'LEATHER',
+     'Smooth, warm tan leather, burnished where it is used.',
+     thumb=LEATHER_THUMB, Leather_Color=(0.25, 0.10, 0.035), Crease_Color=(0.08, 0.03, 0.01), Grain=0.15,
+     Roughness=0.4, Wear=0.35, Wrinkles=0.25)
+_add('leather_oxblood', 'Oxblood Leather', 'LEATHER',
+     'Deep red-brown polished leather, like dress shoes.',
+     thumb=LEATHER_THUMB, Leather_Color=(0.12, 0.012, 0.012), Crease_Color=(0.03, 0.003, 0.003),
+     Roughness=0.32, Grain=0.3, Wear=0.25)
+_add('leather_white', 'White Leather', 'LEATHER',
+     'Clean white leather, like sneakers or car seats.',
+     thumb=LEATHER_THUMB, Leather_Color=(0.70, 0.68, 0.62), Crease_Color=(0.50, 0.48, 0.44), Roughness=0.5,
+     Dirt=0.2, Wear=0.1, Wrinkles=0.2, Color_Variation=0.15)
+_add('leather_vintage', 'Worn Vintage Leather', 'LEATHER',
+     'Well-loved old leather: rubbed, faded and lightly cracked.',
+     thumb=LEATHER_THUMB, Leather_Color=(0.12, 0.05, 0.02), Wear=0.6, Edge_Wear=0.8, Cracks=0.35,
+     Fading=0.3, Scratches=0.3, Dirt=0.3)
+_add('leather_cracked', 'Cracked Old Leather', 'LEATHER',
+     'Dried-out, cracked and faded leather.',
+     thumb=LEATHER_THUMB, Leather_Color=(0.10, 0.045, 0.02), Cracks=0.9, Fading=0.5, Wear=0.4, Dirt=0.4,
+     Roughness=0.7)
+_add('leather_suede', 'Tan Suede', 'LEATHER',
+     'Velvety, matte suede.',
+     thumb=LEATHER_THUMB, Suede=1.0, Leather_Color=(0.18, 0.09, 0.04), Grain=0.2, Wrinkles=0.3)
+_add('leather_patent', 'Red Patent Leather', 'LEATHER',
+     'Mirror-glossy patent leather.',
+     thumb=LEATHER_THUMB, Patent=1.0, Leather_Color=(0.35, 0.0, 0.01), Crease_Color=(0.1, 0.0, 0.003),
+     Grain=0.1, Wrinkles=0.2, Dirt=0.0)
+_add('leather_croc', 'Crocodile Embossed', 'LEATHER',
+     'Green-black leather embossed with crocodile scales.',
+     thumb=dict(zoom=0.3), Croc=1.0, Leather_Color=(0.03, 0.05, 0.02), Crease_Color=(0.005, 0.008, 0.003),
+     Grain=0.3, Roughness=0.35)
+_add('leather_croc_black', 'Black Croc Leather', 'LEATHER',
+     'Glossy black croc-embossed leather.',
+     thumb=dict(zoom=0.3), Croc=1.0, Croc_Scale=30.0, Leather_Color=(0.012, 0.011, 0.011),
+     Crease_Color=(0.002, 0.002, 0.002), Grain=0.2, Roughness=0.25)
+_add('leather_sofa', 'Stitched Sofa Leather', 'LEATHER',
+     'Cognac leather panels with stitched seams.',
+     thumb=dict(zoom=0.3), Stitching=1.0, Panel_Size=0.2, Leather_Color=(0.22, 0.09, 0.03),
+     Crease_Color=(0.07, 0.025, 0.01), Thread_Color=(0.5, 0.4, 0.25), Wear=0.25, Wrinkles=0.35)
+
+# ---------------------------------------------------------------------- fabric
+FABRIC_THUMB = dict(zoom=0.03)
+COARSE_THUMB = dict(zoom=0.08)
+CARBON_THUMB = dict(zoom=0.07)
+BLACK = (0.012, 0.012, 0.012)
+KEVLAR = (0.79, 0.51, 0.045)
+
+_add('fabric_canvas', 'Canvas', 'FABRIC',
+     'Sturdy beige cotton canvas.',
+     thumb=FABRIC_THUMB)
+_add('fabric_canvas_olive', 'Olive Canvas Tarp', 'FABRIC',
+     'Army green canvas, stained and dirty.',
+     thumb=FABRIC_THUMB, Warp_Color=(0.07, 0.08, 0.035), Weft_Color=(0.06, 0.07, 0.03), Thread_Size=0.0018,
+     Stains=0.4, Dirt=0.5, Fading=0.2, overlays=[overlay('DIRT', Amount=0.4, Patches=0.4)])
+_add('fabric_denim', 'Blue Denim', 'FABRIC',
+     'Indigo denim twill.',
+     thumb=FABRIC_THUMB, Weave=2.0, Warp_Color=(0.012, 0.03, 0.09), Weft_Color=(0.30, 0.30, 0.28),
+     Thread_Size=0.0008, Fading=0.15, Yarn_Twist=0.6)
+_add('fabric_denim_worn', 'Worn Denim', 'FABRIC',
+     'Washed-out, faded denim.',
+     thumb=FABRIC_THUMB, Weave=2.0, Warp_Color=(0.02, 0.05, 0.13), Weft_Color=(0.35, 0.35, 0.33),
+     Thread_Size=0.0008, Fading=0.7, Pilling=0.2, Yarn_Twist=0.6)
+_add('fabric_carbon_twill', 'Carbon Fiber (Twill)', 'FABRIC',
+     'Glossy 2x2 twill carbon fiber in clear resin.',
+     thumb=CARBON_THUMB, Weave=1.0, Warp_Color=(0.02, 0.02, 0.022), Weft_Color=(0.02, 0.02, 0.022),
+     Thread_Size=0.004, Resin=1.0, Fiber_Shine=0.8, Yarn_Twist=0.0, Thread_Gap=0.05, Fuzz=0.0, Roughness=0.3,
+     Thread_Variation=0.15, Dirt=0.0)
+_add('fabric_carbon_plain', 'Carbon Fiber (Plain)', 'FABRIC',
+     'Plain weave carbon fiber in clear resin.',
+     thumb=dict(zoom=0.05), Weave=0.0, Warp_Color=(0.02, 0.02, 0.022), Weft_Color=(0.02, 0.02, 0.022),
+     Thread_Size=0.003, Resin=1.0, Fiber_Shine=0.8, Yarn_Twist=0.0, Thread_Gap=0.05, Fuzz=0.0, Roughness=0.3,
+     Thread_Variation=0.15, Dirt=0.0)
+_add('fabric_carbon_dry', 'Dry Carbon Fiber', 'FABRIC',
+     'Matte carbon fiber cloth without resin.',
+     thumb=CARBON_THUMB, Weave=1.0, Warp_Color=(0.025, 0.025, 0.027), Weft_Color=(0.025, 0.025, 0.027),
+     Thread_Size=0.004, Fiber_Shine=0.8, Yarn_Twist=0.0, Thread_Gap=0.05, Fuzz=0.1, Roughness=0.45,
+     Dirt=0.0)
+_add('fabric_kevlar', 'Kevlar (Aramid)', 'FABRIC',
+     'Golden yellow aramid fabric.',
+     thumb=dict(zoom=0.05), Warp_Color=KEVLAR, Weft_Color=(0.75, 0.48, 0.04), Thread_Size=0.003,
+     Yarn_Twist=0.0, Fiber_Shine=0.5, Roughness=0.55, Thread_Gap=0.08, Fuzz=0.3)
+_add('fabric_kevlar_resin', 'Kevlar Composite', 'FABRIC',
+     'Twill aramid fabric in glossy resin.',
+     thumb=CARBON_THUMB, Weave=1.0, Warp_Color=(0.6, 0.38, 0.03), Weft_Color=(0.58, 0.36, 0.03),
+     Thread_Size=0.004, Resin=1.0, Fiber_Shine=0.6, Yarn_Twist=0.0, Thread_Gap=0.05, Fuzz=0.0, Dirt=0.0)
+_add('fabric_ballistic_black', 'Ballistic Nylon (Black)', 'FABRIC',
+     'Tough basket-weave nylon of bags and tactical gear.',
+     thumb=FABRIC_THUMB, Weave=3.0, Warp_Color=BLACK, Weft_Color=BLACK, Thread_Size=0.0009,
+     Yarn_Twist=0.1, Fiber_Shine=0.4, Roughness=0.45, Fuzz=0.2)
+_add('fabric_ballistic_coyote', 'Ballistic Nylon (Coyote)', 'FABRIC',
+     'Coyote brown basket-weave nylon.',
+     thumb=FABRIC_THUMB, Weave=3.0, Warp_Color=(0.30, 0.21, 0.11), Weft_Color=(0.28, 0.19, 0.10),
+     Thread_Size=0.0009, Yarn_Twist=0.1, Fiber_Shine=0.4, Roughness=0.5, Fuzz=0.2, Dirt=0.2)
+_add('fabric_ripstop', 'Ripstop Nylon (Olive)', 'FABRIC',
+     'Light nylon with a reinforcing grid.',
+     thumb=FABRIC_THUMB, Ripstop=1.0, Warp_Color=(0.08, 0.12, 0.05), Weft_Color=(0.08, 0.12, 0.05),
+     Thread_Size=0.0006, Roughness=0.5, Yarn_Twist=0.1, Fiber_Shine=0.3)
+_add('fabric_burlap', 'Burlap (Jute)', 'FABRIC',
+     'Coarse, open jute sack cloth.',
+     thumb=COARSE_THUMB, Warp_Color=(0.30, 0.20, 0.09), Weft_Color=(0.27, 0.18, 0.08), Thread_Size=0.004,
+     Thread_Gap=0.45, Yarn_Twist=1.0, Thread_Variation=0.8, Fuzz=0.8, Dirt=0.2)
+_add('fabric_wool_twill', 'Grey Wool Twill', 'FABRIC',
+     'Soft, fuzzy suit wool.',
+     thumb=FABRIC_THUMB, Weave=1.0, Warp_Color=(0.10, 0.10, 0.10), Weft_Color=(0.22, 0.21, 0.19),
+     Thread_Size=0.0012, Yarn_Twist=1.0, Fuzz=0.9, Thread_Variation=0.6)
+_add('fabric_satin', 'Red Satin', 'FABRIC',
+     'Smooth, shiny satin.',
+     thumb=dict(zoom=0.02), Weave=4.0, Warp_Color=(0.4, 0.02, 0.05), Weft_Color=(0.3, 0.01, 0.03),
+     Thread_Size=0.0005, Roughness=0.3, Fiber_Shine=0.7, Yarn_Twist=0.0, Fuzz=0.0, Dirt=0.0)
+
+# ---------------------------------------------------------------- biomechanical
+BIO_THUMB = dict(shape='cylinder')
+
+_add('bio_ribbed_hull', 'Biomech Ribbed Hull', 'ORGANIC',
+     'Glossy dark alien machinery: ribs, tubes and bone merged into one.',
+     thumb=BIO_THUMB)
+_add('bio_xeno_tubes', 'Xeno Tubes', 'ORGANIC',
+     'Bundles of ribbed, hose-like tubes.',
+     thumb=BIO_THUMB, Tubes=1.0, Ribs=1.0, Plates=0.0, Folds=0.1)
+_add('bio_chrome_spine', 'Chrome Vertebrae', 'ORGANIC',
+     'Polished, chrome-like vertebrae segments.',
+     thumb=BIO_THUMB, Metallic=0.9, Highlight_Color=(0.6, 0.6, 0.62), Base_Color=(0.08, 0.08, 0.085),
+     Ribs=0.9, Segments=1.0, Tubes=0.3, Roughness=0.2, Plates=0.0)
+_add('bio_bone_plates', 'Bone Armor Plates', 'ORGANIC',
+     'Interlocking plates of pale, bony armor.',
+     thumb=BIO_THUMB, Plates=1.0, Base_Color=(0.25, 0.22, 0.17), Highlight_Color=(0.6, 0.55, 0.45),
+     Cavity_Color=(0.03, 0.025, 0.02), Metallic=0.0, Roughness=0.45, Tubes=0.2, Ribs=0.2, Wetness=0.1)
+_add('bio_flesh_wall', 'Flesh Wall', 'ORGANIC',
+     'Wet, veiny folds of living tissue.',
+     thumb=BIO_THUMB, Base_Color=(0.07, 0.025, 0.02), Highlight_Color=(0.38, 0.14, 0.11),
+     Cavity_Color=(0.012, 0.002, 0.002), Metallic=0.0, Subsurface=0.5, Folds=0.8, Veins=0.8, Ribs=0.2,
+     Tubes=0.2, Wetness=0.7, Roughness=0.4)
+_add('bio_slime_hive', 'Slime Hive', 'ORGANIC',
+     'Alien nest wall dripping with glossy, oily slime.',
+     thumb=BIO_THUMB, Slime=0.6, Wetness=0.8, Iridescence=0.6, Base_Color=(0.02, 0.025, 0.02),
+     Highlight_Color=(0.15, 0.17, 0.12), Metallic=0.2)
+_add('bio_obsidian', 'Obsidian Biomech', 'ORGANIC',
+     'Black, glassy biomechanical surface with an oily sheen.',
+     thumb=BIO_THUMB, Base_Color=(0.01, 0.01, 0.012), Highlight_Color=(0.1, 0.1, 0.12), Metallic=0.2,
+     Roughness=0.08, Iridescence=0.3, Wetness=0.2)
+_add('bio_rusted', 'Rusted Biomech', 'ORGANIC',
+     'Corroded alien machinery in rust and dark iron.',
+     thumb=BIO_THUMB, Base_Color=(0.08, 0.03, 0.012), Highlight_Color=(0.3, 0.12, 0.04),
+     Cavity_Color=(0.01, 0.005, 0.003), Metallic=0.5, Roughness=0.65, Wetness=0.0, Color_Variation=0.8)
+_add('bio_sinew', 'Sinew Cables', 'ORGANIC',
+     'Thin, muscle-like cables and tendons.',
+     thumb=BIO_THUMB, Tubes=1.0, Tube_Width=0.06, Ribs=0.3, Rib_Density=30.0, Folds=0.5, Veins=0.5,
+     Base_Color=(0.09, 0.04, 0.03), Highlight_Color=(0.4, 0.2, 0.15), Metallic=0.0, Subsurface=0.3,
+     Wetness=0.6)
+_add('bio_alien_skin', 'Alien Skin', 'ORGANIC',
+     'Pitted, folded grey-green skin.',
+     thumb=BIO_THUMB, Pores=0.8, Folds=0.9, Ribs=0.1, Tubes=0.1, Plates=0.1, Distortion=0.9,
+     Base_Color=(0.05, 0.06, 0.045), Highlight_Color=(0.22, 0.25, 0.18), Metallic=0.0, Roughness=0.5,
+     Wetness=0.3, Subsurface=0.2)
+_add('bio_hive_resin', 'Hive Resin', 'ORGANIC',
+     'Dark, glossy resin walls with tubes and ribs.',
+     thumb=BIO_THUMB, Base_Color=(0.02, 0.025, 0.03), Highlight_Color=(0.15, 0.2, 0.22), Tubes=0.8,
+     Ribs=0.6, Wetness=0.9, Iridescence=0.2, Metallic=0.1)
+
+# ---------------------------------------------------------------- overlays
+DUST_THUMB = dict(shape='steps', base='plastic_piano_black')
+DIRT_THUMB = dict(shape='steps', base='plastic_white_abs')
+
+_add('dust_light', 'Light Dust', 'DUST',
+     'A thin film of dust on top surfaces.',
+     thumb=DUST_THUMB, Amount=0.3)
+_add('dust_heavy', 'Heavy Dust', 'DUST',
+     'Thick, clumpy dust, as if untouched for years.',
+     thumb=DUST_THUMB, Amount=0.85, Clumps=0.6, Crevices=0.8)
+_add('dust_wiped', 'Dust with Wipe Marks', 'DUST',
+     'Dusty surfaces with clean streaks where something brushed past.',
+     thumb=DUST_THUMB, Amount=0.6, Wipes=0.5)
+_add('dust_ash', 'Ash and Soot', 'DUST',
+     'Dark grey ash settled everywhere.',
+     thumb=dict(shape='steps', base='plastic_white_abs'), Amount=0.6, Dust_Color=(0.05, 0.05, 0.05),
+     Crevices=0.8)
+_add('dust_sand', 'Desert Sand', 'DUST',
+     'Fine sandy dust.',
+     thumb=DUST_THUMB, Amount=0.6, Dust_Color=(0.45, 0.33, 0.18), Clumps=0.5)
+_add('dirt_grime', 'Grime', 'DIRT',
+     'Everyday grime in corners, low on the object and in faint stains.',
+     thumb=DIRT_THUMB)
+_add('dirt_heavy', 'Heavy Grime', 'DIRT',
+     'Filthy: grime everywhere, thick in corners.',
+     thumb=DIRT_THUMB, Amount=1.0, Patches=0.6, Crevices=1.0, Ground_Grime=0.8, Streaks=0.4)
+_add('dirt_mud', 'Mud Splatter', 'DIRT',
+     'Wet mud thrown up from the ground.',
+     thumb=DIRT_THUMB, Amount=0.9, Splatter=0.8, Ground_Grime=0.9, Grime_Height=0.35, Wetness=0.4,
+     Dirt_Color=(0.06, 0.04, 0.025), Dirt_Color_2=(0.13, 0.09, 0.05), Patches=0.1)
+_add('dirt_streaks', 'Rain Streaks', 'DIRT',
+     'Dirty streaks running down from the top.',
+     thumb=DIRT_THUMB, Streaks=0.9, Patches=0.1, Crevices=0.5, Ground_Grime=0.3)
+_add('dirt_oil', 'Oily Grime', 'DIRT',
+     'Black, greasy grime, like in an engine bay.',
+     thumb=DIRT_THUMB, Wetness=0.8, Dirt_Color=(0.008, 0.008, 0.008), Dirt_Color_2=(0.03, 0.028, 0.025),
+     Crevices=1.0, Patches=0.35)
