@@ -4,7 +4,7 @@
 A library of procedural materials (bare and painted metal, wood, plastic,
 leather, fabric and composites, biomechanical surfaces) with simple sliders,
 dirt and dust overlays that layer on top of any material, and one-click
-baking to image textures.
+"Auto Texture": new UVs, baking to image textures and applying them.
 
 Find it in: 3D Viewport > Sidebar (press N) > BPM tab.
 """
@@ -12,11 +12,11 @@ Find it in: 3D Viewport > Sidebar (press N) > BPM tab.
 bl_info = {
     "name": "BPM - Procedural Materials",
     "author": "verdictzero",
-    "version": (1, 1, 0),
+    "version": (1, 2, 0),
     "blender": (4, 2, 0),
     "location": "3D Viewport > Sidebar (N) > BPM",
     "description": "Procedural metal, paint, wood, plastic, leather, fabric and biomechanical materials, "
-                   "dirt and dust overlays, and one-click texture baking",
+                   "dirt and dust overlays, and one-click auto texturing (UVs, bake, apply)",
     "doc_url": "https://github.com/verdictzero/bpm",
     "category": "Material",
 }

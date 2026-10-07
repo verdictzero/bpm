@@ -3,12 +3,14 @@
 120 ready-made materials for Blender — **bare metal, painted metal, wood, plastic,
 leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and H.R.
 Giger-style biomechanical surfaces** — plus 10 **dirt and dust overlays** that you
-can stack on top of *any* material. Every material has plain sliders you can tweak, and a
-**one-click bake** turns it into normal image textures (Base Color, Metallic,
-Roughness, Normal, Height, AO) for game engines or any other software.
+can stack on top of *any* material. Every material has plain sliders you can tweak, and
+one click on **Auto Texture** turns it into normal image textures (Base Color,
+Metallic, Roughness, Normal, Height, AO) for game engines or any other software: it
+unwraps the UVs, packs them, bakes, saves the files and puts the textures on the
+object — for one object, the selected ones or the whole scene.
 
-You don't need to know anything about nodes or procedural materials. Click a
-material, click **Apply**, move some sliders, click **Bake**.
+You don't need to know anything about nodes, UVs or procedural materials. Click a
+material, click **Apply**, move some sliders, click **Auto Texture**.
 
 ![Bare metal materials](docs/gallery_metal.png)
 ![Painted metal materials](docs/gallery_paint.png)
@@ -26,13 +28,15 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.1.0.zip`](dist/bpm_procedural_metals-1.1.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.2.0.zip`](dist/bpm_procedural_metals-1.2.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
 4. Select the zip file. Done: "BPM - Procedural Materials" now shows up as enabled.
 
-> Updating from 1.0? Just install the new zip the same way; it replaces the old version.
+> **Updating from 1.0 or 1.1?** Just install the new zip the same way, on top of the old
+> one: it replaces the old version (no need to uninstall first or restart Blender), and
+> your `.blend` files keep their materials and settings.
 
 > Shortcut: you can also just drag the zip file into the Blender window.
 
@@ -81,29 +85,52 @@ Overlays are baked into the textures automatically, in both bake modes. Some
 materials (for example *Dirty White Plastic* or *Olive Canvas Tarp*) come with an
 overlay already; it shows up in the panel like any other layer.
 
-## 3. Bake to textures
+## 3. Turn it into textures
 
 Open the **Bake Textures** panel (scroll down in the BPM tab) and choose a mode:
 
 | Mode | What you get | Use it for |
 |---|---|---|
-| **Objects** | Textures that fit your selected objects' UVs, including edge wear and dirt from its shape | Exporting a model to Unity, Unreal, Godot, Sketchfab, glTF/FBX… |
+| **Objects** | Textures that fit your objects' UVs, including edge wear and dirt from their shape | Exporting a model to Unity, Unreal, Godot, Sketchfab, glTF/FBX… |
 | **Seamless Tile** | Square textures of the active material that repeat with no visible seams | Texture libraries, walls, floors, other 3D programs |
 
 <img src="docs/screenshot_bake.png" width="300" alt="Bake panel">
 
-Pick a **Resolution** (2K is a good start) and **Quality**, then click **Bake**.
-The status bar at the bottom shows the progress; press **Esc** to cancel.
+### Auto Texture: everything in one click
+
+1. Pick a **Resolution** (2K is a good start) and **Quality**.
+2. Pick which **Objects**: **Active** (just the one you clicked last), **Selected**
+   (all selected objects) or **Scene** (every visible mesh in the scene).
+3. Click **Auto Texture**. For every object it:
+   1. unwraps the UVs with **Smart UV Project** (Blender's default settings),
+   2. packs them with Blender's own **Pack Islands** (with a small gap between the
+      pieces, so colors don't bleed),
+   3. bakes every ticked map,
+   4. saves the textures as PNG files,
+   5. switches the object to a material that uses them.
+
+The status bar at the bottom shows the progress; press **Esc** to cancel (objects that
+were already finished keep their textures; the others stay exactly as they were).
+**Ctrl+Z** undoes the whole thing.
 
 * **Where are the files?** In a `BPM_Textures` folder next to your `.blend` file.
   If you never saved the `.blend` file, they go to `BPM_Textures` in your home
   folder. Click **Open Folder** after baking.
-* **UVs are handled for you.** Objects without UVs (or with broken or overlapping
-  UVs) get a new UV map called `BPM_Bake` automatically.
-* **Your object switches to the baked material** so you can check the result. Your
-  procedural material is kept: click **Back to Procedural** to keep editing, then
-  bake again any time. *Use Baked Textures* switches back.
+* **The new UVs** go into a UV map called `BPM_Bake`. It becomes the *first* UV map, so
+  FBX / glTF exports and game engines (which read the first one) use it. Your old UV
+  maps stay, untouched.
+* **Your procedural material is kept**: click **Back to Procedural** to keep editing,
+  then click Auto Texture again any time. *Use Baked Textures* switches back.
+* **Linked duplicates** (Alt+D copies that share a mesh and material) share one set of
+  textures. Objects with no material, or that can't be baked, are skipped; the reason
+  is listed under the result.
 * It works for **any** material that uses a Principled BSDF, not only BPM ones.
+
+### Bake with Current UVs
+
+**Bake with Current UVs** does the same, but keeps the UVs your objects already have —
+for models you unwrapped by hand. Objects without UVs (or with broken or overlapping
+UVs) still get a new `BPM_Bake` UV map automatically.
 
 Files (for an object called `Crate`):
 
@@ -134,7 +161,8 @@ Files (for an object called `Crate`):
 
 * **Normal Map Format** – OpenGL (Blender, Unity, Godot, glTF) or DirectX (Unreal).
 * **Bit Depth** – 16-bit PNGs are smoother but bigger (Height is always 16-bit).
-* **Always Make New UVs** – ignore the object's own UVs.
+* **Use Baked Material** / **Auto UV Unwrap** – for *Bake with Current UVs* (Auto
+  Texture always unwraps and always switches to the textures).
 * **Device** – *Auto* uses your graphics card if it is set up in
   *Edit › Preferences › System › Cycles Render Devices*; otherwise the CPU.
 * **Tile Size** – how many meters of surface one seamless tile shows.
@@ -226,6 +254,9 @@ blender -b -P bpm_cli.py -- tile --preset "Hazard Stripes" --size 2048 --directx
 blender -b model.blend -P bpm_cli.py -- apply --preset steel_brushed --objects Body,Lid --save
 blender -b model.blend -P bpm_cli.py -- apply --preset dust_heavy --objects all --save
 blender -b model.blend -P bpm_cli.py -- bake --objects Body,Lid --size 2048 --out ./textures --save
+
+# Auto Texture every mesh of a .blend file (new UVs, bake, save, apply) and save it
+blender -b model.blend -P bpm_cli.py -- auto --objects all --size 2048 --save
 ```
 
 Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
@@ -244,9 +275,17 @@ Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
   on smooth spheres. Raise *Edge Wear* (painted) or *Edge Polish* (bare metal), or
   *Edge Width* in the *Wear* section.
 * **Baking takes long.** Use a lower resolution or *Fast* quality first. A set-up GPU
-  (see *Device* above) is much faster.
+  (see *Device* above) is much faster. Very detailed meshes also take a few seconds
+  each to unwrap and pack.
 * **Strange smeared patches in baked textures.** The object's UVs overlap in a way
-  that can't be detected automatically. Tick **Always Make New UVs** and bake again.
+  that can't be detected automatically. Use **Auto Texture**: it always makes fresh UVs.
+* **Auto Texture skipped an object.** The reason is listed under the result: it has no
+  material (apply one first), it isn't a mesh (*Object › Convert › Mesh*), it is
+  disabled in viewports, or it already has the maximum of 8 UV maps (delete one in
+  *Properties › Object Data › UV Maps*). **Scene** only includes visible objects.
+* **One half of my mirrored model has the other half's textures.** A *Mirror*
+  modifier (or *Array*) reuses the same UVs for the copies, so they share textures.
+  Apply the modifier first if each half needs its own.
 * **Textures look wrong in my game engine.** Only the Base Color is sRGB; all other
   maps must be imported as *linear / non-color* data, and the normal map as a *normal
   map*. Unreal needs *DirectX* normals.
@@ -294,7 +333,9 @@ python3 tools/build_zip.py /path/to/blender
 The tests check, among other things, that baked colors are exact (linear 0.5 →
 sRGB 188), that tiles of every family (with overlays) are seamless, that the computed
 tile normal maps match Cycles' own bump mapping, that overlays stack, reorder and come
-off cleanly and end up in the bake, that every setting the bake changes is restored,
+off cleanly and end up in the bake, that Auto Texture's UVs are packed without overlaps
+while materials keep reading their old UVs during the bake, that every setting the bake
+changes is restored,
 and that no shader — not even a material with two overlays — comes close to Cycles'
 fixed shader-stack limit.
 

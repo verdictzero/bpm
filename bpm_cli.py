@@ -8,6 +8,7 @@ Examples (use the path to your Blender executable instead of "blender"):
     blender -b -P bpm_cli.py -- tile --preset "Hazard Stripes" --size 2048 --directx --orm
     blender -b my_model.blend -P bpm_cli.py -- apply --preset steel_brushed --objects Body --save
     blender -b my_model.blend -P bpm_cli.py -- bake --objects Body,Lid --size 2048 --save
+    blender -b my_model.blend -P bpm_cli.py -- auto --objects all --size 2048 --save
 
 Add "--help" after a command to see all its options.
 """

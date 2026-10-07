@@ -44,6 +44,13 @@ class BPM_Settings(bpy.types.PropertyGroup):
                ('TILE', 'Seamless Tile',
                 'Bake square textures that repeat seamlessly (for texture libraries or other software)', 'TEXTURE', 1)],
         default='OBJECTS')
+    bake_scope: EnumProperty(
+        name='Objects',
+        items=[('ACTIVE', 'Active', 'Only the active object (the one you clicked last)', 'OBJECT_DATA', 0),
+               ('SELECTED', 'Selected', 'All selected objects', 'RESTRICT_SELECT_OFF', 1),
+               ('SCENE', 'Scene', 'Every visible mesh object in the scene', 'SCENE_DATA', 2)],
+        default='SELECTED',
+        description='Which objects to texture')
     resolution: EnumProperty(name='Resolution', items=RESOLUTIONS, default='2048',
                              description='Size of the baked textures in pixels')
     quality: EnumProperty(
@@ -82,14 +89,12 @@ class BPM_Settings(bpy.types.PropertyGroup):
                     'If the .blend file was never saved, a BPM_Textures folder in your home folder is used')
     assign_baked: BoolProperty(
         name='Use Baked Material', default=True,
-        description='Switch the object to a material that uses the baked textures. '
-                    'The procedural material is kept and can be restored any time')
+        description='Switch the object to a material that uses the baked textures (Auto Texture always '
+                    'does). The procedural material is kept and can be restored any time')
     auto_unwrap: BoolProperty(
         name='Auto UV Unwrap', default=True,
-        description='Automatically create UVs for objects that have none (or broken/overlapping ones)')
-    force_new_uv: BoolProperty(
-        name='Always Make New UVs', default=False,
-        description='Ignore existing UVs and unwrap into a new UV map called "BPM_Bake"')
+        description='"Bake with Current UVs": make new UVs for objects that have none (or broken / '
+                    'overlapping ones)')
     device: EnumProperty(
         name='Device',
         items=[('AUTO', 'Auto', 'Use the GPU if one is set up in Preferences > System, otherwise the CPU'),
@@ -103,6 +108,8 @@ class BPM_Settings(bpy.types.PropertyGroup):
     # --- results
     last_folder: StringProperty(default='')
     last_report: StringProperty(default='')
+    last_level: StringProperty(default='INFO')
+    last_warnings: StringProperty(default='')
 
 
 CLASSES = (BPM_SlotBackup, BPM_Settings)

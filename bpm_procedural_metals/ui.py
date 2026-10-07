@@ -253,8 +253,8 @@ class BPM_PT_bake(bpy.types.Panel):
         props = context.scene.bpm
         layout.row().prop(props, 'bake_mode', expand=True)
         if props.bake_mode == 'OBJECTS':
-            _wrap(layout, context, 'Makes textures that fit each selected object, ready for game '
-                                   'engines and export (FBX, glTF...).')
+            _wrap(layout, context, 'Makes textures that fit each object, ready for game engines and '
+                                   'export (FBX, glTF...).')
         else:
             _wrap(layout, context, 'Makes square textures of the active material that repeat '
                                    'seamlessly, for use anywhere.')
@@ -279,7 +279,7 @@ class BPM_PT_bake(bpy.types.Panel):
         layout.prop(props, 'output_dir')
         if props.output_dir.strip().startswith('//') and not bpy.data.filepath:
             _wrap(layout, context, 'Your .blend file is not saved yet, so the textures will go to: %s'
-                  % B.FALLBACK_DIR, 'INFO')
+                  % B.unsaved_dir(props.output_dir), 'INFO')
 
         header, body = layout.panel('bpm_bake_options', default_closed=True)
         header.label(text='More Options')
@@ -292,20 +292,16 @@ class BPM_PT_bake(bpy.types.Panel):
             if props.bake_mode == 'OBJECTS':
                 col.prop(props, 'assign_baked')
                 col.prop(props, 'auto_unwrap')
-                col.prop(props, 'force_new_uv')
             else:
                 col.prop(props, 'tile_size')
             col.prop(props, 'device')
 
         if props.bake_mode == 'OBJECTS':
-            count = len([o for o in context.selected_objects if o.type == 'MESH']) or (
-                1 if context.active_object is not None and context.active_object.type == 'MESH' else 0)
-            text = 'Bake %d Object%s' % (count, '' if count == 1 else 's') if count else 'Bake (select objects)'
+            self._draw_object_buttons(context, layout, props)
         else:
-            text = 'Bake Seamless Tile'
-        col = layout.column()
-        col.scale_y = 1.8
-        col.operator('bpm.bake', text=text, icon='RENDER_STILL')
+            col = layout.column()
+            col.scale_y = 1.8
+            col.operator('bpm.bake', text='Bake Seamless Tile', icon='RENDER_STILL')
         if props.resolution == '8192':
             _wrap(layout, context, '8K textures need a lot of memory and time.', 'ERROR')
 
@@ -318,9 +314,47 @@ class BPM_PT_bake(bpy.types.Panel):
 
         if props.last_report:
             box = layout.box()
-            _wrap(box, context, props.last_report, 'CHECKMARK')
-            if props.last_folder:
+            icon = {'ERROR': 'CANCEL', 'WARNING': 'ERROR'}.get(props.last_level, 'CHECKMARK')
+            _wrap(box, context, props.last_report, icon)
+            warnings = props.last_warnings.splitlines()
+            for text in warnings[:6]:
+                _wrap(box, context, text, 'DOT')
+            if len(warnings) > 6:
+                _wrap(box, context, '... and %d more (see Window > Info Log).' % (len(warnings) - 6))
+            if props.last_folder and props.last_level != 'ERROR':
                 box.operator('bpm.open_folder', icon='FILE_FOLDER')
+
+    @staticmethod
+    def _draw_object_buttons(context, layout, props):
+        layout.label(text='Objects')
+        layout.row().prop(props, 'bake_scope', expand=True)
+        objs = B.scope_objects(context, props.bake_scope)
+        count = len([o for o in objs if B.skip_reason(context, o) is None])
+        things = '%d Object%s' % (count, '' if count == 1 else 's')
+        col = layout.column()
+        col.scale_y = 1.8
+        col.enabled = count > 0
+        col.operator('bpm.auto_texture', text='Auto Texture %s' % things if count else 'Auto Texture',
+                     icon='SHADING_TEXTURE')
+        if count:
+            _wrap(layout, context, 'New UVs (Smart UV Project + Pack Islands), bake, save and apply: '
+                                   'all in one click.')
+        elif objs:
+            reason = B.skip_reason(context, objs[0])
+            hint = '"%s" %s.' % (objs[0].name, reason)
+            if reason == 'has no material':
+                hint += ' Pick one in the Material Library above.'
+            _wrap(layout, context, hint, 'INFO')
+        else:
+            _wrap(layout, context, {'ACTIVE': 'Click the mesh you want to texture.',
+                                    'SELECTED': 'Select the meshes you want to texture.',
+                                    'SCENE': 'There are no visible meshes in the scene.'}[props.bake_scope],
+                  'INFO')
+        row = layout.row()
+        row.scale_y = 1.2
+        row.enabled = count > 0
+        row.operator('bpm.bake', text='Bake %s with Current UVs' % things if count else 'Bake with Current UVs',
+                     icon='RENDER_STILL')
 
 
 class BPM_PT_help(bpy.types.Panel):
@@ -338,8 +372,10 @@ class BPM_PT_help(bpy.types.Panel):
             '3. Change the look with the sliders in "Adjust Material".',
             'Want it dirty or dusty? Use "Add Dirt or Dust": the layers go on top of any material, '
             'even ones that are not from BPM.',
-            '4. Click "Bake" to turn it into image textures. They are saved next to your .blend file '
-            '(or in BPM_Textures in your home folder if the file was never saved).',
+            '4. Click "Auto Texture" in "Bake Textures": it makes new UVs, bakes image textures, saves '
+            'them and puts them on the object, all in one go. Pick Active, Selected or Scene first. '
+            'The textures are saved next to your .blend file (or in BPM_Textures in your home folder if '
+            'the file was never saved).',
             'Switch the 3D view to Material Preview (Z key > Material Preview) to see the materials.',
             'Texture too big or too small? Change "Scale" in Adjust Material.',
             'Want another random look? Click the refresh icon next to "Load Preset".',

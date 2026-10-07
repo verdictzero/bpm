@@ -10,6 +10,7 @@ Run through the ``bpm_cli.py`` script next to this add-on folder, for example::
     blender -b model.blend -P bpm_cli.py -- apply --preset steel_brushed --objects Body,Lid --save
     blender -b model.blend -P bpm_cli.py -- apply --preset dirt_grime --objects selected --save
     blender -b model.blend -P bpm_cli.py -- bake --objects Body,Lid --size 2048 --out ./textures
+    blender -b model.blend -P bpm_cli.py -- auto --objects all --size 2048 --save
 """
 
 import argparse
@@ -62,12 +63,19 @@ def _parser():
     apply.add_argument('--no-fit', action='store_true', help='Do not fit the pattern size to the objects')
     apply.add_argument('--save', action='store_true', help='Save the .blend file afterwards')
 
-    bake = sub.add_parser('bake', help='Bake objects of the opened .blend to textures')
-    bake.add_argument('--objects', default='selected', help='Comma separated names, or "selected"/"all"')
+    bake = sub.add_parser('bake', help='Bake objects of the opened .blend to textures (keeps their UVs)')
+    bake.add_argument('--objects', default='selected', help='Comma separated names, or "selected"/"active"/"all"')
     bake.add_argument('--keep-material', action='store_true',
                       help='Do not switch the objects to the baked material')
     bake.add_argument('--save', action='store_true', help='Save the .blend file afterwards')
     bake_options(bake)
+
+    auto = sub.add_parser('auto', help='Auto Texture: new UVs (Smart UV Project + Pack Islands), bake, save '
+                                       'and apply the textures')
+    auto.add_argument('--objects', default='all', help='Comma separated names, or "selected"/"active"/"all" '
+                                                       '(default: all meshes)')
+    auto.add_argument('--save', action='store_true', help='Save the .blend file afterwards')
+    bake_options(auto)
     return parser
 
 
@@ -76,6 +84,9 @@ def _objects(spec):
         return [o for o in bpy.context.view_layer.objects if o.type == 'MESH']
     if spec == 'selected':
         return [o for o in bpy.context.view_layer.objects if o.select_get()]
+    if spec == 'active':
+        active = bpy.context.view_layer.objects.active
+        return [active] if active is not None else []
     objs = []
     for name in (n.strip() for n in spec.split(',') if n.strip()):
         obj = bpy.data.objects.get(name)
@@ -126,7 +137,7 @@ def _settings(args, **extra):
 def _print_messages(job):
     for level, text in job.messages:
         print('BPM %s: %s' % (level.lower(), text))
-    print('BPM: wrote %d files to %s' % (len(job.written), job.output_dir))
+    print('BPM: %s' % job.summary())
 
 
 def main(argv=None):
@@ -193,9 +204,13 @@ def main(argv=None):
             bpy.ops.wm.save_mainfile()
         return
 
-    if args.command == 'bake':
+    if args.command in {'bake', 'auto'}:
         objs = _objects(args.objects)
-        job = B.ObjectBakeJob(bpy.context, objs, _settings(args, assign_baked=not args.keep_material))
+        if args.command == 'auto':
+            settings = _settings(args, force_new_uv=True, assign_baked=True)
+        else:
+            settings = _settings(args, assign_baked=not args.keep_material)
+        job = B.ObjectBakeJob(bpy.context, objs, settings)
         try:
             B.run_to_end(job)
         except B.BakeError as exc:

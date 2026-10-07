@@ -1,9 +1,9 @@
 schema_version = "1.0.0"
 
 id = "bpm_procedural_metals"
-version = "1.1.0"
+version = "1.2.0"
 name = "BPM - Procedural Materials"
-tagline = "Metal, wood, plastic, leather, fabric, dirt & dust, 1-click bake"
+tagline = "Metal, wood, plastic, fabric, dirt & dust, 1-click auto texture"
 maintainer = "verdictzero"
 type = "add-on"
 website = "https://github.com/verdictzero/bpm"

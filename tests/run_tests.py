@@ -178,6 +178,58 @@ def bsdf_source(mat, name):
     return sock.links[0].from_node if sock.is_linked else None
 
 
+def uv_array(mesh, name):
+    uv = np.empty(len(mesh.loops) * 2, dtype=np.float64)
+    mesh.uv_layers[name].data.foreach_get('uv', uv)
+    return uv.reshape(-1, 2)
+
+
+def face_uv_centers(mesh, name):
+    uv = uv_array(mesh, name)
+    return np.array([uv[p.loop_start:p.loop_start + p.loop_total].mean(axis=0) for p in mesh.polygons])
+
+
+def uv_overlap(mesh, name, res=256):
+    """Fraction of the covered texels that more than one face covers (0 = no overlapping UVs)."""
+    uv = uv_array(mesh, name) * res
+    count = np.zeros((res, res), dtype=np.int32)
+    for poly in mesh.polygons:
+        pts = uv[poly.loop_start:poly.loop_start + poly.loop_total]
+        x0, y0 = np.clip(np.floor(pts.min(axis=0)).astype(int), 0, res)
+        x1, y1 = np.clip(np.ceil(pts.max(axis=0)).astype(int), 0, res)
+        ys, xs = np.mgrid[y0:y1, x0:x1] + 0.5
+        inside = np.zeros(xs.shape, dtype=bool)
+        for i in range(1, len(pts) - 1):  # fan of triangles
+            tri = [pts[0], pts[i], pts[i + 1]]
+            sides = [(b[0] - a[0]) * (ys - a[1]) - (b[1] - a[1]) * (xs - a[0])
+                     for a, b in zip(tri, tri[1:] + tri[:1])]
+            inside |= np.all([d > 0 for d in sides], axis=0) | np.all([d < 0 for d in sides], axis=0)
+        count[y0:y1, x0:x1] += inside
+    return (count > 1).sum() / max((count > 0).sum(), 1)
+
+
+def sample(img, uvs):
+    """Pixel values of an image (rows from the bottom, like Blender) at UV positions."""
+    h, w = img.shape[:2]
+    x = np.clip((uvs[:, 0] * w).astype(int), 0, w - 1)
+    y = np.clip((uvs[:, 1] * h).astype(int), 0, h - 1)
+    return img[y, x]
+
+
+def uv_material():
+    """Roughness = U and Metallic = V of the UV map "UVMap", like a texture made for those UVs."""
+    mat = generic_material()
+    tree = mat.node_tree
+    uv = tree.nodes.new('ShaderNodeUVMap')
+    uv.uv_map = 'UVMap'
+    sep = tree.nodes.new('ShaderNodeSeparateXYZ')
+    tree.links.new(uv.outputs['UV'], sep.inputs[0])
+    bsdf = L.find_principled(tree)
+    tree.links.new(sep.outputs['X'], bsdf.inputs['Roughness'])
+    tree.links.new(sep.outputs['Y'], bsdf.inputs['Metallic'])
+    return mat
+
+
 @test
 def overlay_stack_operations():
     fresh_scene()
@@ -496,6 +548,7 @@ def cancel_restores_everything():
     assert len(mat.node_tree.nodes) == nodes
     assert len(bpy.data.images) == images, 'temporary images left behind'
     assert obj.active_material == mat and not len(obj.bpm_backup)
+    assert len(obj.data.uv_layers) == 0, 'unfinished UV map left behind'
 
 
 @test
@@ -523,7 +576,8 @@ def unsaved_file_uses_home_folder():
         obj.data.materials.append(L.create_material('steel_polished'))
         job = B.ObjectBakeJob(bpy.context, [obj], settings(maps={'METALLIC'}, output_dir='//BPM_Textures/'))
         B.run_to_end(job)
-        assert job.output_dir.startswith(B.FALLBACK_DIR), job.output_dir
+        assert job.output_dir == B.FALLBACK_DIR, job.output_dir  # not BPM_Textures/BPM_Textures
+        assert B.unsaved_dir('//other/') == os.path.join(B.FALLBACK_DIR, 'other')
         assert os.path.exists(os.path.join(job.output_dir, 'Cube_Metallic.png'))
     finally:
         B.FALLBACK_DIR = old
@@ -625,6 +679,243 @@ def tile_normals_match_cycles_bump():
     detail = np.abs(ref[inner] - ref[inner].mean(axis=(0, 1))).mean()
     assert detail > 0.01, 'reference has no detail'
     assert diff < 0.35 * detail, 'numpy normals differ from Cycles: %.4f (detail %.4f)' % (diff, detail)
+
+
+@test
+def scopes_pick_the_right_objects():
+    fresh_scene()
+    a = add_cube('A')
+    b = add_cube('B', location=(3, 0, 0))
+    add_cube('C', location=(6, 0, 0))
+    hidden = add_cube('Hidden', location=(9, 0, 0))
+    hidden.hide_set(True)
+    bpy.ops.object.camera_add()
+    cam = bpy.context.active_object
+    bpy.ops.object.text_add()
+    bpy.context.active_object.data.materials.append(generic_material())
+    bpy.ops.object.text_add(location=(0, 3, 0))  # no material: left out like the camera
+    bpy.ops.object.empty_add()
+    for o in bpy.context.view_layer.objects:
+        o.select_set(False)
+    for o in (a, b, cam):
+        o.select_set(True)
+    bpy.context.view_layer.objects.active = b
+
+    def names(scope):
+        return sorted(o.name for o in B.scope_objects(bpy.context, scope))
+    assert names('ACTIVE') == ['B']
+    assert names('SELECTED') == ['A', 'B'], names('SELECTED')
+    assert names('SCENE') == ['A', 'B', 'C', 'Text'], names('SCENE')
+    for o in bpy.context.view_layer.objects:
+        o.select_set(False)
+    assert names('SELECTED') == ['B'], 'nothing selected: the active object'
+    bpy.context.view_layer.objects.active = None
+    assert names('ACTIVE') == [] and names('SELECTED') == []
+
+
+@test
+def auto_texture_makes_packed_uvs_first():
+    fresh_scene()
+    obj = add_cube()
+    mesh = obj.data
+    second = mesh.uv_layers.new(name='Second')
+    second.data.foreach_set('uv', np.random.default_rng(3).random(len(mesh.loops) * 2).astype(np.float32))
+    second.active_render = True
+    before = {name: uv_array(mesh, name) for name in ('UVMap', 'Second')}
+    obj.data.materials.append(L.create_material('paint_industrial_yellow'))
+    job = B.ObjectBakeJob(bpy.context, [obj], settings(force_new_uv=True, maps={'BASE_COLOR', 'NORMAL'}))
+    B.run_to_end(job)
+    assert job.baked == ['Cube'] and job.summary().startswith('Auto-textured 1 object. Saved 2 textures')
+    names = [layer.name for layer in mesh.uv_layers]
+    assert names == [B.BAKE_UV_NAME, 'UVMap', 'Second'], names
+    assert mesh.uv_layers.active.name == B.BAKE_UV_NAME
+    assert [layer.name for layer in mesh.uv_layers if layer.active_render] == ['Second']
+    for name, uv in before.items():
+        assert np.array_equal(uv_array(mesh, name), uv), '%s must not change' % name
+    margin = settings().uv_margin
+    uv = uv_array(mesh, B.BAKE_UV_NAME)
+    assert uv.min() >= 0.9 * margin and uv.max() <= 1.0 - 0.9 * margin, (uv.min(), uv.max())
+    assert uv_overlap(mesh, B.BAKE_UV_NAME) < 0.001
+    area = B.uv_stats(mesh, mesh.uv_layers[B.BAKE_UV_NAME])[0]
+    assert area > 0.2, 'the islands are not packed: %.3f' % area  # (64 px: 4 pixel gaps are wide)
+    mat = obj.active_material
+    assert L.is_baked_material(mat)
+    for node in mat.node_tree.nodes:
+        if node.bl_idname in {'ShaderNodeUVMap', 'ShaderNodeNormalMap'}:
+            assert node.uv_map == B.BAKE_UV_NAME, (node.bl_idname, node.uv_map)
+    # again: same UVs, no extra UV maps
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [obj], settings(force_new_uv=True, maps={'BASE_COLOR'})))
+    assert [layer.name for layer in mesh.uv_layers] == [B.BAKE_UV_NAME, 'UVMap', 'Second']
+    assert np.abs(uv_array(mesh, B.BAKE_UV_NAME) - uv).max() < 1e-5
+
+
+@test
+def auto_texture_bakes_through_the_old_uvs():
+    """While baking, materials still see the UVs they were made for, even after the UVs change."""
+    fresh_scene()
+    obj = add_cube()
+    mesh = obj.data
+    obj.data.materials.append(uv_material())
+    old = face_uv_centers(mesh, 'UVMap')
+    maps = {'ROUGHNESS', 'METALLIC'}
+    out = os.path.join(TMP, 'olduv')
+
+    def bake():
+        job = B.ObjectBakeJob(bpy.context, [obj], settings(force_new_uv=True, maps=maps, output_dir=out))
+        B.run_to_end(job)
+        rough = read_png(os.path.join(job.output_dir, 'Cube_Roughness.png'))[..., 0]
+        metal = read_png(os.path.join(job.output_dir, 'Cube_Metallic.png'))[..., 0]
+        centers = face_uv_centers(mesh, B.BAKE_UV_NAME)
+        return np.stack([sample(rough, centers), sample(metal, centers)], axis=-1), centers
+    first, centers1 = bake()
+    assert np.abs(first - old).max() < 0.04, np.abs(first - old).max()
+    # the object now shows its baked material, which reads the textures through "BPM_Bake";
+    # without a procedural material to go back to, the next bake reads those textures
+    obj.bpm_backup.clear()
+    co = np.empty(len(mesh.vertices) * 3)
+    mesh.vertices.foreach_get('co', co)
+    co = co.reshape(-1, 3)
+    co[:, 0] *= 2.5  # stretch the mesh: the new unwrap is different
+    mesh.vertices.foreach_set('co', co.ravel())
+    mesh.update()
+    second, centers2 = bake()
+    assert np.abs(centers2 - centers1).max() > 0.05, 'the UVs did not change'
+    assert np.abs(second - old).max() < 0.06, np.abs(second - old).max()
+
+
+@test
+def auto_texture_linked_duplicates_and_bad_objects():
+    fresh_scene()
+    a = add_cube('A')
+    a.data.materials.append(generic_material((0.8, 0.1, 0.1, 1.0)))
+    twin = a.copy()  # linked duplicate (Alt+D): same mesh, same materials
+    twin.name = 'Twin'
+    twin.location.x = 3
+    bpy.context.scene.collection.objects.link(twin)
+    own = a.copy()  # same mesh, but its own material
+    own.name = 'Own'
+    own.location.x = 6
+    bpy.context.scene.collection.objects.link(own)
+    own.material_slots[0].link = 'OBJECT'
+    own.material_slots[0].material = generic_material((0.1, 0.1, 0.8, 1.0))
+    full = add_cube('Full', location=(9, 0, 0))
+    full.data.materials.append(generic_material())
+    for i in range(7):
+        full.data.uv_layers.new(name='Extra%d' % i)
+    plain = add_cube('Plain', location=(12, 0, 0))
+    job = B.ObjectBakeJob(bpy.context, [a, twin, own, full, plain],
+                          settings(force_new_uv=True, maps={'BASE_COLOR'}))
+    B.run_to_end(job)
+    assert job.baked == ['A', 'Twin', 'Own'], job.baked
+    warnings = job.warnings()
+    assert any('too many UV maps' in t for t in warnings), warnings
+    assert any('Plain' in t and 'no material' in t for t in warnings), warnings
+    assert len(full.data.uv_layers) == 8 and B.UV_TEMP_NAME not in full.data.uv_layers
+    assert not L.is_baked_material(full.active_material)
+    assert sum('made new UVs' in t for _l, t in job.messages) == 1, 'a shared mesh is unwrapped once'
+    assert [layer.name for layer in a.data.uv_layers] == [B.BAKE_UV_NAME, 'UVMap']
+    names = sorted(os.listdir(job.output_dir))
+    assert 'A_BaseColor.png' in names and 'Own_BaseColor.png' in names and 'Twin_BaseColor.png' not in names
+    assert twin.active_material == a.active_material and L.is_baked_material(a.active_material)
+    assert L.is_baked_material(own.active_material) and own.active_material != a.active_material
+    own_color = read_png(os.path.join(job.output_dir, 'Own_BaseColor.png'))
+    assert own_color[..., 2].max() > own_color[..., 0].max(), 'Own must use its own (blue) material'
+    assert B.restore_procedural(twin) and not L.is_baked_material(a.active_material)
+    # nothing at all could be baked: the job fails with the reason
+    try:
+        B.run_to_end(B.ObjectBakeJob(bpy.context, [full], settings(force_new_uv=True, maps={'BASE_COLOR'})))
+    except B.BakeError as exc:
+        assert 'too many UV maps' in str(exc)
+    else:
+        raise AssertionError('expected a BakeError')
+
+
+@test
+def auto_texture_cancel_keeps_the_old_uvs():
+    fresh_scene()
+    obj = add_cube()
+    obj.data.materials.append(L.create_material('steel_brushed'))
+    uv = uv_array(obj.data, 'UVMap')
+    job = B.ObjectBakeJob(bpy.context, [obj], settings(force_new_uv=True))
+    job.check()
+    steps = job.run()
+    seen = [next(steps) for _ in range(4)]  # preparing, unwrapping, base color, metallic
+    assert any('Unwrapping' in t for t in seen), seen
+    assert B.UV_TEMP_NAME in obj.data.uv_layers
+    steps.close()
+    assert [layer.name for layer in obj.data.uv_layers] == ['UVMap']
+    assert obj.data.uv_layers.active.name == 'UVMap'
+    assert np.array_equal(uv_array(obj.data, 'UVMap'), uv)
+    assert not L.is_baked_material(obj.active_material)
+
+
+@test
+def auto_texture_operator_scopes():
+    fresh_scene()
+    a = add_cube('A')
+    a.data.materials.append(generic_material((0.2, 0.6, 0.2, 1.0)))
+    b = add_cube('B', location=(3, 0, 0))
+    b.data.materials.append(generic_material((0.6, 0.2, 0.2, 1.0)))
+    add_cube('Bare', location=(6, 0, 0))
+    bpy.ops.object.camera_add()
+    props = bpy.context.scene.bpm
+    props.resolution = '512'
+    props.quality = 'FAST'
+    props.output_dir = os.path.join(TMP, 'auto_op')
+    for key in B.MAP_ORDER:
+        setattr(props, 'map_' + key.lower(), key == 'BASE_COLOR')
+    for o in bpy.context.view_layer.objects:
+        o.select_set(False)
+    bpy.context.view_layer.objects.active = a
+    props.bake_scope = 'ACTIVE'
+    assert bpy.ops.bpm.auto_texture() == {'FINISHED'}
+    assert props.last_report.startswith('Auto-textured 1 object. Saved 1 texture'), props.last_report
+    assert L.is_baked_material(a.active_material) and not L.is_baked_material(b.active_material)
+    props.bake_scope = 'SCENE'
+    assert bpy.ops.bpm.auto_texture() == {'FINISHED'}
+    assert props.last_report.startswith('Auto-textured 2 objects. Saved 2 textures'), props.last_report
+    assert '(1 object skipped)' in props.last_report and props.last_level == 'WARNING'
+    assert 'Bare' in props.last_warnings and 'Camera' not in props.last_warnings, props.last_warnings
+    assert L.is_baked_material(b.active_material) and b.data.uv_layers[0].name == B.BAKE_UV_NAME
+    bpy.context.view_layer.objects.active = None
+    props.bake_scope = 'ACTIVE'
+    try:
+        bpy.ops.bpm.auto_texture()
+    except RuntimeError as exc:  # errors of operators called from Python become exceptions
+        assert 'active object' in str(exc)
+    else:
+        raise AssertionError('expected an error')
+    assert props.last_level == 'ERROR' and 'active' in props.last_report
+    # the regular bake button uses the scope too, and keeps good UVs
+    bpy.context.view_layer.objects.active = b
+    B.restore_procedural(b)
+    uv = uv_array(b.data, B.BAKE_UV_NAME)
+    assert bpy.ops.bpm.bake() == {'FINISHED'}
+    assert props.last_report.startswith('Baked 1 object.'), props.last_report
+    assert np.array_equal(uv_array(b.data, B.BAKE_UV_NAME), uv)
+
+
+@test
+def command_line_auto():
+    fresh_scene()
+    obj = add_cube('Crate')
+    obj.data.materials.append(L.create_material('wood_oak_floor'))
+    add_cube('Bare', location=(4, 0, 0))
+    blend = os.path.join(TMP, 'cli_auto', 'scene.blend')
+    os.makedirs(os.path.dirname(blend), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=blend)
+    out = os.path.join(TMP, 'cli_auto', 'textures')
+    cmd = [bpy.app.binary_path, '-b', '--factory-startup', blend, '-P', os.path.join(ROOT, 'bpm_cli.py'), '--',
+           'auto', '--size', '32', '--quality', 'fast', '--maps', 'basecolor,normal', '--out', out, '--save']
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    text = res.stdout + res.stderr
+    assert res.returncode == 0, text[-3000:]
+    assert 'Auto-textured 1 object' in text and 'Bare' in text, text[-3000:]
+    assert os.path.exists(os.path.join(out, 'Crate_BaseColor.png'))
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    obj = bpy.data.objects['Crate']
+    assert L.is_baked_material(obj.active_material)
+    assert obj.data.uv_layers[0].name == B.BAKE_UV_NAME and obj.data.uv_layers.active.name == B.BAKE_UV_NAME
 
 
 @test

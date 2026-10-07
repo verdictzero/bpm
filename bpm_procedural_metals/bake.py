@@ -3,18 +3,19 @@
 
 Two modes:
 
-* ``bake_objects``: bakes every material of the given mesh objects into one
+* ``ObjectBakeJob``: bakes every material of the given mesh objects into one
   texture set per object, using the object's UV map (created automatically if
   missing).  Works with BPM materials and with any Principled BSDF material.
-* ``bake_tiles``: bakes BPM materials into seamless, tileable square textures.
+  With ``force_new_uv`` it is the fully automatic "Auto Texture": fresh UVs
+  (Smart UV Project + Pack Islands), bake, save and switch to the textures.
+* ``TileBakeJob``: bakes BPM materials into seamless, tileable square textures.
 
-Both are generators that yield a status string after every step, so the UI can
-show progress between steps.  Everything they change temporarily (render
-settings, selection, material nodes, ...) is restored afterwards, even when an
-error happens or the user cancels.
+Both run as generators that yield a status string after every step, so the UI
+can show progress between steps.  Everything they change temporarily (render
+settings, selection, material nodes, unfinished UV maps, ...) is restored
+afterwards, even when an error happens or the user cancels.
 """
 
-import math
 import os
 import re
 
@@ -45,6 +46,7 @@ QUALITY_SAMPLES = {
 
 FALLBACK_DIR = os.path.join(os.path.expanduser('~'), 'BPM_Textures')
 BAKE_UV_NAME = 'BPM_Bake'
+UV_TEMP_NAME = 'BPM_Bake_New'  # fresh UVs live here until their bake has succeeded
 
 
 class BakeError(Exception):
@@ -81,11 +83,18 @@ class BakeSettings:
                    output_dir=props.output_dir, normal_directx=props.normal_format == 'DIRECTX',
                    use_16bit=props.bit_depth == '16', pack_orm=props.pack_orm, pack_unity=props.pack_unity,
                    assign_baked=props.assign_baked, auto_unwrap=props.auto_unwrap,
-                   force_new_uv=props.force_new_uv, device=props.device, tile_size=props.tile_size)
+                   device=props.device, tile_size=props.tile_size)
 
     @property
     def margin(self):
         return max(4, int(self.resolution) // 128)
+
+    @property
+    def uv_margin(self):
+        """Space around packed UV islands as a fraction of the texture: 1/256, at least 4 pixels
+        (islands are twice that apart: 16 pixels at 2K)."""
+        size = max(int(self.resolution), 1)
+        return max(4, size // 256) / size
 
     @property
     def samples(self):
@@ -98,11 +107,20 @@ def clean_name(name):
     return name or 'Untitled'
 
 
+def unsaved_dir(path):
+    """Where a folder relative to the .blend file ("//...") goes while the file is not saved:
+    the default "//BPM_Textures" is ~/BPM_Textures itself, other folders go inside it."""
+    rel = path.strip()[2:].strip('/\\')
+    if rel in ('', os.path.basename(FALLBACK_DIR)):
+        return FALLBACK_DIR
+    return os.path.join(FALLBACK_DIR, rel)
+
+
 def resolve_output_dir(path):
     """Absolute output folder; falls back to ~/BPM_Textures for unsaved files."""
     path = (path or '').strip() or '//BPM_Textures'
     if path.startswith('//') and not bpy.data.filepath:
-        path = os.path.join(FALLBACK_DIR, path[2:].strip('/\\'))
+        path = unsaved_dir(path)
     path = os.path.abspath(bpy.path.abspath(path))
     try:
         os.makedirs(path, exist_ok=True)
@@ -174,6 +192,189 @@ def uv_stats(mesh, uv_layer):
     order = np.argsort(starts)
     area = 0.5 * np.abs(np.add.reduceat(cross, starts[order])).sum()
     return float(area), float(uv.min()), float(uv.max())
+
+
+# ------------------------------------------------------------------ UV maps
+def operator_defaults(op):
+    """Default value of every option of an operator (not the values that were used last time)."""
+    values = {}
+    for prop in op.get_rna_type().properties:
+        if prop.identifier == 'rna_type' or prop.is_readonly or getattr(prop, 'is_array', False):
+            continue
+        if prop.type == 'ENUM':
+            values[prop.identifier] = set(prop.default_flag) if prop.is_enum_flag else prop.default
+        elif prop.type in {'BOOLEAN', 'INT', 'FLOAT', 'STRING'}:
+            values[prop.identifier] = prop.default
+    return values
+
+
+class _ElementFlags:
+    """Hidden / selected vertices, edges and faces of a mesh, put back after unwrapping."""
+
+    def __init__(self, mesh):
+        self.mesh = mesh
+        self.flags = {}
+        for seq_name in ('vertices', 'edges', 'polygons'):
+            seq = getattr(mesh, seq_name)
+            for attr in ('hide', 'select'):
+                values = np.zeros(len(seq), dtype=bool)
+                seq.foreach_get(attr, values)
+                self.flags[seq_name, attr] = values
+
+    def restore(self):
+        for (seq_name, attr), values in self.flags.items():
+            seq = getattr(self.mesh, seq_name)
+            if len(seq) != len(values) or (attr == 'hide' and not values.any()):
+                continue  # nothing was hidden: revealing changed nothing
+            seq.foreach_set(attr, values)
+        self.mesh.update()
+
+
+def _pack_islands(obj, uv_name, margin, **options):
+    """Blender's Pack Islands on all UVs (in Edit Mode); returns (UVs, area) of the result.
+
+    The "Add" margin is used because the exact "Fraction" mode can take minutes even on a
+    cube.  "Add" margins shrink together with the islands when the packer has to make
+    them smaller, so the margin is corrected until the space at the texture border
+    (which is the margin) is close to what was asked for.
+    """
+    asked = margin
+    for _attempt in range(3):
+        bpy.ops.uv.select_all(action='SELECT')  # Pack Islands only moves selected UVs
+        pack = operator_defaults(bpy.ops.uv.pack_islands)
+        pack.update(margin_method='ADD', margin=margin, **options)
+        if 'FINISHED' not in bpy.ops.uv.pack_islands(**pack):
+            raise BakeError('Blender could not pack the UVs of "%s".' % obj.name)
+        bpy.ops.object.mode_set(mode='OBJECT')
+        mesh = obj.data
+        uvs = _uv_array(mesh, uv_name)
+        area = uv_stats(mesh, mesh.uv_layers[uv_name])[0]
+        bpy.ops.object.mode_set(mode='EDIT')
+        border = min(float(uvs.min()), 1.0 - float(uvs.max()))
+        if border >= 0.9 * asked or border <= 0.0:
+            break
+        margin *= asked / border
+    return uvs, area
+
+
+def unwrap_and_pack(obj, uv_name, margin):
+    """Smart UV Project with Blender's default settings, then Pack Islands, into the UV map `uv_name`.
+
+    Islands end up `margin` (a fraction of the texture) from the texture border and twice
+    that apart.  Smart UV Project already turns the islands to fit their bounds, so the
+    exact island shapes are packed without extra rotation: Pack Islands' "any rotation"
+    search takes up to 15 seconds on simple shapes like a cone, and often packs worse.
+    The packer also runs with bounding boxes (quick even with rotation); the layout that
+    fills more of the texture wins.
+
+    `obj` must be the active object, in Object Mode, with no other object selected.
+    Every face is unwrapped, also hidden ones; hiding and selection are restored afterwards.
+    """
+    mesh = obj.data
+    mesh.uv_layers.active = mesh.uv_layers[uv_name]
+    flags = _ElementFlags(mesh)
+    bpy.ops.object.mode_set(mode='EDIT')
+    try:
+        bpy.ops.mesh.reveal(select=False)
+        bpy.ops.mesh.select_all(action='SELECT')
+        if 'FINISHED' not in bpy.ops.uv.smart_project(**operator_defaults(bpy.ops.uv.smart_project)):
+            raise BakeError('Smart UV Project did not work on "%s".' % obj.name)
+        exact, exact_area = _pack_islands(obj, uv_name, margin, shape_method='CONCAVE', rotate=False)
+        _boxes, boxes_area = _pack_islands(obj, uv_name, margin, shape_method='AABB')  # turning boxes is quick
+        bpy.ops.object.mode_set(mode='OBJECT')
+        if exact_area >= boxes_area:
+            obj.data.uv_layers[uv_name].data.foreach_set('uv', exact)
+    finally:
+        if obj.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+        flags.restore()
+
+
+def _uv_array(mesh, name):
+    values = np.empty(len(mesh.loops) * 2, dtype=np.float32)
+    mesh.uv_layers[name].data.foreach_get('uv', values)
+    return values
+
+
+def move_uv_first(mesh, name):
+    """Make UV map `name` the first one (UV0: the one game engines use), keeping all UV maps.
+
+    Blender cannot reorder UV maps, so they are all removed and added back in the new
+    order.  Their names, coordinates and the "active render" flag stay the same.
+    """
+    layers = mesh.uv_layers
+    if layers[0].name == name:
+        return
+    saved = [(layer.name, _uv_array(mesh, layer.name), layer.active_render) for layer in layers]
+    active = layers.active.name if layers.active is not None else name
+    saved.sort(key=lambda item: item[0] != name)  # stable: the others keep their order
+    while len(layers):
+        layers.remove(layers[0])
+    for layer_name, values, _render in saved:
+        layers.new(name=layer_name, do_init=False).data.foreach_set('uv', values)
+    for layer_name, _values, render in saved:
+        if render:
+            layers[layer_name].active_render = True
+    layers.active = layers[active]
+
+
+def commit_uvs(mesh, uv_name):
+    """Turn freshly unwrapped UVs into the UV map "BPM_Bake": the first one, and active."""
+    layers = mesh.uv_layers
+    if uv_name != BAKE_UV_NAME:
+        old = layers.get(BAKE_UV_NAME)
+        if old is not None:
+            old.data.foreach_set('uv', _uv_array(mesh, uv_name))
+            layers.remove(layers[uv_name])
+        else:
+            layers[uv_name].name = BAKE_UV_NAME
+    move_uv_first(mesh, BAKE_UV_NAME)
+    layers.active = layers[BAKE_UV_NAME]
+    return BAKE_UV_NAME
+
+
+# ------------------------------------------------------------ what to bake
+def skip_reason(context, obj):
+    """Why `obj` cannot be baked, or None if it can."""
+    if obj.type != 'MESH':
+        return 'is not a mesh (convert it with Object > Convert > Mesh)'
+    if obj.library is not None or obj.data.library is not None:
+        return 'is linked from another file'
+    if len(obj.data.polygons) == 0:
+        return 'has no faces'
+    if not any(slot.material for slot in obj.material_slots):
+        return 'has no material'
+    if obj.name not in context.view_layer.objects:
+        return 'is not in the current view layer'
+    if obj.hide_viewport:
+        return 'is disabled in viewports (screen icon in the Outliner)'
+    return None
+
+
+def scope_objects(context, scope):
+    """The objects a bake works on: the active one, the selected ones or all visible ones."""
+    view_layer = context.view_layer
+    active = view_layer.objects.active
+    if scope == 'ACTIVE':
+        return [active] if active is not None else []
+    if scope == 'SCENE':
+        objs = [o for o in view_layer.objects if o.visible_get(view_layer=view_layer)]
+    else:
+        objs = [o for o in view_layer.objects if o.select_get(view_layer=view_layer)]
+        if not objs and active is not None:
+            return [active]
+    # cameras, lights, empties... are left out silently; curves and texts with a material get a warning
+    return [o for o in objs if o.type == 'MESH' or (L.can_have_material(o) and any(
+        slot.material for slot in o.material_slots))]
+
+
+def _skip_text(names, reason):
+    if len(names) == 1:
+        return 'Skipped "%s": it %s.' % (names[0], reason)
+    shown = ', '.join('"%s"' % n for n in names[:5])
+    if len(names) > 5:
+        shown += ' and %d more' % (len(names) - 5)
+    return 'Skipped %d objects (%s): each %s.' % (len(names), shown, reason)
 
 
 # ---------------------------------------------------------- material rigs
@@ -390,7 +591,10 @@ def _bake_call(context, obj, kind, settings, uv_name, normal=False):
         with context.temp_override(**override):
             result = bpy.ops.object.bake(**kwargs)
     except RuntimeError as exc:
-        raise BakeError('Blender could not bake "%s": %s' % (obj.name, str(exc).strip().splitlines()[-1]))
+        detail = str(exc).strip().splitlines()[-1]
+        if 'poll()' in detail:
+            detail = 'Blender refused to bake it. Make sure it is visible and enabled in the viewport.'
+        raise BakeError('Blender could not bake "%s": %s' % (obj.name, detail))
     if 'FINISHED' not in result:
         raise BakeError('Baking "%s" was cancelled.' % obj.name)
 
@@ -582,6 +786,36 @@ def baked_material_of(obj):
     return None
 
 
+def data_linked(obj):
+    """True if all material slots belong to the mesh, so linked duplicates show the same materials."""
+    return all(slot.link == 'DATA' for slot in obj.material_slots)
+
+
+def _copy_backup(src, dst):
+    for entry in src.bpm_backup:
+        new = dst.bpm_backup.add()
+        new.index = entry.index
+        new.material = entry.material
+
+
+def _restore_for_bake(obj):
+    """Put the procedural materials back before baking.
+
+    A linked duplicate (same mesh, materials on the mesh) shows the baked material of
+    its twin but has no backup of its own: then the twin's backup is used.
+    """
+    if restore_procedural(obj):
+        return True
+    if not hasattr(obj, 'bpm_backup') or not obj.material_slots or not data_linked(obj) \
+            or baked_material_of(obj) is None:
+        return False
+    for other in bpy.data.objects:
+        if other != obj and other.data == obj.data and getattr(other, 'bpm_backup', None):
+            _copy_backup(other, obj)
+            return restore_procedural(obj)
+    return False
+
+
 # ------------------------------------------------------------- object bake
 class Job:
     """Base class: collects messages, owns the scene state and temp data."""
@@ -601,6 +835,13 @@ class Job:
 
     def warn(self, text):
         self.messages.append(('WARNING', text))
+
+    def warnings(self):
+        return [text for level, text in self.messages if level == 'WARNING']
+
+    def summary(self):
+        count = len(self.written)
+        return 'Saved %d texture%s to %s' % (count, 's' * (count != 1), self.output_dir)
 
     def _drop_temp_images(self):
         for img in self._temp_images:
@@ -654,7 +895,11 @@ class Job:
 
 
 class ObjectBakeJob(Job):
-    """Bake the materials of mesh objects into per-object texture sets."""
+    """Bake the materials of mesh objects into per-object texture sets.
+
+    One object that cannot be baked does not stop the others: its problem becomes a
+    warning.  Only when no object at all could be baked, the job fails with the error.
+    """
 
     def __init__(self, context, objects, settings):
         super().__init__(context, settings)
@@ -665,7 +910,15 @@ class ObjectBakeJob(Job):
                 seen.add(obj.name)
                 self.objects.append(obj)
         passes = len([k for k in MAP_ORDER if k in settings.maps])
-        self.total_steps = max(1, len(self.objects) * (passes + 2))
+        self.steps_per_object = passes + 2
+        self.total_steps = max(1, len(self.objects) * self.steps_per_object)
+        self.baked = []        # names of the objects that were baked
+        self._uv_names = {}    # mesh name -> UV map to bake with (meshes are unwrapped once per job)
+        self._pending_uvs = {}  # mesh name -> (mesh, new UV map, previously active UV map) until baked
+
+    @property
+    def auto(self):
+        return self.settings.force_new_uv
 
     def check(self):
         """Raise BakeError for problems that stop everything; warn about the rest."""
@@ -674,23 +927,19 @@ class ObjectBakeJob(Job):
             raise BakeError('Select the object(s) you want to bake first.')
         if not self.settings.maps:
             raise BakeError('Tick at least one texture map to bake.')
-        usable = [o for o in self.objects if self._skip_reason(o) is None]
+        usable = [o for o in self.objects if skip_reason(self.context, o) is None]
         if not usable:
-            reasons = '; '.join('%s %s' % (o.name, self._skip_reason(o)) for o in self.objects[:3])
+            reasons = '; '.join('%s %s' % (o.name, skip_reason(self.context, o)) for o in self.objects[:3])
             raise BakeError('Nothing can be baked: ' + reasons)
 
-    def _skip_reason(self, obj):
-        if obj.type != 'MESH':
-            return 'is not a mesh (convert it with Object > Convert > Mesh)'
-        if obj.library is not None or obj.data.library is not None:
-            return 'is linked from another file'
-        if len(obj.data.polygons) == 0:
-            return 'has no faces'
-        if not any(slot.material for slot in obj.material_slots) and not baked_material_of(obj):
-            return 'has no material'
-        if obj.name not in self.context.view_layer.objects:
-            return 'is not in the current view layer'
-        return None
+    def summary(self):
+        count = len(self.baked)
+        text = '%s %d object%s. %s' % ('Auto-textured' if self.auto else 'Baked', count, 's' * (count != 1),
+                                       super().summary())
+        skipped = len(self.objects) - count
+        if skipped:
+            text += ' (%d object%s skipped)' % (skipped, 's' * (skipped != 1))
+        return text
 
     def run(self):
         s = self.settings
@@ -698,16 +947,28 @@ class ObjectBakeJob(Job):
         self.output_dir = resolve_output_dir(s.output_dir)
         state = _SceneState(context)
         samples, ao_samples = s.samples
+        errors = []
         try:
             device = choose_device(s.device)
             state.prepare(device, samples)
             if s.device == 'GPU' and device == 'CPU':
                 self.warn('No GPU is set up in Preferences > System, baking on the CPU.')
-            used_names = set()
+            skipped = {}
             for obj in self.objects:
-                reason = self._skip_reason(obj)
+                reason = skip_reason(context, obj)
                 if reason:
-                    self.warn('Skipped "%s": it %s.' % (obj.name, reason))
+                    skipped.setdefault(reason, []).append(obj.name)
+            for reason, names in skipped.items():
+                self.warn(_skip_text(names, reason))
+            used_names = set()
+            twins = {}  # mesh name -> baked object whose textures its linked duplicates share
+            for index, obj in enumerate(self.objects):
+                self.done_steps = index * self.steps_per_object
+                if skip_reason(context, obj):
+                    continue
+                twin = twins.get(obj.data.name)
+                if twin is not None and data_linked(obj):
+                    self._use_twin(obj, twin)
                     continue
                 yield 'Preparing %s' % obj.name
                 set_name = clean_name(obj.name)
@@ -715,22 +976,56 @@ class ObjectBakeJob(Job):
                 while set_name.lower() in used_names:
                     set_name, n = '%s_%d' % (base, n), n + 1
                 used_names.add(set_name.lower())
-                yield from self._bake_object(obj, set_name, state, samples, ao_samples)
+                try:
+                    yield from self._bake_object(obj, set_name, state, samples, ao_samples)
+                except BakeError as exc:  # the message names the object
+                    errors.append(str(exc))
+                    self.warn(str(exc))
+                else:
+                    self.baked.append(obj.name)
+                    if data_linked(obj):
+                        twins[obj.data.name] = obj
+            self.done_steps = self.total_steps
+            if errors and not self.baked:
+                raise BakeError(errors[0])
         finally:
             self._drop_temp_images()
+            self._drop_pending_uvs()
             state.restore()
+
+    def _use_twin(self, obj, twin):
+        """`obj` shares its mesh and its materials with `twin`, which was just baked: its surface is
+        identical, and through the shared mesh it already shows the baked textures of `twin`."""
+        if hasattr(obj, 'bpm_backup') and not obj.bpm_backup:
+            _copy_backup(twin, obj)  # so "Back to Procedural" works on this object too
+        self.baked.append(obj.name)
+        self.info('"%s" is a linked duplicate of "%s" (same mesh and materials), so it uses the same '
+                  'textures.' % (obj.name, twin.name))
+
+    def _drop_pending_uvs(self):
+        """Remove new UV maps whose bake did not finish (error or Esc): the mesh stays as it was."""
+        for mesh, uv_name, active in self._pending_uvs.values():
+            try:
+                layers = mesh.uv_layers
+                if uv_name == UV_TEMP_NAME and uv_name in layers:
+                    layers.remove(layers[uv_name])
+                if active is not None and active in layers:
+                    layers.active = layers[active]
+            except ReferenceError:
+                pass
+        self._pending_uvs = {}
 
     # -- one object --------------------------------------------------------
     def _bake_object(self, obj, set_name, state, samples, ao_samples):
         s = self.settings
         context = self.context
-        was_baked = restore_procedural(obj)
+        was_baked = _restore_for_bake(obj)
         stand_ins = {}
         rigs = []
         hidden_render = obj.hide_render
         try:
             obj.hide_render = False
-            uv_name = self._ensure_uvs(obj, state)
+            uv_name = yield from self._ensure_uvs(obj, state)
             # stand-in materials for empty slots / node-less materials
             for index, slot in enumerate(obj.material_slots):
                 original = slot.material
@@ -780,6 +1075,7 @@ class ObjectBakeJob(Job):
                 obj.material_slots[index].material = original
             stand_ins = {}
             loaded = self._save_set(set_name, self.output_dir, images, s.resolution)
+            uv_name = self._commit_uvs(obj.data, uv_name)
             mat = build_baked_material('%s Baked' % obj.name, loaded, uv_name, s.normal_directx)
             mat['bpm_source_object'] = obj.name
             if s.assign_baked or was_baked:
@@ -804,8 +1100,15 @@ class ObjectBakeJob(Job):
                     assign_baked(obj, prev)
 
     def _ensure_uvs(self, obj, state):
+        """Generator returning the name of the UV map to bake with; unwraps when needed.
+
+        New UVs go to a temporary UV map: while baking, the materials may still need
+        the old UVs.  Each mesh is unwrapped once per job, even when objects share it.
+        """
         s = self.settings
         mesh = obj.data
+        if mesh.name in self._uv_names:
+            return self._uv_names[mesh.name]
         layers = mesh.uv_layers
         need_new = s.force_new_uv or len(layers) == 0
         if not need_new:
@@ -824,23 +1127,33 @@ class ObjectBakeJob(Job):
             raise BakeError('"%s" needs a usable UV map. Enable "Auto UV Unwrap" or unwrap it '
                             'yourself (Edit Mode > U > Smart UV Project).' % obj.name)
         if not need_new:
-            return (layers.active or layers[0]).name
+            uv_name = (layers.active or layers[0]).name
+            self._uv_names[mesh.name] = uv_name
+            return uv_name
+        yield 'Unwrapping %s' % obj.name
         if mesh.users > 1:
             self.info('"%s" shares its mesh with other objects; they get the new UVs too.' % obj.name)
-        layer = layers.get(BAKE_UV_NAME) or layers.new(name=BAKE_UV_NAME)
+        previous = layers.active.name if layers.active is not None else None
+        layer = layers.get(UV_TEMP_NAME) or layers.new(name=UV_TEMP_NAME, do_init=False)
+        if layer is None:  # 8 UV maps already: unwrap straight into the bake UV map
+            layer = layers.get(BAKE_UV_NAME)
         if layer is None:
-            raise BakeError('"%s" has too many UV maps (the maximum is 8).' % obj.name)
+            raise BakeError('"%s" has too many UV maps (the maximum is 8). Delete one in '
+                            'Properties > Object Data > UV Maps.' % obj.name)
         uv_name = layer.name  # keep the name: layer references go stale when switching modes
-        layers.active = layer
+        self._pending_uvs[mesh.name] = (mesh, uv_name, previous)
         state.select_only(obj)
-        bpy.ops.object.mode_set(mode='EDIT')
-        try:
-            bpy.ops.mesh.select_all(action='SELECT')
-            bpy.ops.uv.smart_project(angle_limit=math.radians(66.0), island_margin=0.02,
-                                     area_weight=0.0, correct_aspect=True, scale_to_bounds=False)
-        finally:
-            bpy.ops.object.mode_set(mode='OBJECT')
-        self.info('"%s": created UV map "%s".' % (obj.name, uv_name))
+        unwrap_and_pack(obj, uv_name, s.uv_margin)
+        self._uv_names[mesh.name] = uv_name
+        self.info('"%s": made new UVs (Smart UV Project + Pack Islands).' % obj.name)
+        return uv_name
+
+    def _commit_uvs(self, mesh, uv_name):
+        """After a successful bake: new UVs become "BPM_Bake", the first UV map."""
+        if self._pending_uvs.pop(mesh.name, None) is None:
+            return uv_name
+        uv_name = commit_uvs(mesh, uv_name)
+        self._uv_names[mesh.name] = uv_name
         return uv_name
 
 

@@ -386,34 +386,32 @@ class BPM_OT_overlay_seed(_OverlayOperator, bpy.types.Operator):
 
 
 # --------------------------------------------------------------------- bake
-class BPM_OT_bake(bpy.types.Operator):
-    """Bake the material(s) to image textures. Press Esc to cancel"""
-    bl_idname = 'bpm.bake'
-    bl_label = 'Bake Textures'
+NO_OBJECTS = {
+    'ACTIVE': 'Click the object you want to texture first (there is no active object).',
+    'SELECTED': 'Select the object(s) you want to texture first.',
+    'SCENE': 'There are no visible mesh objects in the scene.',
+}
+
+
+def _scope_objects(context):
+    scope = context.scene.bpm.bake_scope
+    objs = B.scope_objects(context, scope)
+    if not objs:
+        raise B.BakeError(NO_OBJECTS.get(scope, NO_OBJECTS['SELECTED']))
+    return objs
+
+
+class _BakeRunner:
+    """Runs a bake job step by step (modal, with progress and Esc to cancel)."""
     bl_options = {'REGISTER'}
 
     _job = None
     _steps = None
     _timer = None
+    undo_message = 'BPM Bake'
 
     def _make_job(self, context):
-        props = context.scene.bpm
-        settings = B.BakeSettings.from_props(props)
-        if props.bake_mode == 'TILE':
-            mats = []
-            for obj in [context.active_object] + list(context.selected_objects):
-                if L.can_have_material(obj):
-                    mat = obj.active_material
-                    if L.is_baked_material(mat) and getattr(obj, 'bpm_backup', None):
-                        entry = next((e for e in obj.bpm_backup if e.index == obj.active_material_index), None)
-                        mat = entry.material if entry else mat
-                    if mat is not None and mat not in mats:
-                        mats.append(mat)
-            return B.TileBakeJob(context, mats, settings)
-        objs = [o for o in context.selected_objects]
-        if not objs and context.active_object is not None:
-            objs = [context.active_object]
-        return B.ObjectBakeJob(context, objs, settings)
+        raise NotImplementedError
 
     def invoke(self, context, event):
         try:
@@ -436,7 +434,12 @@ class BPM_OT_bake(bpy.types.Operator):
     def modal(self, context, event):
         if event.type == 'ESC' and event.value == 'PRESS':
             self._steps.close()
-            return self._finish(context, 'Bake cancelled.', level='WARNING')
+            done = len(getattr(self._job, 'baked', ()))
+            message = 'Bake cancelled.'
+            if done:
+                message += ' The %d object%s finished before keep%s the new textures.' % (
+                    done, 's' * (done > 1), '' if done > 1 else 's')
+            return self._finish(context, message, level='WARNING')
         if event.type != 'TIMER':
             return {'RUNNING_MODAL'}  # keep the user from changing things mid-bake
         try:
@@ -463,6 +466,8 @@ class BPM_OT_bake(bpy.types.Operator):
             B.run_to_end(job)
         except B.BakeError as exc:
             self.report({'ERROR'}, str(exc))
+            props = context.scene.bpm
+            props.last_report, props.last_level, props.last_warnings = str(exc), 'ERROR', ''
             return {'CANCELLED'}
         self._job = job
         self._report(context, job)
@@ -477,26 +482,69 @@ class BPM_OT_bake(bpy.types.Operator):
         context.workspace.status_text_set(None)
         if message:
             self.report({level}, message)
-            context.scene.bpm.last_report = message
+            props = context.scene.bpm
+            props.last_report, props.last_level, props.last_warnings = message, level, ''
         else:
             self._report(context, self._job)
         try:
-            bpy.ops.ed.undo_push(message='BPM Bake')
+            bpy.ops.ed.undo_push(message=self.undo_message)
         except RuntimeError:
             pass
         _redraw(context)
         return {'FINISHED'} if level == 'INFO' else {'CANCELLED'}
 
     def _report(self, context, job):
-        for level, text in job.messages:
-            if level == 'WARNING':
-                self.report({'WARNING'}, text)
-        count = len(job.written)
+        warnings = job.warnings()
+        for text in warnings:
+            self.report({'WARNING'}, text)
         props = context.scene.bpm
         props.last_folder = job.output_dir or ''
-        summary = 'Saved %d texture%s to %s' % (count, 's' * (count != 1), job.output_dir)
+        summary = job.summary()
         props.last_report = summary
+        props.last_level = 'WARNING' if warnings else 'INFO'
+        props.last_warnings = '\n'.join(warnings)
         self.report({'INFO'}, summary)
+
+
+class BPM_OT_bake(_BakeRunner, bpy.types.Operator):
+    """Bake the material(s) to image textures, using the objects' current UV maps. Press Esc to cancel"""
+    bl_idname = 'bpm.bake'
+    bl_label = 'Bake Textures'
+
+    @classmethod
+    def description(cls, context, properties):
+        if context.scene.bpm.bake_mode == 'TILE':
+            return 'Bake the active material into square textures that repeat seamlessly. Press Esc to cancel'
+        return cls.__doc__
+
+    def _make_job(self, context):
+        props = context.scene.bpm
+        settings = B.BakeSettings.from_props(props)
+        if props.bake_mode == 'TILE':
+            mats = []
+            for obj in [context.active_object] + list(context.selected_objects):
+                if L.can_have_material(obj):
+                    mat = obj.active_material
+                    if L.is_baked_material(mat) and getattr(obj, 'bpm_backup', None):
+                        entry = next((e for e in obj.bpm_backup if e.index == obj.active_material_index), None)
+                        mat = entry.material if entry else mat
+                    if mat is not None and mat not in mats:
+                        mats.append(mat)
+            return B.TileBakeJob(context, mats, settings)
+        return B.ObjectBakeJob(context, _scope_objects(context), settings)
+
+
+class BPM_OT_auto_texture(_BakeRunner, bpy.types.Operator):
+    """One click: new UVs (Smart UV Project + Pack Islands), bake all maps, save them and apply them. Esc cancels"""
+    bl_idname = 'bpm.auto_texture'
+    bl_label = 'Auto Texture'
+    undo_message = 'BPM Auto Texture'
+
+    def _make_job(self, context):
+        settings = B.BakeSettings.from_props(context.scene.bpm)
+        settings.force_new_uv = True
+        settings.assign_baked = True
+        return B.ObjectBakeJob(context, _scope_objects(context), settings)
 
 
 class BPM_OT_open_folder(bpy.types.Operator):
@@ -565,6 +613,7 @@ CLASSES = (
     BPM_OT_toggle_overlay,
     BPM_OT_overlay_seed,
     BPM_OT_bake,
+    BPM_OT_auto_texture,
     BPM_OT_open_folder,
     BPM_OT_show_procedural,
     BPM_OT_show_baked,
