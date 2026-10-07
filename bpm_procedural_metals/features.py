@@ -294,6 +294,19 @@ def surface_direction(b, direction, fallback=True):
     return b.vmath('NORMALIZE', b.mix_vector(facing, project(d), project(d2)))
 
 
+def box_coords(b, space):
+    """2D coordinates (pattern units) in the plane the surface faces most (object mode):
+    x / y on top and bottom, x / z on front and back, y / z on the sides."""
+    x, y, z = b.separate(space.P)
+    ax, ay, az = b.separate(b.vmath('ABSOLUTE', b.texcoord().outputs['Normal']))
+    isz = b.mul(b.math('GREATER_THAN', az, b.mul(ax, 0.999)), b.math('GREATER_THAN', az, b.mul(ay, 0.999)))
+    isy = b.mul(b.one_minus(isz), b.math('GREATER_THAN', ay, b.mul(ax, 0.999)))
+    isx = b.one_minus(b.add(isz, isy))
+    s = b.add(b.mul(x, b.add(isz, isy)), b.mul(y, isx))
+    t = b.add(b.mul(y, isz), b.mul(z, b.add(isy, isx)))
+    return s, t
+
+
 def stretched_base(b, space, direction, stretch, fallback=True):
     """Object-space coordinates squashed along a surface direction (long features)."""
     t = surface_direction(b, direction, fallback)

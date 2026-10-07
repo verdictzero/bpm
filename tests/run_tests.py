@@ -348,6 +348,94 @@ def overlays_are_baked():
     assert os.path.exists(os.path.join(out_b, 'Cube_Height.png'))
 
 
+def linked_from(sock):
+    return sock.links[0].from_node if sock.is_linked else None
+
+
+@test
+def glass_transmission_and_overlays():
+    """Glass lets light through; dirt and dust on top block it; opaque materials stay untouched."""
+    fresh_scene()
+    mat = L.create_material('glass_clear')
+    node = L.find_bpm_node(mat)
+    bsdf = L.find_principled(mat.node_tree)
+    assert linked_from(bsdf.inputs['Transmission Weight']) == node
+    assert linked_from(bsdf.inputs['IOR']) == node
+    if hasattr(mat, 'use_raytrace_refraction'):
+        assert mat.use_raytrace_refraction, 'EEVEE must show what is behind the glass'
+    assert mat.diffuse_color[3] < 1.0, 'see-through in Solid mode'
+    dirt = L.add_overlay(mat, 'DIRT')
+    assert linked_from(bsdf.inputs['Transmission Weight']) == dirt
+    assert linked_from(dirt.inputs['Transmission']) == node
+    assert linked_from(bsdf.inputs['IOR']) == node, 'IOR goes straight to the BSDF'
+    L.remove_overlay(mat, dirt)
+    assert linked_from(bsdf.inputs['Transmission Weight']) == node
+    # opaque materials: the overlay does not touch transmission at all
+    paint = L.create_material('paint_industrial_yellow')
+    dust = L.add_overlay(paint, 'DUST')
+    pbsdf = L.find_principled(paint.node_tree)
+    assert not pbsdf.inputs['Transmission Weight'].is_linked and not dust.outputs['Transmission'].is_linked
+    # overlays made by older versions have no Transmission socket: removing them still works
+    old = L.add_overlay(paint, 'DIRT')
+    tree = old.node_tree.copy()
+    old.node_tree = tree
+    for item in [i for i in tree.interface.items_tree if getattr(i, 'name', '') == 'Transmission']:
+        tree.interface.remove(item)
+    assert 'Transmission' not in old.inputs
+    L.remove_overlay(paint, old)
+    assert len(L.overlay_stack(paint)) == 1
+    assert L.move_overlay(paint, 0, 1) is False
+
+
+@test
+def glass_bakes_to_glass():
+    """The bake writes Transmission (+ Opacity) for glass only and rebuilds a glass material."""
+    fresh_scene()
+    glass = add_cube('Window')
+    gmat = L.create_material('glass_dirty_window')
+    L.find_bpm_node(gmat).inputs['IOR'].default_value = 1.52
+    glass.data.materials.append(gmat)
+    clean = add_cube('Clean', location=(3, 0, 0))
+    clean.data.materials.append(L.create_material('glass_clear'))
+    solid = add_cube('Solid', location=(6, 0, 0))
+    solid.data.materials.append(L.create_material('steel_brushed'))
+    job = B.ObjectBakeJob(bpy.context, [glass, clean, solid],
+                          settings(maps={'BASE_COLOR', 'ROUGHNESS', 'TRANSMISSION'}))
+    B.run_to_end(job)
+    names = sorted(os.listdir(job.output_dir))
+    for name in ('Window_Transmission.png', 'Window_Opacity.png', 'Clean_Transmission.png'):
+        assert name in names, names
+    assert not any(n.startswith('Solid_Transmission') or n.startswith('Solid_Opacity') for n in names), names
+    covered = read_png(os.path.join(job.output_dir, 'Window_BaseColor.png'))[..., 0] > 0.02  # inside the UVs
+    trans = read_png(os.path.join(job.output_dir, 'Window_Transmission.png'))[..., 0]
+    opacity = read_png(os.path.join(job.output_dir, 'Window_Opacity.png'))[..., 0]
+    clean_trans = read_png(os.path.join(job.output_dir, 'Clean_Transmission.png'))[..., 0]
+    clean_covered = read_png(os.path.join(job.output_dir, 'Clean_BaseColor.png'))[..., 0] > 0.3
+    assert clean_trans[clean_covered].mean() > 0.9, clean_trans[clean_covered].mean()
+    dirty_mean = trans[covered].mean()
+    assert 0.15 < dirty_mean < clean_trans[clean_covered].mean() - 0.05, dirty_mean
+    assert np.abs((1.0 - trans) - opacity).max() < 2.5 / 255
+    mat = glass.active_material
+    bsdf = L.find_principled(mat.node_tree)
+    src = linked_from(bsdf.inputs['Transmission Weight'])
+    assert src is not None and src.bl_idname == 'ShaderNodeTexImage', 'baked glass must stay see-through'
+    assert abs(bsdf.inputs['IOR'].default_value - 1.52) < 1e-6
+    sbsdf = L.find_principled(solid.active_material.node_tree)
+    assert not sbsdf.inputs['Transmission Weight'].is_linked
+    # seamless tiles of glass, with the transmission map too
+    tiles = B.TileBakeJob(bpy.context, [L.create_material('glass_stained'), L.create_material('steel_brushed')],
+                          settings(resolution=64, maps={'BASE_COLOR', 'TRANSMISSION', 'NORMAL'}))
+    B.run_to_end(tiles)
+    written = sorted(os.path.basename(p) for p in tiles.written)
+    assert 'Stained_Glass_Window_Transmission.png' in written and 'Stained_Glass_Window_Opacity.png' in written
+    assert not any('Brushed' in n and ('Transmission' in n or 'Opacity' in n) for n in written), written
+    for path in tiles.written:
+        assert seam_ok(read_png(path)[..., :3].astype(np.float64)), 'visible seam in ' + os.path.basename(path)
+    tiled = next(m for m in tiles.tile_materials if 'Stained' in m.name)
+    tbsdf = L.find_principled(tiled.node_tree)
+    assert tbsdf.inputs['Transmission Weight'].is_linked
+
+
 @test
 def apply_operator_and_fit():
     fresh_scene()
@@ -624,7 +712,7 @@ def new_families_tile_seamlessly():
     """Every family (and overlays on top) must bake to seamless tiles."""
     fresh_scene()
     ids = ('wood_barn_red', 'plastic_dirty_bin', 'leather_sofa', 'fabric_carbon_twill', 'bio_xeno_tubes',
-           'wood_walnut')
+           'glass_abandoned', 'wood_walnut')
     mats = [L.create_material(pid) for pid in ids]
     L.add_overlay(mats[-1], 'DUST', {'Amount': 0.8})
     job = B.TileBakeJob(bpy.context, mats, settings(resolution=128, maps={'BASE_COLOR', 'NORMAL', 'HEIGHT'}))

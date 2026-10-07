@@ -27,7 +27,7 @@ class BPM_Settings(bpy.types.PropertyGroup):
     # --- library
     category: EnumProperty(
         name='Category',
-        items=[('ALL', 'All', 'Show every material')] + [(c[0], c[3], c[2]) for c in P.CATEGORIES],
+        items=[('ALL', 'All', 'Show every material', 0)] + [(c[0], c[3], c[2], c[4]) for c in P.CATEGORIES],
         default='ALL')
     fit_to_object: BoolProperty(
         name='Fit Pattern Size to Object', default=True,
@@ -62,6 +62,10 @@ class BPM_Settings(bpy.types.PropertyGroup):
     map_base_color: BoolProperty(name='Base Color', default=True, description='Color texture (sRGB)')
     map_metallic: BoolProperty(name='Metallic', default=True, description='Black = paint/rust, white = metal')
     map_roughness: BoolProperty(name='Roughness', default=True, description='Black = glossy, white = matte')
+    map_transmission: BoolProperty(
+        name='Transmission', default=True,
+        description='Glass only: white = see-through, black = opaque (also saved inverted as an Opacity '
+                    'map for game engines). Skipped for materials that let no light through')
     map_normal: BoolProperty(name='Normal', default=True, description='Surface detail (normal map)')
     map_height: BoolProperty(name='Height', default=True, description='Height / displacement map (16-bit)')
     map_ao: BoolProperty(name='Ambient Occlusion', default=True,

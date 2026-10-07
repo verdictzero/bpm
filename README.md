@@ -1,7 +1,7 @@
 # BPM – Procedural Materials for Blender
 
-120 ready-made materials for Blender — **bare metal, painted metal, wood, plastic,
-leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and H.R.
+139 ready-made materials for Blender — **bare metal, painted metal, wood, plastic,
+glass, leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and H.R.
 Giger-style biomechanical surfaces** — plus 10 **dirt and dust overlays** that you
 can stack on top of *any* material. Every material has plain sliders you can tweak, and
 one click on **Auto Texture** turns it into normal image textures (Base Color,
@@ -16,6 +16,7 @@ material, click **Apply**, move some sliders, click **Auto Texture**.
 ![Painted metal materials](docs/gallery_paint.png)
 ![Wood materials](docs/gallery_wood.png)
 ![Plastic materials](docs/gallery_plastic.png)
+![Glass materials](docs/gallery_glass.png)
 ![Leather materials](docs/gallery_leather.png)
 ![Fabric and composite materials](docs/gallery_fabric.png)
 ![Biomechanical materials](docs/gallery_organic.png)
@@ -28,15 +29,15 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.2.0.zip`](dist/bpm_procedural_metals-1.2.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.3.0.zip`](dist/bpm_procedural_metals-1.3.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
 4. Select the zip file. Done: "BPM - Procedural Materials" now shows up as enabled.
 
-> **Updating from 1.0 or 1.1?** Just install the new zip the same way, on top of the old
-> one: it replaces the old version (no need to uninstall first or restart Blender), and
-> your `.blend` files keep their materials and settings.
+> **Updating from an older version (1.0 – 1.2)?** Just install the new zip the same
+> way, on top of the old one: it replaces the old version (no need to uninstall first
+> or restart Blender), and your `.blend` files keep their materials and settings.
 
 > Shortcut: you can also just drag the zip file into the Blender window.
 
@@ -47,7 +48,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 1. In the 3D view, **click your object** to select it.
 2. Press **N** (with the mouse over the 3D view) to open the sidebar and click the
    **BPM** tab.
-3. Pick a category (Metal, Wood, Plastic, Leather, Fabric, Organic, Dirt & Dust…),
+3. Pick a category (Metal, Wood, Plastic, Glass, Leather, Fabric, Organic, Dirt & Dust…),
    click the big picture to see its materials, pick one, then click
    **Apply to Selected**.
 4. To see the material, switch the viewport to **Material Preview**: press **Z** and
@@ -142,6 +143,8 @@ Files (for an object called `Crate`):
 | `Crate_Normal.png` | Surface detail (normal map) | Linear / non-color, type *Normal map* |
 | `Crate_Height.png` | Height (16-bit) for parallax/displacement | Linear / non-color |
 | `Crate_AO.png` | Soft shadows in crevices | Linear / non-color |
+| `Crate_Transmission.png` *(glass only)* | White = see-through, black = opaque (dirt, lead, wire) | Linear / non-color |
+| `Crate_Opacity.png` *(glass only)* | The same, inverted, for an engine's alpha / opacity | Linear / non-color |
 | `Crate_ORM.png` *(option)* | R = AO, G = Roughness, B = Metallic | Linear / non-color |
 | `Crate_MetallicSmoothness.png` *(option)* | Unity: RGB = Metallic, A = Smoothness | Linear / non-color |
 
@@ -155,7 +158,9 @@ Files (for an object called `Crate`):
 * **Godot 4** – keep **OpenGL** normals. Use the maps directly, or the ORM texture with
   an *ORMMaterial3D*.
 * **glTF / GLB export from Blender** – just export: the baked material, including AO,
-  is set up so the glTF exporter picks everything up.
+  is set up so the glTF exporter picks everything up (glass too: transmission and IOR).
+* **Glass in Unity / Unreal / Godot** – make the material transparent (translucent) and
+  use `_Opacity.png` as its alpha / opacity.
 
 ### More options
 
@@ -192,6 +197,11 @@ black, car dashboard (leather grain), ribbed rubber grip, translucent orange,
 recycled (flecked), sun-faded blue — and the dirty ones: yellowed retro beige, dirty
 white plastic, grimy garbage bin, old dusty toy, weathered garden chair.
 
+**Glass (19):** clear, frosted, green bottle, amber bottle, cobalt blue, smoked, milk
+glass, reeded, hammered, wired safety glass, stained glass window, antique window
+glass — and the worn and grimy ones: smudged, dusty, dirty window, abandoned window,
+scratched, cracked, sea glass.
+
 **Leather (12):** brown, black, smooth saddle, oxblood, white, worn vintage, cracked
 old leather, tan suede, red patent, crocodile embossed (green, black), stitched sofa
 leather.
@@ -217,6 +227,11 @@ a family has the full set of sliders. A few examples:
 * **Plastic** – molded stipple texture, leather grain, grip ribs, recycled flecks,
   translucency, scratches, scuffs, stress-whitened edges, fingerprints, sun fading,
   yellowing, grime stuck in the texture.
+* **Glass** – tint, frosting, milkiness, refraction (IOR), the waves and bubbles of
+  old glass, reeded and hammered textures, wire mesh, stained glass with lead came,
+  scratches, chipped edges, cracks, sea-glass weathering, fingerprints, dust, grime
+  film, hard-water spots and rain streaks. Dirt and dust are opaque: they block the
+  view through the glass (the dirt & dust overlays do too).
 * **Leather** – pebbled grain, wrinkles, pores, croc scales, suede, patent gloss,
   stitched seams, rubbed and worn areas, cracks, fading.
 * **Fabric** – real thread-by-thread weaves (plain, twill, denim, basket, satin),
@@ -299,6 +314,12 @@ Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
   them bigger, or raise the bake resolution.
 * **Dirt doesn't collect in the corners in the viewport.** Crevice and edge effects
   need Cycles (or baking); click **Preview in Cycles** in *Adjust Material*.
+* **Glass doesn't show what is behind it in Material Preview.** EEVEE needs
+  *Render Properties › Raytracing* turned on for that; Cycles (**Preview in Cycles**)
+  always shows it.
+* **A glass window looks warped.** Give the pane some thickness (*Add Modifier ›
+  Solidify*), like real glass: a single flat plane bends the view like the surface of
+  a swimming pool.
 
 ## 7. For developers
 
@@ -306,12 +327,12 @@ Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
 bpm_procedural_metals/   the add-on (Blender extension)
   generators.py          registry of all generators
   mat_*.py               one generator per family: metal, paint, wood, plastic,
-                         leather, fabric, organic (sliders + node tree)
+                         glass, leather, fabric, organic (sliders + node tree)
   overlays.py            dirt and dust overlays (layer on any material)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 130 presets: 120 materials + 10 overlays
+  presets.py             the 149 presets: 139 materials + 10 overlays
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
   ui.py, operators.py    sidebar panels and buttons
@@ -333,7 +354,8 @@ python3 tools/build_zip.py /path/to/blender
 The tests check, among other things, that baked colors are exact (linear 0.5 →
 sRGB 188), that tiles of every family (with overlays) are seamless, that the computed
 tile normal maps match Cycles' own bump mapping, that overlays stack, reorder and come
-off cleanly and end up in the bake, that Auto Texture's UVs are packed without overlaps
+off cleanly and end up in the bake, that baked glass stays see-through (dirt on it
+doesn't), that Auto Texture's UVs are packed without overlaps
 while materials keep reading their old UVs during the bake, that every setting the bake
 changes is restored,
 and that no shader — not even a material with two overlays — comes close to Cycles'

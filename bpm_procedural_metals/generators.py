@@ -11,7 +11,8 @@ generators take those channels as inputs and put dirt, dust... on top, so they
 can be stacked on any material.
 """
 
-from . import mat_fabric, mat_leather, mat_metal, mat_organic, mat_paint, mat_plastic, mat_wood, overlays
+from . import (mat_fabric, mat_glass, mat_leather, mat_metal, mat_organic, mat_paint, mat_plastic, mat_wood,
+               overlays)
 from .gencommon import MACRO_BUMP, MICRO_BUMP, TILE_PARAM  # noqa: F401  (used by bake.py / tests)
 from .nodebuilder import Builder, auto_layout, create_group
 
@@ -28,6 +29,7 @@ def _register(key, spec):
     spec.setdefault('version', GENERATOR_VERSION)
     spec.setdefault('fit', 0.75)  # how strongly "Fit Pattern Size to Object" adapts the scale
     spec.setdefault('bump', MACRO_BUMP)  # relief depth of the 0..1 height range (meters at Scale 1)
+    spec.setdefault('glass', False)  # transmissive: EEVEE refraction settings, IOR kept when baking
     GENERATORS[key] = spec
 
 
@@ -35,6 +37,7 @@ _register('METAL', mat_metal.SPEC)
 _register('PAINT', mat_paint.SPEC)
 _register('WOOD', mat_wood.SPEC)
 _register('PLASTIC', mat_plastic.SPEC)
+_register('GLASS', mat_glass.SPEC)
 _register('LEATHER', mat_leather.SPEC)
 _register('FABRIC', mat_fabric.SPEC)
 _register('ORGANIC', mat_organic.SPEC)

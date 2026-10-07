@@ -19,6 +19,7 @@ OVERLAY_LINKS = (
     ('Roughness', 'Roughness'),
     ('Normal', 'Normal'),
     ('Coat', 'Coat Weight'),
+    ('Transmission', 'Transmission Weight'),
 )
 OVERLAY_STEP = 280.0  # horizontal room made for every overlay node
 
@@ -153,10 +154,17 @@ def _set_viewport_display(mat, values, generator):
     spec = G.GENERATORS.get(generator)
     if spec is None or 'display' not in spec:
         return
-    color_name, metallic, rough_name = spec['display']
-    mat.diffuse_color = color4(values.get(color_name, (0.8, 0.8, 0.8)))
+    color_name, metallic, rough_name, *alpha = spec['display']
+    color = color4(values.get(color_name, (0.8, 0.8, 0.8)))
+    mat.diffuse_color = tuple(color[:3]) + (alpha[0] if alpha else 1.0,)  # alpha: see-through in Solid mode
     mat.metallic = float(values.get(metallic, 0.0)) if isinstance(metallic, str) else float(metallic)
     mat.roughness = float(values.get(rough_name, 0.5))
+
+
+def setup_glass(mat):
+    """Material settings so EEVEE (Material Preview) shows what is behind the glass."""
+    if hasattr(mat, 'use_raytrace_refraction'):
+        mat.use_raytrace_refraction = True
 
 
 def build_material(mat, generator, values, tile=False):
@@ -187,6 +195,8 @@ def build_material(mat, generator, values, tile=False):
     apply_values(group, values)
     mat[MATERIAL_TAG] = generator
     _set_viewport_display(mat, values, generator)
+    if spec['glass']:
+        setup_glass(mat)
     for state in kept:
         add_overlay_state(mat, state, tile)
     tree.nodes.active = group
@@ -338,6 +348,8 @@ def add_overlay(mat, generator, values=None, tile=False):
             continue
         if target.is_linked:
             links.new(target.links[0].from_socket, node.inputs[channel])
+        elif channel == 'Transmission' and not socket_value(target):
+            continue  # opaque material: nothing to pass through
         elif channel != 'Normal':  # unconnected normal = plain surface normal
             set_socket_value(node.inputs[channel], socket_value(target))
         links.new(node.outputs[channel], target)
@@ -365,7 +377,9 @@ def remove_overlay(mat, node):
     tree = mat.node_tree
     links = tree.links
     for channel in O.CHANNEL_NAMES:
-        inp, out = node.inputs[channel], node.outputs[channel]
+        inp, out = node.inputs.get(channel), node.outputs.get(channel)
+        if inp is None or out is None:  # overlay made by an older version: no such channel
+            continue
         src = inp.links[0].from_socket if inp.is_linked else None
         for target in [l.to_socket for l in out.links]:
             if src is not None:

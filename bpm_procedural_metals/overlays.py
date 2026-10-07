@@ -2,8 +2,9 @@
 """Overlay generators: dirt and dust layered on top of any material.
 
 An overlay node group takes the PBR channels of the material below as inputs
-(Base Color, Metallic, Roughness, Normal, Height, Coat) and outputs the same
-channels with dirt or dust mixed on top.  It is inserted between the material
+(Base Color, Metallic, Roughness, Normal, Height, Coat, Transmission) and
+outputs the same channels with dirt or dust mixed on top.  Dirt and dust are
+opaque: on glass they block the view through it.  It is inserted between the material
 and its Principled BSDF, so overlays stack, work on non-BPM materials too and
 end up in baked textures automatically.
 
@@ -27,7 +28,9 @@ CHANNELS = (
     ('Normal', 'VECTOR', (0.0, 0.0, 0.0)),
     ('Height', 'FLOAT', 0.5),
     ('Coat', 'FLOAT', 0.0),
+    ('Transmission', 'FLOAT', 0.0),
 )
+OVERLAY_VERSION = 2  # 2: Transmission channel (older overlay groups do not have it)
 OUTPUTS = [(name, kind) for name, kind, _ in CHANNELS]
 CHANNEL_NAMES = tuple(name for name, _kind, _default in CHANNELS)
 BELOW = 'Material Below'
@@ -100,6 +103,7 @@ def _finish(b, gout, I, mask, color, rough, fill, thickness, coat_keep, normal, 
     h = b.mix(b.mul(flat, 0.6), height, 0.5)
     b.feed(gout.inputs['Height'], b.clamp01(b.madd(mask, thickness, h)))
     b.feed(gout.inputs['Coat'], b.mul(I['Coat'], b.one_minus(b.mul(mask, coat_keep))))
+    b.feed(gout.inputs['Transmission'], b.mul(I['Transmission'], b.one_minus(mask)))
 
 
 def _space(b, I, tile, salt):
@@ -203,9 +207,9 @@ def build_dust(b, I, gout, tile):
 
 DIRT_SPEC = dict(
     label='Dirt Overlay', category='OVERLAY', kind='overlay', params=_channel_params() + DIRT_PARAMS,
-    outputs=OUTPUTS, build=build_dirt,
+    outputs=OUTPUTS, build=build_dirt, version=OVERLAY_VERSION,
 )
 DUST_SPEC = dict(
     label='Dust Overlay', category='OVERLAY', kind='overlay', params=_channel_params() + DUST_PARAMS,
-    outputs=OUTPUTS, build=build_dust,
+    outputs=OUTPUTS, build=build_dust, version=OVERLAY_VERSION,
 )

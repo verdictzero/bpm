@@ -7,21 +7,22 @@ A material preset can bring overlays (dirt, dust) along; overlay presets
 are layered on top of whatever material an object already has.
 """
 
-# (id, label, description, short label for the category buttons)
+# (id, label, description, short label for the category buttons, number stored in .blend files)
 CATEGORIES = (
-    ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals', 'Metal'),
-    ('PAINT', 'Painted Metal', 'Painted, chipped and weathered metal', 'Painted'),
-    ('WOOD', 'Wood', 'Raw, varnished, painted, weathered and charred wood', 'Wood'),
-    ('PLASTIC', 'Plastic', 'Glossy, matte and textured plastic, new, old or dirty', 'Plastic'),
-    ('LEATHER', 'Leather', 'Smooth, pebbled, suede, patent, croc and worn leather', 'Leather'),
-    ('FABRIC', 'Fabric & Composites', 'Canvas, denim, nylon, carbon fiber, kevlar...', 'Fabric'),
-    ('ORGANIC', 'Biomechanical', 'Giger-style organic machinery: ribs, tubes, bone, slime', 'Organic'),
-    ('OVERLAY', 'Dirt & Dust', 'Layers of dirt or dust that go on top of any material', 'Dirt & Dust'),
+    ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals', 'Metal', 1),
+    ('PAINT', 'Painted Metal', 'Painted, chipped and weathered metal', 'Painted', 2),
+    ('WOOD', 'Wood', 'Raw, varnished, painted, weathered and charred wood', 'Wood', 3),
+    ('PLASTIC', 'Plastic', 'Glossy, matte and textured plastic, new, old or dirty', 'Plastic', 4),
+    ('GLASS', 'Glass', 'Clear, tinted, frosted, textured and stained glass, spotless or grimy', 'Glass', 9),
+    ('LEATHER', 'Leather', 'Smooth, pebbled, suede, patent, croc and worn leather', 'Leather', 5),
+    ('FABRIC', 'Fabric & Composites', 'Canvas, denim, nylon, carbon fiber, kevlar...', 'Fabric', 6),
+    ('ORGANIC', 'Biomechanical', 'Giger-style organic machinery: ribs, tubes, bone, slime', 'Organic', 7),
+    ('OVERLAY', 'Dirt & Dust', 'Layers of dirt or dust that go on top of any material', 'Dirt & Dust', 8),
 )
 
 # generator -> gallery category
 GENERATOR_CATEGORY = {
-    'METAL': 'METAL', 'PAINT': 'PAINT', 'WOOD': 'WOOD', 'PLASTIC': 'PLASTIC', 'LEATHER': 'LEATHER',
+    'METAL': 'METAL', 'PAINT': 'PAINT', 'WOOD': 'WOOD', 'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS', 'LEATHER': 'LEATHER',
     'FABRIC': 'FABRIC', 'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY',
 }
 
@@ -426,6 +427,76 @@ _add('plastic_garden_chair', 'Weathered Garden Chair', 'PLASTIC',
      'White outdoor plastic, sun-faded with dirty rain streaks.',
      thumb=DIRTY_THUMB, Plastic_Color=(0.7, 0.7, 0.68), Fading=0.4, Roughness=0.45, Dirt=0.5, Grime=0.6,
      Scuffs=0.3, overlays=[overlay('DIRT', Amount=0.6, Streaks=0.8, Patches=0.3)])
+
+# ----------------------------------------------------------------------- glass
+GLASS_THUMB = dict(zoom=0.25)
+CLOSE_THUMB = dict(zoom=0.12)
+CLEAR = (0.90, 0.96, 0.93)
+
+_add('glass_clear', 'Clear Glass', 'GLASS',
+     'Clean, colorless window glass.',
+     thumb=GLASS_THUMB, Scratches=0.02, Smudges=0.03)
+_add('glass_frosted', 'Frosted Glass', 'GLASS',
+     'Sandblasted glass that blurs everything behind it.',
+     thumb=GLASS_THUMB, Glass_Color=(0.93, 0.95, 0.94), Frosting=1.0, Scratches=0.0, Smudges=0.1)
+_add('glass_green_bottle', 'Green Bottle Glass', 'GLASS',
+     'Deep green glass, like wine bottles.',
+     thumb=GLASS_THUMB, Glass_Color=(0.10, 0.42, 0.12), IOR=1.52, Color_Variation=0.15, Bubbles=0.15,
+     Scratches=0.1)
+_add('glass_amber_bottle', 'Amber Bottle Glass', 'GLASS',
+     'Brown glass, like beer and medicine bottles.',
+     thumb=GLASS_THUMB, Glass_Color=(0.62, 0.24, 0.035), IOR=1.52, Color_Variation=0.15, Scratches=0.1)
+_add('glass_cobalt', 'Cobalt Blue Glass', 'GLASS',
+     'Rich blue glass for vases and old bottles.',
+     thumb=GLASS_THUMB, Glass_Color=(0.07, 0.17, 0.80), IOR=1.52, Color_Variation=0.1, Scratches=0.05)
+_add('glass_smoked', 'Smoked Glass', 'GLASS',
+     'Dark grey tinted glass, like car windows or a smoked table top.',
+     thumb=GLASS_THUMB, Glass_Color=(0.12, 0.13, 0.13), Color_Variation=0.0, Smudges=0.15, Dust=0.1)
+_add('glass_milk', 'Milk Glass', 'GLASS',
+     'Opal white glass for lamp shades and vintage dishes.',
+     thumb=GLASS_THUMB, Glass_Color=(0.95, 0.95, 0.93), Milkiness=0.85, Roughness=0.08, Scratches=0.05)
+_add('glass_reeded', 'Reeded Glass', 'GLASS',
+     'Fluted glass with rounded ribs, for doors and cabinets.',
+     thumb=CLOSE_THUMB, Reeds=1.0, Reed_Direction=(1.0, 1.0, 0.0), Scratches=0.02)
+_add('glass_hammered', 'Hammered Glass', 'GLASS',
+     'Dimpled privacy glass, like bathroom windows.',
+     thumb=CLOSE_THUMB, Hammered=1.0, Dimple_Size=0.012, Scratches=0.02)
+_add('glass_wired', 'Wired Safety Glass', 'GLASS',
+     'Glass with a wire grid inside, for fire doors and skylights.',
+     thumb=CLOSE_THUMB, Wire_Mesh=1.0, Glass_Color=(0.86, 0.95, 0.90), Smudges=0.25, Grime=0.12,
+     Scratches=0.1)
+_add('glass_stained', 'Stained Glass Window', 'GLASS',
+     'Colored pieces held together by lead, like church windows.',
+     thumb=GLASS_THUMB, Stained_Glass=1.0, Piece_Size=0.07, Color_Variation=0.4, Waviness=0.5,
+     Bubbles=0.2, Grime=0.1)
+_add('glass_antique', 'Antique Window Glass', 'GLASS',
+     'Old wavy glass with tiny bubbles and a faint haze.',
+     thumb=GLASS_THUMB, Glass_Color=(0.84, 0.95, 0.87), Color_Variation=0.2, Waviness=1.0, Bubbles=0.6,
+     Scratches=0.2, Grime=0.12, Water_Spots=0.2)
+_add('glass_smudged', 'Smudged Glass', 'GLASS',
+     'A display case covered in fingerprints and greasy smears.',
+     thumb=CLOSE_THUMB, Smudges=1.0, Dust=0.08, Scratches=0.08)
+_add('glass_dusty', 'Dusty Glass', 'GLASS',
+     'Glass that nobody has cleaned for months.',
+     thumb=GLASS_THUMB, Dust=0.55, Smudges=0.3, Water_Spots=0.25, Scratches=0.1)
+_add('glass_dirty_window', 'Dirty Window', 'GLASS',
+     'Grimy window glass with rain streaks and water spots.',
+     thumb=GLASS_THUMB, Grime=0.4, Rain_Streaks=0.9, Water_Spots=0.4, Dust=0.05, Smudges=0.3,
+     Scratches=0.15)
+_add('glass_abandoned', 'Abandoned Window', 'GLASS',
+     'Cracked, filthy glass from a building left empty for decades.',
+     thumb=GLASS_THUMB, Grime=0.85, Grime_Color=(0.07, 0.055, 0.035), Rain_Streaks=0.6, Cracks=0.8,
+     Crack_Scale=7.0, Dust=0.25, Chipped_Edges=0.6, Water_Spots=0.4, Scratches=0.4, Waviness=0.3)
+_add('glass_scratched', 'Scratched Glass', 'GLASS',
+     'Heavily scratched, worn glass, like an old shop window.',
+     thumb=GLASS_THUMB, Scratches=0.9, Scratch_Scale=1.5, Chipped_Edges=0.5, Smudges=0.3, Grime=0.1)
+_add('glass_cracked', 'Cracked Glass', 'GLASS',
+     'Shattered safety glass that still holds together.',
+     thumb=GLASS_THUMB, Cracks=1.0, Crack_Scale=25.0, Chipped_Edges=0.3, Smudges=0.2, Dust=0.1)
+_add('glass_sea', 'Sea Glass', 'GLASS',
+     'Frosted, pitted glass worn smooth by sand and waves.',
+     thumb=dict(zoom=0.25, shape='sphere'), Glass_Color=(0.42, 0.78, 0.55), Weathering=1.0,
+     Color_Variation=0.25, Bubbles=0.2, Scratches=0.0, Smudges=0.0)
 
 # --------------------------------------------------------------------- leather
 LEATHER_THUMB = dict(zoom=0.15)

@@ -31,11 +31,12 @@ MAPS = {
     'BASE_COLOR': ('Base Color', 'BaseColor', 'EMIT', 'Base Color', True),
     'METALLIC': ('Metallic', 'Metallic', 'EMIT', 'Metallic', False),
     'ROUGHNESS': ('Roughness', 'Roughness', 'EMIT', 'Roughness', False),
+    'TRANSMISSION': ('Transmission', 'Transmission', 'EMIT', 'Transmission Weight', False),
     'NORMAL': ('Normal', 'Normal', 'NORMAL', 'Normal', False),
     'HEIGHT': ('Height', 'Height', 'EMIT', None, False),
     'AO': ('Ambient Occlusion', 'AO', 'AO', None, False),
 }
-MAP_ORDER = ('BASE_COLOR', 'METALLIC', 'ROUGHNESS', 'NORMAL', 'HEIGHT', 'AO')
+MAP_ORDER = ('BASE_COLOR', 'METALLIC', 'ROUGHNESS', 'TRANSMISSION', 'NORMAL', 'HEIGHT', 'AO')
 
 QUALITY_SAMPLES = {
     # quality: (color/data samples, ambient occlusion samples)
@@ -433,7 +434,26 @@ class MaterialRig:
                 if col is not None:
                     return col.links[0].from_socket if col.is_linked else tuple(col.default_value)
             return tuple(self.mat.diffuse_color)
-        return {'METALLIC': 0.0, 'ROUGHNESS': 0.5}.get(key)
+        return {'METALLIC': 0.0, 'ROUGHNESS': 0.5, 'TRANSMISSION': 0.0}.get(key)
+
+    def transmissive(self):
+        """True if any part of the material lets light through (glass)."""
+        value = self.source('TRANSMISSION')
+        return is_socket(value) or (value is not None and float(value) > 0.0)
+
+    def ior(self):
+        """Index of refraction (a BPM glass passes its IOR slider straight through)."""
+        if self.bsdf is None or 'IOR' not in self.bsdf.inputs:
+            return 1.5
+        sock = self.bsdf.inputs['IOR']
+        if not sock.is_linked:
+            return float(sock.default_value)
+        link = sock.links[0]
+        slider = link.from_node.inputs.get(link.from_socket.name) if link.from_node.bl_idname == 'ShaderNodeGroup' \
+            else None
+        if slider is not None and not slider.is_linked and hasattr(slider, 'default_value'):
+            return float(slider.default_value)
+        return 1.5
 
     # -- pass setup --------------------------------------------------------
     def set_target(self, image):
@@ -656,7 +676,7 @@ def _save_packed(name, path, size, channels, alpha=False, float_buffer=False):
 
 
 # ---------------------------------------------------------- baked material
-def build_baked_material(name, images, uv_name, directx=False, tag_value=True):
+def build_baked_material(name, images, uv_name, directx=False, tag_value=True, ior=None):
     """Create (or rebuild) an image-texture material from baked maps."""
     mat = bpy.data.materials.get(name)
     if mat is None or not mat.get(L.BAKED_TAG):
@@ -692,6 +712,11 @@ def build_baked_material(name, images, uv_name, directx=False, tag_value=True):
     if 'ROUGHNESS' in images:
         links.new(tex('ROUGHNESS', y).outputs['Color'], bsdf.inputs['Roughness'])
     y -= 300
+    if 'TRANSMISSION' in images:
+        links.new(tex('TRANSMISSION', y).outputs['Color'], bsdf.inputs['Transmission Weight'])
+        bsdf.inputs['IOR'].default_value = ior if ior is not None else 1.5
+        L.setup_glass(mat)
+        y -= 300
     if 'NORMAL' in images:
         node = tex('NORMAL', y)
         nmap = nodes.new('ShaderNodeNormalMap')
@@ -871,6 +896,8 @@ class Job:
             for key in ('AO', 'ROUGHNESS', 'METALLIC'):
                 if key in images:
                     arrays[key] = _pixels(images[key])[:, 0].copy()
+        if 'TRANSMISSION' in images:
+            arrays['TRANSMISSION'] = _pixels(images['TRANSMISSION'])[:, 0].copy()
         for key, img in images.items():
             path = os.path.join(folder, '%s_%s.png' % (set_name, MAPS[key][1]))
             _save(img, path)
@@ -884,6 +911,10 @@ class Job:
             path = os.path.join(folder, '%s_ORM.png' % set_name)
             _save_packed(set_name + '_ORM', path, size, [ao if isinstance(ao, np.ndarray) else np.full(count, ao),
                                                          arrays['ROUGHNESS'], arrays['METALLIC']])
+            self.written.append(path)
+        if 'TRANSMISSION' in arrays:  # alpha for game engines: 1 = opaque, 0 = see-through
+            path = os.path.join(folder, '%s_Opacity.png' % set_name)
+            _save_packed(set_name + '_Opacity', path, size, [1.0 - arrays['TRANSMISSION']] * 3)
             self.written.append(path)
         if s.pack_unity and 'ROUGHNESS' in arrays and 'METALLIC' in arrays:
             metal = arrays['METALLIC']
@@ -1041,6 +1072,10 @@ class ObjectBakeJob(Job):
             rigs = [MaterialRig(m) for m in mats]
 
             keys = [k for k in MAP_ORDER if k in s.maps]
+            glass = [r for r in rigs if r.transmissive()]
+            if 'TRANSMISSION' in keys and not glass:
+                keys.remove('TRANSMISSION')  # opaque: no light goes through anywhere
+            ior = glass[0].ior() if glass else None
             if 'HEIGHT' in keys and all(r.source('HEIGHT') is None for r in rigs):
                 keys.remove('HEIGHT')
                 self.info('"%s": its material has no height information, skipped the height map.' % obj.name)
@@ -1076,7 +1111,7 @@ class ObjectBakeJob(Job):
             stand_ins = {}
             loaded = self._save_set(set_name, self.output_dir, images, s.resolution)
             uv_name = self._commit_uvs(obj.data, uv_name)
-            mat = build_baked_material('%s Baked' % obj.name, loaded, uv_name, s.normal_directx)
+            mat = build_baked_material('%s Baked' % obj.name, loaded, uv_name, s.normal_directx, ior=ior)
             mat['bpm_source_object'] = obj.name
             if s.assign_baked or was_baked:
                 assign_baked(obj, mat)
@@ -1259,14 +1294,18 @@ class TileBakeJob(Job):
         folder = os.path.join(self.output_dir, name + '_Tile')
         os.makedirs(folder, exist_ok=True)
         keys = [k for k in MAP_ORDER if k in s.maps and k != 'AO']
+        rig = MaterialRig(temp_mat)
+        glass = rig.transmissive()
+        ior = rig.ior() if glass else None
+        if not glass and 'TRANSMISSION' in keys:
+            keys.remove('TRANSMISSION')  # opaque: no light goes through anywhere
         # The normal map is computed from the height map (exact and seamless),
         # so height is always baked, even when it is not saved.
         baked = [k for k in keys if k != 'NORMAL']
         if 'NORMAL' in keys and 'HEIGHT' not in baked:
             baked.append('HEIGHT')
-        images = self._make_images('BPM_tmp_' + name, baked, s.resolution)
-        rig = MaterialRig(temp_mat)
         try:
+            images = self._make_images('BPM_tmp_' + name, baked, s.resolution)
             for key in baked:
                 label = MAPS[key][0]
                 yield 'Baking tile %s: %s' % (source_mat.name, label)
@@ -1289,7 +1328,7 @@ class TileBakeJob(Job):
         yield 'Saving tile textures for %s' % source_mat.name
         loaded = self._save_set(name, folder, images, s.resolution)
         if s.create_tile_material:
-            mat = build_tiled_material('%s Tiled' % source_mat.name, loaded, s.tile_size, s.normal_directx)
+            mat = build_tiled_material('%s Tiled' % source_mat.name, loaded, s.tile_size, s.normal_directx, ior)
             self.tile_materials.append(mat)
         self.info('Made seamless tile "%s" (%d maps) in %s' % (source_mat.name, len(loaded), folder))
         self.done_steps += 1
@@ -1330,9 +1369,9 @@ def normal_from_height(height, texel_size, distance, strength=1.0, directx=False
     return n * 0.5 + 0.5
 
 
-def build_tiled_material(name, images, tile_size, directx=False):
+def build_tiled_material(name, images, tile_size, directx=False, ior=None):
     """Material using the seamless textures on the object's UVs (Mapping node = repeat count)."""
-    mat = build_baked_material(name, images, '', directx, tag_value='TILE')
+    mat = build_baked_material(name, images, '', directx, tag_value='TILE', ior=ior)
     tree = mat.node_tree
     uv = next(n for n in tree.nodes if n.bl_idname == 'ShaderNodeUVMap')
     coord = tree.nodes.new('ShaderNodeTexCoord')
