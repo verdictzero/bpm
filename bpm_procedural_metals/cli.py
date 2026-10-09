@@ -11,6 +11,7 @@ Run through the ``bpm_cli.py`` script next to this add-on folder, for example::
     blender -b model.blend -P bpm_cli.py -- apply --preset dirt_grime --objects selected --save
     blender -b model.blend -P bpm_cli.py -- bake --objects Body,Lid --size 2048 --out ./textures
     blender -b model.blend -P bpm_cli.py -- auto --objects all --size 2048 --save
+    blender -b model.blend -P bpm_cli.py -- maps --objects all --save
 """
 
 import argparse
@@ -20,6 +21,7 @@ import bpy
 
 from . import bake as B
 from . import library as L
+from . import meshmaps as M
 from . import presets as P
 
 MAP_NAMES = {
@@ -76,8 +78,37 @@ def _parser():
     auto.add_argument('--objects', default='all', help='Comma separated names, or "selected"/"active"/"all" '
                                                        '(default: all meshes)')
     auto.add_argument('--save', action='store_true', help='Save the .blend file afterwards')
+    auto.add_argument('--no-shape-analysis', action='store_true',
+                      help='Do not analyze the shape (mesh maps) of objects that have no up-to-date analysis')
     bake_options(auto)
+    maps_options(auto, '--maps-')
+
+    maps = sub.add_parser('maps', help='Analyze the shape of objects (mesh maps: edges, corners, occlusion) '
+                                       'so edge wear and grime follow it exactly')
+    maps.add_argument('--objects', default='all', help='Comma separated names, or "selected"/"active"/"all"')
+    maps.add_argument('--remove', action='store_true', help='Remove the mesh maps instead')
+    maps.add_argument('--save', action='store_true', help='Save the .blend file afterwards')
+    maps.add_argument('--gpu', action='store_true', help='Use the GPU if one is configured')
+    maps_options(maps)
     return parser
+
+
+def maps_options(p, prefix='--'):
+    p.add_argument(prefix + 'size', dest='maps_size', type=int, default=1024,
+                   help='Mesh map size in pixels (default 1024)')
+    p.add_argument(prefix + 'quality', dest='maps_quality', choices=['fast', 'good', 'best'], default='good')
+    p.add_argument('--edge-reach', type=float, default=5.0, help='Edge reach in %% of the object size (default 5)')
+    p.add_argument('--corner-reach', type=float, default=8.0, help='Corner reach in %% of the object size (default 8)')
+    p.add_argument('--occlusion-reach', type=float, default=25.0,
+                   help='Occlusion reach in %% of the object size (default 25)')
+    p.add_argument('--alone', action='store_true', help='Analyze each object on its own (ignore other objects)')
+
+
+def _maps_settings(args):
+    return M.MapsSettings(resolution=args.maps_size, quality=args.maps_quality.upper(),
+                          edge_reach=args.edge_reach / 100.0, cavity_reach=args.corner_reach / 100.0,
+                          occlusion_reach=args.occlusion_reach / 100.0, other_objects=not args.alone,
+                          device='AUTO' if args.gpu else 'CPU')
 
 
 def _objects(spec):
@@ -212,11 +243,30 @@ def main(argv=None):
         else:
             settings = _settings(args, assign_baked=not args.keep_material)
         job = B.ObjectBakeJob(bpy.context, objs, settings)
+        if args.command == 'auto' and not args.no_shape_analysis:
+            job = M.analyze_then_bake(bpy.context, objs, job, _maps_settings(args))
         try:
             B.run_to_end(job)
         except B.BakeError as exc:
             raise SystemExit('BPM error: %s' % exc)
         _print_messages(job)
+        if args.save:
+            if not bpy.data.filepath:
+                raise SystemExit('Cannot --save: open a .blend file first.')
+            bpy.ops.wm.save_mainfile()
+
+    if args.command == 'maps':
+        objs = _objects(args.objects)
+        if args.remove:
+            count = M.remove({o.data for o in objs if o.type == 'MESH' and o.data.library is None})
+            print('BPM: removed the mesh maps of %d mesh%s' % (count, 'es' * (count != 1)))
+        else:
+            job = M.MapsJob(bpy.context, objs, _maps_settings(args))
+            try:
+                B.run_to_end(job)
+            except B.BakeError as exc:
+                raise SystemExit('BPM error: %s' % exc)
+            _print_messages(job)
         if args.save:
             if not bpy.data.filepath:
                 raise SystemExit('Cannot --save: open a .blend file first.')

@@ -34,7 +34,7 @@ CHANNELS = (
     ('Coat', 'FLOAT', 0.0),
     ('Transmission', 'FLOAT', 0.0),
 )
-OVERLAY_VERSION = 2  # 2: Transmission channel (older overlay groups do not have it)
+OVERLAY_VERSION = 3  # 2: Transmission channel (older overlay groups do not have it), 3: mesh maps
 OUTPUTS = [(name, kind) for name, kind, _ in CHANNELS]
 CHANNEL_NAMES = tuple(name for name, _kind, _default in CHANNELS)
 BELOW = 'Material Below'

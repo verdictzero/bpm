@@ -51,6 +51,7 @@ QUALITY_SAMPLES = {
 
 FALLBACK_DIR = os.path.join(os.path.expanduser('~'), 'BPM_Textures')
 BAKE_UV_NAME = 'BPM_Bake'
+MAPS_UV_NAME = 'BPM_Maps'  # the mesh maps' own UVs (meshmaps.py): never baked with
 UV_TEMP_NAME = 'BPM_Bake_New'  # fresh UVs live here until their bake has succeeded
 
 
@@ -335,6 +336,8 @@ def commit_uvs(mesh, uv_name):
             layers[uv_name].name = BAKE_UV_NAME
     move_uv_first(mesh, BAKE_UV_NAME)
     layers.active = layers[BAKE_UV_NAME]
+    if any(layer.active_render and layer.name == MAPS_UV_NAME for layer in layers):
+        layers[BAKE_UV_NAME].active_render = True
     return BAKE_UV_NAME
 
 
@@ -1177,9 +1180,12 @@ class ObjectBakeJob(Job):
         if mesh.name in self._uv_names:
             return self._uv_names[mesh.name]
         layers = mesh.uv_layers
-        need_new = s.force_new_uv or len(layers) == 0
+        usable = [layer for layer in layers if layer.name != MAPS_UV_NAME]
+        if layers.active is not None and layers.active.name != MAPS_UV_NAME:
+            usable.insert(0, layers.active)
+        need_new = s.force_new_uv or not usable
         if not need_new:
-            active = layers.active or layers[0]
+            active = usable[0]
             area, lo, hi = uv_stats(mesh, active)
             if area < 1e-6:
                 need_new = True
@@ -1194,7 +1200,7 @@ class ObjectBakeJob(Job):
             raise BakeError('"%s" needs a usable UV map. Enable "Auto UV Unwrap" or unwrap it '
                             'yourself (Edit Mode > U > Smart UV Project).' % obj.name)
         if not need_new:
-            uv_name = (layers.active or layers[0]).name
+            uv_name = usable[0].name
             self._uv_names[mesh.name] = uv_name
             return uv_name
         yield 'Unwrapping %s' % obj.name

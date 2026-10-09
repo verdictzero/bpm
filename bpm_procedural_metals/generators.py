@@ -16,7 +16,7 @@ from . import (mat_camo, mat_concrete, mat_fabric, mat_glass, mat_leather, mat_l
 from .gencommon import MACRO_BUMP, MICRO_BUMP, TILE_PARAM  # noqa: F401  (used by bake.py / tests)
 from .nodebuilder import Builder, auto_layout, create_group
 
-GENERATOR_VERSION = 1
+GENERATOR_VERSION = 2  # 2: edge and cavity masks read the mesh maps
 
 GENERATORS = {}
 

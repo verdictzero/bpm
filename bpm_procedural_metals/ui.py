@@ -9,6 +9,7 @@ from . import bake as B
 from . import decals as D
 from . import generators as G
 from . import library as L
+from . import meshmaps as M
 from . import overlays as O
 from . import presets as P
 from . import previews
@@ -297,6 +298,51 @@ class BPM_PT_decals(bpy.types.Panel):
                               'does it by itself).')
 
 
+class BPM_PT_mesh_maps(bpy.types.Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = CATEGORY
+    bl_label = 'Shape Analysis'
+
+    STATUS = {
+        'NONE': ('Not analyzed: edges and corners are found live (Cycles only).', 'INFO'),
+        'OK': ('Analyzed: edge wear and grime follow its shape.', 'CHECKMARK'),
+        'OUTDATED': ('The mesh changed since its analysis: analyze it again.', 'ERROR'),
+        'BROKEN': ('Its mesh maps were lost (UV map or image deleted): analyze it again.', 'ERROR'),
+    }
+
+    def draw(self, context):
+        layout = self.layout
+        props = context.scene.bpm
+        _wrap(layout, context, 'Finds the outer edges, inner corners and enclosed areas of each object once, '
+                               'so edge wear lands exactly on the edges and dirt fills every corner and inset '
+                               '(also in Material Preview).')
+        obj = context.active_object
+        if obj is not None and obj.type == 'MESH':
+            text, icon = self.STATUS[M.status(obj)]
+            _wrap(layout.box(), context, '%s: %s' % (obj.name, text), icon)
+        layout.label(text='Objects')
+        layout.row().prop(props, 'bake_scope', expand=True)
+        objs = B.scope_objects(context, props.bake_scope)
+        count = len([o for o in objs if M.skip_reason(context, o) is None])
+        col = layout.column()
+        col.scale_y = 1.5
+        col.enabled = count > 0
+        col.operator('bpm.analyze_shape', icon='MOD_EDGESPLIT',
+                     text='Analyze Shape of %d Object%s' % (count, 's' * (count != 1)) if count else 'Analyze Shape')
+        header, body = layout.panel('bpm_maps_options', default_closed=True)
+        header.label(text='Options')
+        if body is not None:
+            col = body.column()
+            col.prop(props, 'maps_resolution')
+            col.row().prop(props, 'maps_quality', expand=True)
+            col.prop(props, 'maps_edge_reach')
+            col.prop(props, 'maps_cavity_reach')
+            col.prop(props, 'maps_occlusion_reach')
+            col.prop(props, 'maps_other_objects')
+            col.operator('bpm.remove_mesh_maps', icon='TRASH')
+
+
 class BPM_OT_load_preset_menu(bpy.types.Operator):
     """Load the settings of another preset into this material"""
     bl_idname = 'bpm.load_preset_menu'
@@ -413,6 +459,7 @@ class BPM_PT_bake(bpy.types.Panel):
         col.enabled = count > 0
         col.operator('bpm.auto_texture', text='Auto Texture %s' % things if count else 'Auto Texture',
                      icon='SHADING_TEXTURE')
+        layout.prop(props, 'auto_mesh_maps')
         if count:
             _wrap(layout, context, 'New UVs (Smart UV Project + Pack Islands), bake, save and apply: '
                                    'all in one click.')
@@ -463,8 +510,8 @@ class BPM_PT_help(bpy.types.Panel):
             _wrap(layout, context, text)
 
 
-CLASSES = (BPM_OT_load_preset_menu, BPM_PT_library, BPM_PT_adjust, BPM_PT_overlays, BPM_PT_decals, BPM_PT_bake,
-           BPM_PT_help)
+CLASSES = (BPM_OT_load_preset_menu, BPM_PT_library, BPM_PT_adjust, BPM_PT_overlays, BPM_PT_decals, BPM_PT_mesh_maps,
+           BPM_PT_bake, BPM_PT_help)
 
 
 def register():

@@ -25,7 +25,7 @@ bl_info = {
 
 _SUBMODULES = ('nodebuilder', 'features', 'gencommon', 'mat_metal', 'mat_paint', 'mat_camo', 'mat_concrete', 'mat_wood',
                'mat_plastic', 'mat_glass', 'mat_lens', 'mat_leather', 'mat_fabric', 'mat_organic', 'overlays',
-               'generators', 'presets', 'library', 'decals', 'bake', 'props', 'previews', 'operators', 'ui')
+               'generators', 'presets', 'library', 'decals', 'bake', 'meshmaps', 'props', 'previews', 'operators', 'ui')
 
 if "bpy" in locals():  # support "Reload Scripts"
     import importlib
@@ -38,7 +38,7 @@ import bpy  # noqa: E402,F401
 from . import nodebuilder, features, gencommon  # noqa: E402,F401
 from . import mat_metal, mat_paint, mat_camo, mat_concrete, mat_wood, mat_plastic  # noqa: E402,F401
 from . import mat_glass, mat_lens, mat_leather, mat_fabric, mat_organic  # noqa: E402,F401
-from . import overlays, generators, presets, library, decals, bake  # noqa: E402,F401
+from . import overlays, generators, presets, library, decals, bake, meshmaps  # noqa: E402,F401
 from . import props, previews, operators, ui  # noqa: E402
 
 _MODULES = (decals, props, previews, operators, ui)

@@ -37,6 +37,44 @@ def ensure_group(generator, tile=False):
     return G.build_group(generator, tile)
 
 
+def is_outdated_group(tree):
+    """True for a BPM group built by an older version of the add-on (rebuildable)."""
+    if not is_bpm_group(tree) or tree.library:
+        return False
+    spec = G.GENERATORS[tree['bpm_generator']]
+    return not spec['custom'] and tree.get('bpm_version') != spec['version']
+
+
+def upgrade_groups(mat):
+    """Switch a material's BPM nodes to the current node groups, keeping values and links.
+
+    Returns how many nodes were upgraded.
+    """
+    if mat is None or mat.node_tree is None:
+        return 0
+    tree = mat.node_tree
+    count = 0
+    for node in list(tree.nodes):
+        if node.bl_idname != 'ShaderNodeGroup' or not is_outdated_group(node.node_tree):
+            continue
+        old = node.node_tree
+        values = read_values(node)
+        inputs = [(l.to_socket.name, l.from_socket) for l in tree.links if l.to_node == node]
+        outputs = [(l.from_socket.name, l.to_socket) for l in tree.links if l.from_node == node]
+        node.node_tree = ensure_group(old['bpm_generator'], bool(old.get('bpm_tile')))
+        for name, src in inputs:
+            sock = node.inputs.get(name)
+            if sock is not None and not sock.is_linked:
+                tree.links.new(src, sock)
+        for name, dst in outputs:
+            sock = node.outputs.get(name)
+            if sock is not None and not dst.is_linked:
+                tree.links.new(sock, dst)
+        apply_values(node, values)
+        count += 1
+    return count
+
+
 def is_bpm_group(tree):
     return tree is not None and tree.get('bpm_generator') in G.GENERATORS
 

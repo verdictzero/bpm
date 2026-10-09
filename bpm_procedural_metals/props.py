@@ -109,6 +109,37 @@ class BPM_Settings(bpy.types.PropertyGroup):
         name='Tile Size', default=1.0, min=0.01, soft_max=10.0, subtype='DISTANCE', unit='LENGTH',
         description='How much real-world surface one seamless tile shows')
 
+    # --- mesh maps
+    maps_resolution: EnumProperty(
+        name='Map Size', items=RESOLUTIONS[:4], default='1024',
+        description='Size of each object\'s mesh maps in pixels (1K is plenty for most objects)')
+    maps_quality: EnumProperty(
+        name='Quality',
+        items=[('FAST', 'Fast', 'Quick analysis (slightly rough bands)'),
+               ('GOOD', 'Good', 'Clean result, recommended'),
+               ('BEST', 'Best', 'Smoothest result, slowest')],
+        default='GOOD')
+    maps_edge_reach: FloatProperty(
+        name='Edge Reach', default=5.0, min=0.5, max=25.0, subtype='PERCENTAGE', precision=1,
+        description='How far from an outer edge the analysis looks, as a share of the object\'s size. '
+                    'Edge wear can be at most about half as wide')
+    maps_cavity_reach: FloatProperty(
+        name='Corner Reach', default=8.0, min=0.5, max=25.0, subtype='PERCENTAGE', precision=1,
+        description='How far out of inner corners and creases dirt can build up, as a share of the '
+                    'object\'s size')
+    maps_occlusion_reach: FloatProperty(
+        name='Occlusion Reach', default=25.0, min=1.0, max=100.0, subtype='PERCENTAGE', precision=0,
+        description='How far the analysis looks for enclosing surfaces (pockets, insets, the ground), as a '
+                    'share of the object\'s size')
+    maps_other_objects: BoolProperty(
+        name='Include Other Objects', default=True,
+        description='Other objects nearby (the floor, parts touching each other) also make corners and '
+                    'shade the object. Off: each object is analyzed on its own')
+    auto_mesh_maps: BoolProperty(
+        name='Analyze Shape First', default=True,
+        description='Auto Texture: analyze the shape of objects without (up-to-date) mesh maps before '
+                    'baking, so edge wear and grime follow the edges and corners exactly')
+
     # --- decals
     decal_image: PointerProperty(
         type=bpy.types.Image, name='Decal Image',

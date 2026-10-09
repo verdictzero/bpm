@@ -11,6 +11,7 @@ from bpy.props import EnumProperty, FloatProperty, FloatVectorProperty, IntPrope
 from . import bake as B
 from . import decals as D
 from . import library as L
+from . import meshmaps as M
 from . import presets as P
 from .nodebuilder import set_socket_value
 
@@ -551,7 +552,46 @@ class BPM_OT_auto_texture(_BakeRunner, bpy.types.Operator):
         settings = B.BakeSettings.from_props(context.scene.bpm)
         settings.force_new_uv = True
         settings.assign_baked = True
-        return B.ObjectBakeJob(context, _scope_objects(context), settings)
+        objects = _scope_objects(context)
+        job = B.ObjectBakeJob(context, objects, settings)
+        props = context.scene.bpm
+        if props.auto_mesh_maps:
+            job = M.analyze_then_bake(context, objects, job, M.MapsSettings.from_props(props))
+        return job
+
+
+class BPM_OT_analyze_shape(_BakeRunner, bpy.types.Operator):
+    """Analyze the shape of the objects (outer edges, inner corners, occlusion) once, like the curvature and
+AO maps of texture painting programs: edge wear and grime then follow the shape exactly and look the same in
+Material Preview (EEVEE) and Cycles. Run it again after editing a mesh. Esc cancels"""
+    bl_idname = 'bpm.analyze_shape'
+    bl_label = 'Analyze Shape'
+    undo_message = 'BPM Analyze Shape'
+
+    def _make_job(self, context):
+        return M.MapsJob(context, _scope_objects(context), M.MapsSettings.from_props(context.scene.bpm))
+
+
+class BPM_OT_remove_mesh_maps(bpy.types.Operator):
+    """Remove the mesh maps of the objects: their materials go back to live edge and cavity detection"""
+    bl_idname = 'bpm.remove_mesh_maps'
+    bl_label = 'Remove Mesh Maps'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        try:
+            objs = _scope_objects(context)
+        except B.BakeError as exc:
+            self.report({'ERROR'}, str(exc))
+            return {'CANCELLED'}
+        meshes = {o.data for o in objs if o.type == 'MESH' and o.data.library is None and o.data.get(M.FLAG)}
+        if not meshes:
+            self.report({'INFO'}, 'These objects have no mesh maps.')
+            return {'CANCELLED'}
+        M.remove(meshes)
+        self.report({'INFO'}, 'Removed the mesh maps of %d mesh%s.' % (len(meshes), 'es' * (len(meshes) != 1)))
+        _redraw(context)
+        return {'FINISHED'}
 
 
 class BPM_OT_open_folder(bpy.types.Operator):
@@ -854,6 +894,8 @@ CLASSES = (
     BPM_OT_overlay_seed,
     BPM_OT_bake,
     BPM_OT_auto_texture,
+    BPM_OT_analyze_shape,
+    BPM_OT_remove_mesh_maps,
     BPM_OT_open_folder,
     BPM_OT_show_procedural,
     BPM_OT_show_baked,

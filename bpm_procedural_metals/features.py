@@ -249,10 +249,51 @@ class Space:
 
 
 # ------------------------------------------------------------------- masks
-def edge_mask(b, space, radius):
-    """~1 on convex edges, 0 on flat areas (Cycles and baking only).
+def mesh_maps(b):
+    """Sockets of the analyzed mesh maps (meshmaps.py), made once per node group.
 
-    Two detectors are combined:
+    Returns a dict: has (1 when the object's mesh was analyzed), convex, concave,
+    occlusion (0..1 channels) and edge_reach / cavity_reach (meters).
+    """
+    maps = getattr(b, '_bpm_mesh_maps', None)
+    if maps is not None:
+        return maps
+    from . import meshmaps as M  # meshmaps imports the material library
+
+    uv = b.node('ShaderNodeUVMap', label='Mesh Maps UV')
+    uv.uv_map = M.UV_NAME
+    tex = b.node('ShaderNodeTexImage', label='Mesh Maps')
+    tex.image = M.ensure_image()
+    tex.interpolation = 'Linear'
+    tex.extension = 'EXTEND'
+    b.feed(tex.inputs['Vector'], uv.outputs['UV'])
+    convex, concave, occlusion = b.separate_color(tex.outputs['Color'])
+
+    def attribute(name):
+        node = b.node('ShaderNodeAttribute', label=name)
+        node.attribute_type = 'OBJECT'
+        node.attribute_name = name
+        return node.outputs['Fac']
+
+    # reaches are stored in object units: convert to meters like the coordinates
+    axes = [b.vmath('LENGTH', b.vector_transform(axis)) for axis in ((1, 0, 0), (0, 1, 0), (0, 0, 1))]
+    scale = b.mul(b.add(b.add(axes[0], axes[1]), axes[2]), 1.0 / 3.0)
+    maps = b._bpm_mesh_maps = {
+        'has': b.clamp01(attribute(M.FLAG)),
+        'convex': convex,
+        'concave': concave,
+        'occlusion': occlusion,
+        'edge_reach': b.maximum(b.mul(attribute(M.EDGE), scale), 1e-4),
+        'cavity_reach': b.maximum(b.mul(attribute(M.CAVITY), scale), 1e-4),
+    }
+    return maps
+
+
+def edge_mask(b, space, radius):
+    """~1 on convex edges (a band about `radius` meters wide), 0 on flat areas.
+
+    Analyzed objects (mesh maps) get an exact band that works in EEVEE too.
+    Others use two live detectors (Cycles and baking only):
     * the Bevel node catches sharp edges (also on thin sheets),
     * "inside" ambient occlusion catches rounded / bevelled edges.  Its result is
       faded out again when (nearly) every ray is blocked, which is what happens
@@ -272,18 +313,38 @@ def edge_mask(b, space, radius):
     b.feed(ao.inputs['Distance'], b.mul(radius, 3.0))
     occlusion = b.one_minus(ao.outputs['AO'])
     rounded = b.mul(b.smoothstep(0.13, 0.4, occlusion), b.one_minus(b.smoothstep(0.8, 0.97, occlusion)))
-    return b.maximum(sharp, rounded)
+    live = b.maximum(sharp, rounded)
+
+    maps = mesh_maps(b)
+    reach = maps['edge_reach']
+    x = b.mul(b.one_minus(maps['convex']), reach)  # meters to the nearest edge
+    w = b.minimum(radius, b.mul(reach, 0.52))      # the map knows nothing past its reach
+    baked = b.one_minus(b.smoothstep(b.mul(w, 0.45), b.mul(w, 1.9), x))
+    return b.mix(maps['has'], live, baked)
 
 
 def cavity_mask(b, space, distance):
-    """~1 in crevices and corners (Cycles; approximate in EEVEE)."""
+    """~1 in crevices, inner corners and enclosed areas (`distance`: meters they reach out).
+
+    Analyzed objects (mesh maps) get solid fills that work in EEVEE too; others
+    use live ambient occlusion (Cycles; approximate in EEVEE).
+    """
     if space.tile:
         return 0.0
     ao = b.node('ShaderNodeAmbientOcclusion', label='Cavity')
     ao.samples = 8
     ao.only_local = True
     b.feed(ao.inputs['Distance'], distance)
-    return b.smoothstep(0.05, 0.65, b.one_minus(ao.outputs['AO']))
+    live = b.smoothstep(0.05, 0.5, b.one_minus(ao.outputs['AO']))
+
+    maps = mesh_maps(b)
+    reach = maps['cavity_reach']
+    x = b.mul(b.one_minus(maps['concave']), reach)   # meters to the nearest inner corner
+    d = b.minimum(distance, reach)
+    crease = b.one_minus(b.smoothstep(0.0, b.mul(d, 0.8), x))
+    deep = b.mul(b.smoothstep(0.3, 0.75, maps['occlusion']), 0.85)  # insets, pockets, contact areas
+    baked = b.maximum(crease, deep)
+    return b.mix(maps['has'], live, baked)
 
 
 _SIGMA_BY_DETAIL = ((1.5, 0.090), (2.0, 0.082), (3.0, 0.076), (4.0, 0.069), (5.0, 0.068),
