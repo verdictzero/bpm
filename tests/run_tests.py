@@ -25,7 +25,9 @@ sys.path.insert(0, ROOT)
 import bpm_procedural_metals as addon  # noqa: E402
 from bpm_procedural_metals import bake as B  # noqa: E402
 from bpm_procedural_metals import generators as G  # noqa: E402
+from bpm_procedural_metals import features as F  # noqa: E402
 from bpm_procedural_metals import library as L  # noqa: E402
+from bpm_procedural_metals import meshmaps as M  # noqa: E402
 from bpm_procedural_metals import presets as P  # noqa: E402
 
 TMP = tempfile.mkdtemp(prefix='bpm_tests_')
@@ -1308,6 +1310,263 @@ def command_line_tool():
     assert os.path.exists(os.path.join(out, 'Kevlar_Aramid_Tile', 'Kevlar_Aramid_BaseColor.png'))
     res = subprocess.run(cmd[:6] + ['list'], capture_output=True, text=True, timeout=300)
     assert 'carbon' in res.stdout and 'dust_light' in res.stdout
+
+
+# ------------------------------------------------------------- mesh maps
+def grid_box(name, half=0.5, location=(0, 0, 0)):
+    """A box made of grids that are finer near the edges (exact sample points for the mesh maps)."""
+    import bmesh
+    fine = [0.0, 0.005, 0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.08, 0.1, 0.15, 0.25]
+    ax = sorted({round(v, 6) for d in fine for v in (-half + d, half - d, d, -d)} | {-half, 0.0, half})
+    ax = [a for a in ax if -half <= a <= half]
+    bm = bmesh.new()
+    n = len(ax)
+
+    def grid(fn):
+        vs = [[bm.verts.new(fn(ax[i], ax[j])) for j in range(n)] for i in range(n)]
+        for i in range(n - 1):
+            for j in range(n - 1):
+                bm.faces.new((vs[i][j], vs[i + 1][j], vs[i + 1][j + 1], vs[i][j + 1]))
+    h = half
+    for fn in (lambda a, b: (a, b, h), lambda a, b: (b, a, -h), lambda a, b: (b, h, a),
+               lambda a, b: (a, -h, b), lambda a, b: (h, a, b), lambda a, b: (-h, b, a)):
+        grid(fn)
+    bmesh.ops.remove_doubles(bm, verts=bm.verts, dist=1e-6)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new(name)
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new(name, mesh)
+    obj.location = location
+    bpy.context.scene.collection.objects.link(obj)
+    return obj
+
+
+def maps_tile(mesh):
+    """Pixels (rows from the bottom) of a mesh's tile of the mesh maps image."""
+    data = M._tile_files(M.find_image())[int(mesh[M.TILE])]
+    path = os.path.join(TMP, 'tile_%d.png' % mesh[M.TILE])
+    with open(path, 'wb') as f:
+        f.write(data)
+    return read_png(path)
+
+
+def maps_at_loops(mesh):
+    px = maps_tile(mesh)
+    du, dv = M.tile_offset(mesh[M.TILE])
+    return sample(px, uv_array(mesh, M.UV_NAME) - (du, dv))
+
+
+@test
+def mesh_maps_measure_edges_and_corners():
+    fresh_scene()
+    box = grid_box('Box')
+    box.scale = (2.0, 2.0, 2.0)  # 2 m box: reaches are stored in object units
+    bpy.ops.mesh.primitive_cube_add(size=1.0, location=(-0.5, 0.0, 1.5))  # a block standing on top
+    bpy.context.view_layer.update()
+    job = M.analyze(bpy.context, [box], M.MapsSettings(resolution=512, quality='GOOD'))
+    assert job.analyzed == ['Box'], job.messages
+    mesh = box.data
+    assert M.status(box) == 'OK' and int(mesh[M.TILE]) == M.FIRST_TILE
+    edge, cavity = mesh[M.EDGE], mesh[M.CAVITY]
+    assert abs(edge - 0.05) < 1e-6 and abs(cavity - 0.15) < 1e-6, (edge, cavity)  # 5 % / 15 % of 2 m, in object units
+    values = maps_at_loops(mesh)
+    co = np.array([mesh.vertices[l.vertex_index].co[:] for l in mesh.loops])
+    normal = np.array([mesh.polygons[i].normal[:] for i, p in enumerate(mesh.polygons) for _ in p.loop_indices])
+    top = (np.abs(co[:, 2] - 0.5) < 1e-6) & (normal[:, 2] > 0.99) & (np.abs(co[:, 1]) < 0.2)
+    for d in (0.01, 0.02, 0.03, 0.04, 0.06, 0.1, 0.25):
+        rows = top & (np.abs((0.5 - co[:, 0]) - d) < 1e-6)  # distance to the outer edge at x = 0.5
+        convex = values[rows, 0].mean()
+        expected = max(0.0, 1.0 - d / edge)
+        assert abs(convex - expected) < 0.12, ('convex', d, convex, expected)
+        rows = top & (np.abs(co[:, 0] - d) < 1e-6)  # distance to the block's wall at x = 0
+        concave = values[rows, 1].mean()
+        expected = max(0.0, 1.0 - d / cavity)
+        assert abs(concave - expected) < 0.12, ('concave', d, concave, expected)
+    flat = top & (np.abs(co[:, 0] - 0.25) < 1e-6)
+    assert values[flat, :3].max() < 0.05, values[flat, :3].max()
+
+
+def mask_material():
+    """Emission = (edge mask, cavity mask, 0), like the materials use them."""
+    mat = bpy.data.materials.new('Masks')
+    tree = L.ensure_node_tree(mat)
+    tree.nodes.clear()
+    from bpm_procedural_metals.nodebuilder import Builder
+    b = Builder(tree)
+    space = F.Space(b, False, 1.0, 0.0)
+    emission = b.node('ShaderNodeEmission')
+    b.feed(emission.inputs['Color'], b.combine(F.edge_mask(b, space, 0.04), F.cavity_mask(b, space, 0.2), 0.0))
+    out = b.node('ShaderNodeOutputMaterial')
+    tree.links.new(emission.outputs[0], out.inputs['Surface'])
+    return mat
+
+
+def bake_masks(obj, mat, size=128):
+    """Bake the mask material of `obj` through its UVMap (Cycles)."""
+    bpy.context.scene.render.engine = 'CYCLES'
+    bpy.context.scene.cycles.samples = 16
+    img = bpy.data.images.new('mask_' + obj.name, size, size, float_buffer=True)
+    tex = mat.node_tree.nodes.new('ShaderNodeTexImage')
+    tex.image = img
+    mat.node_tree.nodes.active = tex
+    with bpy.context.temp_override(active_object=obj, selected_objects=[obj], object=obj):
+        bpy.ops.object.bake(type='EMIT', margin=2, uv_layer='UVMap')
+    px = np.empty(size * size * 4, dtype=np.float32)
+    img.pixels.foreach_get(px)
+    mat.node_tree.nodes.remove(tex)
+    return px.reshape(size, size, 4)
+
+
+@test
+def mesh_maps_drive_the_masks():
+    fresh_scene()
+    cubes = [add_cube('Analyzed', location=(0, 0, 0)), add_cube('Live', location=(5, 0, 0))]
+    mat = mask_material()
+    for obj in cubes:
+        obj.data.materials.append(mat)
+    M.analyze(bpy.context, cubes[:1], M.MapsSettings(resolution=256, quality='FAST'))
+    for obj in cubes:
+        obj.select_set(False)
+    for obj in cubes:
+        px = bake_masks(obj, mat)
+        centers = sample(px, face_uv_centers(obj.data, 'UVMap'))
+        uv = uv_array(obj.data, 'UVMap')
+        mid = np.repeat(face_uv_centers(obj.data, 'UVMap'), 4, axis=0)
+        near_corner = sample(px, uv + (mid - uv) * 0.03)
+        assert centers[:, :2].max() < 0.05, (obj.name, centers[:, :2].max())
+        assert near_corner[:, 0].min() > 0.8, (obj.name, near_corner[:, 0].min())  # both detect the edges
+        if obj.name == 'Analyzed':
+            assert near_corner[:, 1].max() < 0.05  # a lone cube has no inner corners
+
+
+@test
+def mesh_maps_fill_corners_with_grime():
+    """Grime packs solidly into the corner where an object stands on the floor."""
+    fresh_scene()
+    box = add_cube('Box')
+    bpy.ops.mesh.primitive_plane_add(size=10.0, location=(0.0, 0.0, -1.0))
+    mat = mask_material()
+    box.data.materials.append(mat)
+    M.analyze(bpy.context, [box], M.MapsSettings(resolution=256, quality='GOOD'))
+    box.select_set(False)
+    px = bake_masks(box, mat)
+    mesh = box.data
+    uv = uv_array(mesh, 'UVMap')
+    for height, low, high in ((0.03, 0.85, 1.01), (0.08, 0.2, 0.7), (0.5, -1.0, 0.05)):  # solid, fading, clean
+        points = []
+        for poly in mesh.polygons:
+            if abs(poly.normal.z) > 0.5:
+                continue
+            loops = sorted(poly.loop_indices, key=lambda i: mesh.vertices[mesh.loops[i].vertex_index].co.z)
+            bottom, top = uv[loops[:2]].mean(axis=0), uv[loops[2:]].mean(axis=0)
+            points.append(bottom + (top - bottom) * height)
+        cavity = sample(px, np.array(points))[:, 1]
+        assert low < cavity.min() and cavity.max() < high, (height, cavity)
+
+
+@test
+def mesh_maps_storage_and_sharing():
+    fresh_scene()
+    a = add_cube('A')
+    b = add_cube('B', location=(5, 0, 0))
+    twin = bpy.data.objects.new('Twin', a.data)  # linked duplicate
+    bpy.context.scene.collection.objects.link(twin)
+    twin.location = (0, 5, 0)
+    mat = L.create_material('paint_industrial_yellow')
+    for obj in (a, b):
+        obj.data.materials.append(mat)
+    old = L.find_bpm_node(mat).node_tree
+    old['bpm_version'] = -1  # pretend: made by an older add-on version
+    L.find_bpm_node(mat).inputs['Scale'].default_value = 3.25
+    job = M.analyze(bpy.context, [a, b, twin], M.MapsSettings(resolution=64, quality='FAST'))
+    assert sorted(job.analyzed) == ['A', 'B', 'Twin'], job.messages
+    assert job.upgraded == 1
+    node = L.find_bpm_node(mat)
+    assert node.node_tree != old and not L.is_outdated_group(node.node_tree)
+    assert abs(node.inputs['Scale'].default_value - 3.25) < 1e-6 and node.outputs[0].is_linked
+    img = M.find_image()
+    assert M.tile_numbers(img) == {1001, 1002, 1003}, M.tile_numbers(img)
+    assert {a.data[M.TILE], b.data[M.TILE]} == {1002, 1003}
+    assert a.data.uv_layers.active.name == 'UVMap' and M.UV_NAME in a.data.uv_layers
+    assert [layer.name for layer in a.data.uv_layers if layer.active_render] == ['UVMap']
+    # saved and opened again
+    blend = os.path.join(TMP, 'maps', 'maps.blend')
+    os.makedirs(os.path.dirname(blend), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=blend)
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    a, b = bpy.data.objects['A'], bpy.data.objects['B']
+    assert M.status(a) == M.status(b) == 'OK'
+    img = M.find_image()
+    assert M.tile_numbers(img) == {1001, 1002, 1003} and img.packed_files
+    before_b = maps_tile(b.data)
+    assert before_b[..., 0].max() > 0.5  # edges were stored
+    # editing the mesh outdates its maps
+    a.data.vertices[0].co.x += 0.1
+    assert M.status(a) == 'OUTDATED'
+    # removing one keeps the other's tile
+    M.remove([a.data])
+    assert M.status(a) == 'NONE' and M.UV_NAME not in a.data.uv_layers
+    assert M.tile_numbers(M.find_image()) == {1001, int(b.data[M.TILE])}
+    assert np.abs(maps_tile(b.data) - before_b).max() < 1e-3
+    M.remove([b.data])
+    assert M.tile_numbers(M.find_image()) == {1001}
+
+
+@test
+def mesh_maps_and_baking():
+    fresh_scene()
+    obj = add_cube('Crate', uv=False)
+    obj.data.materials.append(L.create_material('paint_industrial_yellow'))
+    L.add_overlay(obj.active_material, 'DIRT')
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    props = bpy.context.scene.bpm
+    props.bake_scope = 'ACTIVE'
+    props.maps_resolution = '512'
+    props.maps_quality = 'FAST'
+    assert bpy.ops.bpm.analyze_shape() == {'FINISHED'}, props.last_report
+    mesh = obj.data
+    assert [layer.name for layer in mesh.uv_layers] == ['UVMap', M.UV_NAME]  # a UV map for the user in front
+    assert mesh.uv_layers.active.name == 'UVMap'
+    # "Bake with Current UVs" never bakes with the mesh maps' UVs
+    job = B.ObjectBakeJob(bpy.context, [obj], settings(maps={'BASE_COLOR'}))
+    B.run_to_end(job)
+    for node in obj.active_material.node_tree.nodes:
+        if node.bl_idname == 'ShaderNodeUVMap':
+            assert node.uv_map != M.UV_NAME
+    # Auto Texture keeps the maps (and analyzes again only when needed)
+    B.restore_procedural(obj)
+    mesh.vertices[0].co.z += 0.05
+    props.resolution = '512'
+    props.quality = 'FAST'
+    props.output_dir = os.path.join(TMP, 'maps_auto')
+    props.map_ao = False
+    assert bpy.ops.bpm.auto_texture() == {'FINISHED'}
+    assert 'Shape analyzed: 1 object' in props.last_report, props.last_report
+    assert mesh.uv_layers[0].name == B.BAKE_UV_NAME and M.status(obj) == 'OK'
+    B.restore_procedural(obj)
+    assert bpy.ops.bpm.auto_texture() == {'FINISHED'}
+    assert 'Shape analyzed' not in props.last_report, props.last_report
+    assert bpy.ops.bpm.remove_mesh_maps() == {'FINISHED'}
+    assert M.status(obj) == 'NONE' and M.UV_NAME not in mesh.uv_layers
+
+
+@test
+def command_line_maps():
+    fresh_scene()
+    obj = add_cube('Crate')
+    obj.data.materials.append(L.create_material('wood_oak_floor'))
+    blend = os.path.join(TMP, 'cli_maps', 'scene.blend')
+    os.makedirs(os.path.dirname(blend), exist_ok=True)
+    bpy.ops.wm.save_as_mainfile(filepath=blend)
+    cmd = [bpy.app.binary_path, '-b', '--factory-startup', blend, '-P', os.path.join(ROOT, 'bpm_cli.py'), '--',
+           'maps', '--objects', 'all', '--size', '64', '--quality', 'fast', '--save']
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
+    text = res.stdout + res.stderr
+    assert res.returncode == 0 and 'Mesh maps ready for 1 object' in text, text[-3000:]
+    bpy.ops.wm.open_mainfile(filepath=blend)
+    assert M.status(bpy.data.objects['Crate']) == 'OK'
 
 
 STACK_SCRIPT = r'''

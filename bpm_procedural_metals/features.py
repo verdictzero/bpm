@@ -341,8 +341,9 @@ def cavity_mask(b, space, distance):
     reach = maps['cavity_reach']
     x = b.mul(b.one_minus(maps['concave']), reach)   # meters to the nearest inner corner
     d = b.minimum(distance, reach)
-    crease = b.one_minus(b.smoothstep(0.0, b.mul(d, 0.8), x))
-    deep = b.mul(b.smoothstep(0.3, 0.75, maps['occlusion']), 0.85)  # insets, pockets, contact areas
+    crease = b.one_minus(b.smoothstep(b.mul(d, 0.15), d, x))  # packed solid into the corner, then thinning out
+    # enclosed areas: a wide halo out of every corner and contact, full in pockets and insets
+    deep = b.smoothstep(0.14, 0.58, maps['occlusion'])
     baked = b.maximum(crease, deep)
     return b.mix(maps['has'], live, baked)
 

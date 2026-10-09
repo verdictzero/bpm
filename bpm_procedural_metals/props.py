@@ -124,7 +124,7 @@ class BPM_Settings(bpy.types.PropertyGroup):
         description='How far from an outer edge the analysis looks, as a share of the object\'s size. '
                     'Edge wear can be at most about half as wide')
     maps_cavity_reach: FloatProperty(
-        name='Corner Reach', default=8.0, min=0.5, max=25.0, subtype='PERCENTAGE', precision=1,
+        name='Corner Reach', default=15.0, min=0.5, max=25.0, subtype='PERCENTAGE', precision=1,
         description='How far out of inner corners and creases dirt can build up, as a share of the '
                     'object\'s size')
     maps_occlusion_reach: FloatProperty(

@@ -98,7 +98,7 @@ def maps_options(p, prefix='--'):
                    help='Mesh map size in pixels (default 1024)')
     p.add_argument(prefix + 'quality', dest='maps_quality', choices=['fast', 'good', 'best'], default='good')
     p.add_argument('--edge-reach', type=float, default=5.0, help='Edge reach in %% of the object size (default 5)')
-    p.add_argument('--corner-reach', type=float, default=8.0, help='Corner reach in %% of the object size (default 8)')
+    p.add_argument('--corner-reach', type=float, default=15.0, help='Corner reach in %% of the object size (default 15)')
     p.add_argument('--occlusion-reach', type=float, default=25.0,
                    help='Occlusion reach in %% of the object size (default 25)')
     p.add_argument('--alone', action='store_true', help='Analyze each object on its own (ignore other objects)')

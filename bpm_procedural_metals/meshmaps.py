@@ -71,7 +71,7 @@ class MapsSettings:
         self.resolution = 1024
         self.quality = 'GOOD'
         self.edge_reach = 0.05       # share of the object's size
-        self.cavity_reach = 0.08
+        self.cavity_reach = 0.15
         self.occlusion_reach = 0.25
         self.other_objects = True    # other objects nearby darken the occlusion and add creases
         self.device = 'AUTO'

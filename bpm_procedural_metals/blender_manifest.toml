@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "bpm_procedural_metals"
-version = "1.5.0"
+version = "1.6.0"
 name = "BPM - Procedural Materials"
 tagline = "Metal, camo, concrete, glass, decals, wear, 1-click auto texture"
 maintainer = "verdictzero"

@@ -35,7 +35,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.5.0.zip`](dist/bpm_procedural_metals-1.5.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.6.0.zip`](dist/bpm_procedural_metals-1.6.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
@@ -100,11 +100,48 @@ The **Overlays** panel lists the layers of the active object's material:
   (*Underneath Color*, *Metallic*, *Roughness*, *Primer*) or *Rubbed* for edges that are
   only worn lighter; scratches have *Amount*, *Fine Scratches*, *Swirls*, *Scuffs*,
   *Straight* (all one way) and *Reveal* (cut through to the metal or just lighten).
-  Edge wear needs Cycles or a bake to show, like all edge effects.
+  Edge wear needs Cycles or a bake to show, like all edge effects, unless the object
+  had a **Shape Analysis** (below): then it shows everywhere, EEVEE included.
 
 Overlays are baked into the textures automatically, in both bake modes. Some
 materials (for example *Dirty White Plastic* or *Olive Canvas Tarp*) come with an
 overlay already; it shows up in the panel like any other layer.
+
+### Shape Analysis: edge wear and grime that land exactly
+
+Without it, BPM finds edges and corners *live* while rendering: quick, but only in
+Cycles, and dirt only creeps a little way into corners. **Shape Analysis** (its own
+panel, like the *mesh maps* of 3D-Coat or Substance) looks at each object once and
+stores three maps with it:
+
+* **Convex**: how close every point is to an outer edge, so edge wear and chips sit
+  exactly on the edges, with an even width all the way along;
+* **Concave**: how close every point is to an inner corner or crease (also where the
+  object touches another one, or the floor), so grime builds up solidly *into* every
+  corner;
+* **Occlusion**: how enclosed every point is, so pockets, insets, slots and the
+  underside fill up with dirt.
+
+Every edge wear overlay, dirt overlay and built-in grime reads them automatically.
+They also work in **EEVEE** and Material Preview, where the live edges don't.
+
+1. Pick the **Objects** (Active, Selected or Scene).
+2. Click **Analyze Shape** (about 10 s per object at the 1K default).
+3. The panel says *Analyzed* for the active object. After you edit the mesh it says
+   *the mesh changed*: click Analyze Shape again.
+
+**Options**: *Map Size*, *Quality*, *Edge Reach* (the widest edge wear can get),
+*Corner Reach* (how far dirt can build up out of a corner), *Occlusion Reach* (how far
+away a surface still counts as enclosing), *Include Other Objects* (off: each object is
+analyzed on its own, without the floor or its neighbours) and **Remove Mesh Maps**.
+Reaches are a share of the object's size, so they suit small and big objects alike.
+
+**Auto Texture** analyzes every object without up-to-date maps first (*Analyze
+Shape First*, on by default), so the baked textures get the precise version.
+
+The maps live in a UV map called `BPM_Maps` and an image called `BPM Mesh Maps` packed
+into the `.blend` file. Leave them be; **Remove Mesh Maps** removes both. Exports and
+bakes always use your own UV maps, never `BPM_Maps`.
 
 ### Decals: logos, stencils, signs
 
@@ -149,7 +186,8 @@ Open the **Bake Textures** panel (scroll down in the BPM tab) and choose a mode:
 1. Pick a **Resolution** (2K is a good start) and **Quality**.
 2. Pick which **Objects**: **Active** (just the one you clicked last), **Selected**
    (all selected objects) or **Scene** (every visible mesh in the scene).
-3. Click **Auto Texture**. For every object it:
+3. Click **Auto Texture**. It first runs a **Shape Analysis** of objects that don't have
+   one yet (see above), then, for every object, it:
    1. unwraps the UVs with **Smart UV Project** (Blender's default settings),
    2. packs them with Blender's own **Pack Islands** (with a small gap between the
       pieces, so colors don't bleed),
@@ -353,9 +391,13 @@ blender -b model.blend -P bpm_cli.py -- bake --objects Body,Lid --size 2048 --ou
 
 # Auto Texture every mesh of a .blend file (new UVs, bake, save, apply) and save it
 blender -b model.blend -P bpm_cli.py -- auto --objects all --size 2048 --save
+
+# only analyze the shape of every mesh (Shape Analysis), then save
+blender -b model.blend -P bpm_cli.py -- maps --objects all --save
 ```
 
-Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
+`auto` analyzes shapes first; `--no-shape-analysis` skips that and `--maps-size`,
+`--maps-quality` set it up. Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
 `--unity`, `--gpu`, `--tile-size`, `--scale`, `--seed`, `--overlay`, …).
 
 ## 6. Troubleshooting
@@ -393,11 +435,17 @@ Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
 * **I can't see the weave / leather grain / wood rings.** They have real-world sizes
   (threads are about a millimeter), so they only show up close. Lower **Scale** to make
   them bigger, or raise the bake resolution.
-* **Dirt doesn't collect in the corners in the viewport.** Crevice and edge effects
-  need Cycles (or baking); click **Preview in Cycles** in *Adjust Material*.
-* **The edge wear overlay shows nothing.** Like all edge effects, it needs Cycles or a
-  bake: click **Preview in Cycles**, or just Auto Texture. It shows on corners and
-  bevels, not on smooth spheres.
+* **Dirt doesn't collect in the corners in the viewport.** Click **Analyze Shape** in
+  *Shape Analysis*: then corners and insets fill up in every view. Without it, crevice
+  and edge effects need Cycles (or baking); click **Preview in Cycles** in *Adjust
+  Material*.
+* **Dirt doesn't build up far enough into a corner.** Raise the overlay's *Crevices*
+  slider, or *Corner Reach* in the Shape Analysis options (then analyze again).
+* **The edge wear overlay shows nothing.** Run **Analyze Shape**, or preview it in
+  Cycles (**Preview in Cycles**), or just Auto Texture. It shows on corners and bevels,
+  not on smooth spheres.
+* **Edge wear or dirt is in the wrong place after I edited the mesh.** Shape Analysis
+  remembers the old shape: the panel says *the mesh changed*. Click Analyze Shape again.
 * **Lens coating colors are missing in my game engine.** They come from Blender's
   *thin film* setting, which game engines don't have; the baked material in Blender
   keeps it. The engine still gets the glossy, dark (or mirrored) lens.
