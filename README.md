@@ -122,6 +122,8 @@ stores three maps with it:
 * **Occlusion**: how enclosed every point is, so pockets, insets, slots and the
   underside fill up with dirt.
 
+<img src="docs/shape_analysis.png" width="640" alt="Heavy Grime (only its Crevices part) without and with Shape Analysis">
+
 Every edge wear overlay, dirt overlay and built-in grime reads them automatically.
 They also work in **EEVEE** and Material Preview, where the live edges don't.
 
