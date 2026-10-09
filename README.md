@@ -1,7 +1,7 @@
 # BPM – Procedural Materials for Blender
 
-178 ready-made materials for Blender — **bare metal, painted metal, military paint and
-camouflage, wood, plastic, glass, lenses and visors, leather, fabric & composites (carbon
+200 ready-made materials for Blender — **bare metal, painted metal, military paint and
+camouflage, concrete, wood, plastic, glass, lenses and visors, leather, fabric & composites (carbon
 fiber, kevlar, ballistic nylon…), and H.R. Giger-style biomechanical surfaces** — plus 26
 **overlays (dirt, dust, edge wear and scratches)** that you can stack on top of *any*
 material, and **decals**: put any image (with its normal, roughness, metallic and height
@@ -17,6 +17,7 @@ material, click **Apply**, move some sliders, click **Auto Texture**.
 ![Bare metal materials](docs/gallery_metal.png)
 ![Painted metal materials](docs/gallery_paint.png)
 ![Military paint and camouflage](docs/gallery_military.png)
+![Concrete](docs/gallery_concrete.png)
 ![Wood materials](docs/gallery_wood.png)
 ![Plastic materials](docs/gallery_plastic.png)
 ![Glass materials](docs/gallery_glass.png)
@@ -34,13 +35,13 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.4.0.zip`](dist/bpm_procedural_metals-1.4.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.5.0.zip`](dist/bpm_procedural_metals-1.5.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
 4. Select the zip file. Done: "BPM - Procedural Materials" now shows up as enabled.
 
-> **Updating from an older version (1.0 – 1.3)?** Just install the new zip the same
+> **Updating from an older version (1.0 – 1.4)?** Just install the new zip the same
 > way, on top of the old one: it replaces the old version (no need to uninstall first
 > or restart Blender), and your `.blend` files keep their materials and settings.
 
@@ -240,6 +241,12 @@ splinter, naval dazzle, winter whitewash, arctic, ghost grey aircraft, Soviet
 three-tone, battle-worn olive, muddy woodland). Mud, dust, grime, rain streaks, edge
 wear, chips, scratches, primer and rust are built in: every one has its own slider.
 
+**Concrete (22):** fresh, smooth precast, white architectural, board-formed, brutalist
+wall (formwork panels and tie holes), polished floor, exposed aggregate, sidewalk slabs,
+block wall — and the worn and damaged ones: weathered, cracked, spalled with rusty rebar,
+ruined, bullet-riddled, military bunker, mossy, salt-stained, garage floor (oil), wet,
+fire-damaged, dirty underpass, bridge pier.
+
 **Wood (15):** oak floorboards, varnished walnut, knotty pine, curly maple, cherry,
 polished mahogany, ebony, teak boat deck, shipping pallet, peeling barn red, white
 painted planks, weathered grey wood, driftwood, charred wood (shou sugi ban),
@@ -292,6 +299,11 @@ a family has the full set of sliders. A few examples:
   edges; sun fading; winter whitewash that wears off; edge wear and chips down to
   primer and steel, scratches, rust and rust streaks; mud caked on the lower part,
   splatter, wet mud, dust, grime in crevices and rain streaks.
+* **Concrete** – cement color and blotches, sand, stones (aggregate) and air holes,
+  polish; finishes: formwork boards with wood grain, formwork panels with tie holes,
+  broom grooves, cut joints, blocks with mortar; damage: cracks, chipped edges, spalling
+  with rusty reinforcing bars, erosion, impact craters; stains: rust streaks, water
+  stains, white salt (efflorescence), dirt, moss, oil, soot, wetness.
 * **Lenses** – lens color, roughness, IOR, the colored reflections of lens coatings
   (*Coating* buttons: amber, purple, blue, green, magenta), mirror coatings (gold,
   silver, blue…), fake inner depth, Fresnel lens rings, hexagonal reflector prisms,
@@ -408,7 +420,7 @@ Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
 bpm_procedural_metals/   the add-on (Blender extension)
   generators.py          registry of all generators
   mat_*.py               one generator per family: metal, paint, camo (military),
-                         wood, plastic, glass, lens, leather, fabric, organic
+                         concrete, wood, plastic, glass, lens, leather, fabric, organic
                          (sliders + node tree)
   overlays.py            dirt, dust, edge wear and scratch overlays (layer on any
                          material)
@@ -417,7 +429,7 @@ bpm_procedural_metals/   the add-on (Blender extension)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 204 presets: 178 materials + 26 overlays
+  presets.py             the 226 presets: 200 materials + 26 overlays
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
   ui.py, operators.py    sidebar panels and buttons

@@ -12,6 +12,8 @@ CATEGORIES = (
     ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals', 'Metal', 1),
     ('PAINT', 'Painted Metal', 'Painted, chipped and weathered metal', 'Painted', 2),
     ('MILITARY', 'Military', 'Military paint and camouflage with mud, dust and edge wear built in', 'Military', 10),
+    ('CONCRETE', 'Concrete', 'Cast, board-formed, polished, slab and block concrete, from fresh to ruined',
+     'Concrete', 13),
     ('WOOD', 'Wood', 'Raw, varnished, painted, weathered and charred wood', 'Wood', 3),
     ('PLASTIC', 'Plastic', 'Glossy, matte and textured plastic, new, old or dirty', 'Plastic', 4),
     ('GLASS', 'Glass', 'Clear, tinted, frosted, textured and stained glass, spotless or grimy', 'Glass', 9),
@@ -28,9 +30,9 @@ OVERLAY_CATEGORIES = ('OVERLAY', 'WEAR')  # presets of these categories go on to
 
 # generator -> gallery category
 GENERATOR_CATEGORY = {
-    'METAL': 'METAL', 'PAINT': 'PAINT', 'CAMO': 'MILITARY', 'WOOD': 'WOOD', 'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS',
-    'LENS': 'LENS', 'LEATHER': 'LEATHER', 'FABRIC': 'FABRIC', 'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY',
-    'DUST': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
+    'METAL': 'METAL', 'PAINT': 'PAINT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'WOOD': 'WOOD',
+    'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS', 'LENS': 'LENS', 'LEATHER': 'LEATHER', 'FABRIC': 'FABRIC',
+    'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
 }
 
 PRESETS = []
@@ -381,7 +383,8 @@ _add('mil_splinter', 'Splinter Camo', 'CAMO',
      Edge_Softness=0.0)
 _add('mil_dazzle', 'Naval Dazzle', 'CAMO',
      'Bold geometric warship camouflage, salty and rust-streaked.',
-     Color_1=(0.40, 0.42, 0.43), Color_2=(0.02, 0.03, 0.06), Color_3=(0.015, 0.015, 0.015), Color_4=(0.10, 0.11, 0.12),
+     Color_1=(0.40, 0.42, 0.43), Color_2=(0.02, 0.03, 0.06), Color_3=(0.015, 0.015, 0.015), Color_4=(0.10, 0.11,
+     0.12),
      Color_2_Amount=0.35, Color_3_Amount=0.15, Color_4_Amount=0.2, Angular=1.0, Camo_Scale=0.45,
      Ragged_Edges=0.0, Edge_Softness=0.0, Paint_Roughness=0.55, Rust=0.5, Rust_Streaks=0.5, Mud=0.0,
      Splatter=0.0, Dust=0.0, Rain_Streaks=0.3)
@@ -412,6 +415,101 @@ _add('mil_muddy_woodland', 'Muddy Woodland', 'CAMO',
      Color_1=(0.15, 0.17, 0.075), Color_2=(0.11, 0.065, 0.035), Color_3=NATO_BLACK, Color_4=(0.36, 0.28, 0.15),
      Color_2_Amount=0.4, Color_3_Amount=0.15, Color_4_Amount=0.1, Color_3_Size=0.75, Color_4_Size=0.5,
      Edge_Softness=0.05, Mud=0.9, Wet_Mud=0.6, Mud_Height=0.45, Splatter=0.8, Dust=0.0)
+
+# ---------------------------------------------------------------------- concrete
+CONCRETE_THUMB = dict(zoom=0.5)
+
+_add('concrete_fresh', 'Fresh Concrete', 'CONCRETE',
+     'Clean, new cast concrete with a few air holes.',
+     thumb=CONCRETE_THUMB, Dirt=0.1, Water_Stains=0.0, Cracks=0.0, Chipped_Edges=0.05)
+_add('concrete_precast', 'Smooth Precast Panel', 'CONCRETE',
+     'Smooth, light factory-made concrete panel.',
+     thumb=CONCRETE_THUMB, Concrete_Color=(0.52, 0.51, 0.48), Color_Variation=0.2, Roughness=0.75, Pores=0.15,
+     Aggregate=0.0, Sand=0.3,
+     Dirt=0.15, Water_Stains=0.1, Cracks=0.0, Chipped_Edges=0.1)
+_add('concrete_white', 'White Architectural Concrete', 'CONCRETE',
+     'Bright white concrete of modern architecture.',
+     thumb=CONCRETE_THUMB, Concrete_Color=(0.66, 0.65, 0.62), Color_Variation=0.15, Pores=0.25, Aggregate=0.0,
+     Sand=0.3, Dirt=0.05,
+     Water_Stains=0.05, Cracks=0.0, Chipped_Edges=0.05)
+_add('concrete_board_formed', 'Board-Formed Concrete', 'CONCRETE',
+     'Concrete cast against wooden boards: wood grain and seams in the surface.',
+     thumb=CONCRETE_THUMB, Board_Formed=1.0, Dirt=0.2, Water_Stains=0.25)
+_add('concrete_brutalist', 'Brutalist Wall', 'CONCRETE',
+     'Big formwork panels with tie holes, streaked by decades of rain.',
+     thumb=CONCRETE_THUMB, Concrete_Color=(0.36, 0.35, 0.33), Form_Panels=1.0, Water_Stains=0.7, Dirt=0.4,
+     Rust_Stains=0.2,
+     Efflorescence=0.15, Cracks=0.15)
+_add('concrete_polished', 'Polished Concrete Floor', 'CONCRETE',
+     'Ground and polished floor with cut stones, glossy.',
+     thumb=CONCRETE_THUMB, Polish=1.0, Aggregate=0.6, Aggregate_Size=0.02, Roughness=0.15, Joints=1.0,
+     Joint_Spacing=3.0, Dirt=0.05,
+     Water_Stains=0.0, Cracks=0.05, Chipped_Edges=0.05, Pores=0.1)
+_add('concrete_exposed_aggregate', 'Exposed Aggregate', 'CONCRETE',
+     'Washed concrete with the pebbles showing.',
+     thumb=CONCRETE_THUMB, Aggregate=0.9, Erosion=0.3, Aggregate_Color=(0.36, 0.30, 0.22), Aggregate_Size=0.025,
+     Dirt=0.2)
+_add('concrete_sidewalk', 'Sidewalk Slabs', 'CONCRETE',
+     'Broomed sidewalk with cut joints, a little cracked, moss in the joints.',
+     thumb=CONCRETE_THUMB, Broom_Finish=0.8, Joints=1.0, Joint_Spacing=1.5, Dirt=0.35, Cracks=0.15, Moss=0.15,
+     Oil_Stains=0.05,
+     Water_Stains=0.1)
+_add('concrete_blocks', 'Concrete Block Wall', 'CONCRETE',
+     'Grey concrete blocks with mortar joints.',
+     thumb=CONCRETE_THUMB, Blocks=1.0, Concrete_Color=(0.45, 0.44, 0.42), Pores=0.6, Sand=0.8, Aggregate=0.3,
+     Aggregate_Size=0.006,
+     Dirt=0.2, Water_Stains=0.2)
+_add('concrete_weathered', 'Weathered Concrete', 'CONCRETE',
+     'Old concrete: washed out, stained, cracked and chipped.',
+     thumb=CONCRETE_THUMB, Concrete_Color=(0.34, 0.33, 0.31), Erosion=0.5, Water_Stains=0.6, Dirt=0.5, Moss=0.2,
+     Cracks=0.3,
+     Chipped_Edges=0.5)
+_add('concrete_cracked', 'Cracked Concrete', 'CONCRETE',
+     'A web of cracks with white salt bleeding out.',
+     thumb=CONCRETE_THUMB, Cracks=0.8, Crack_Scale=1.5, Efflorescence=0.3, Dirt=0.3, Water_Stains=0.3)
+_add('concrete_spalled', 'Spalled Concrete with Rebar', 'CONCRETE',
+     'Chunks broken off down to the rusty reinforcing bars, rust running down.',
+     thumb=CONCRETE_THUMB, Spalling=0.6, Rebar=1.0, Rust_Stains=0.7, Cracks=0.4, Chipped_Edges=0.7, Dirt=0.4,
+     Water_Stains=0.4)
+_add('concrete_ruined', 'Ruined Concrete', 'CONCRETE',
+     'Shattered, burnt and broken: rebar, craters and soot everywhere.',
+     thumb=CONCRETE_THUMB, Spalling=0.9, Rebar=1.0, Impacts=0.6, Chipped_Edges=1.0, Cracks=0.8, Soot=0.4, Dirt=0.6,
+     Rust_Stains=0.6,
+     Erosion=0.3)
+_add('concrete_bullet_holes', 'Bullet-Riddled Wall', 'CONCRETE',
+     'War-damaged wall full of impact craters.',
+     thumb=CONCRETE_THUMB, Impacts=1.0, Chipped_Edges=0.6, Spalling=0.2, Soot=0.1, Dirt=0.3, Water_Stains=0.3)
+_add('concrete_bunker', 'Military Bunker', 'CONCRETE',
+     'Cold, damp bunker concrete: board marks, moss, rust and chipped edges.',
+     thumb=CONCRETE_THUMB, Concrete_Color=(0.30, 0.31, 0.28), Board_Formed=0.5, Moss=0.3, Water_Stains=0.6,
+     Dirt=0.5, Cracks=0.3,
+     Chipped_Edges=0.6, Rust_Stains=0.3, Spalling=0.15, Rebar=0.6)
+_add('concrete_mossy', 'Mossy Concrete', 'CONCRETE',
+     'Damp, shady concrete overgrown with moss and algae.',
+     thumb=CONCRETE_THUMB, Moss=0.7, Water_Stains=0.6, Dirt=0.4, Erosion=0.3, Cracks=0.3)
+_add('concrete_salt', 'Salt-Stained Concrete', 'CONCRETE',
+     'White efflorescence streaks and patches from water seeping through.',
+     thumb=CONCRETE_THUMB, Efflorescence=0.7, Water_Stains=0.5, Cracks=0.4)
+_add('concrete_garage', 'Garage Floor', 'CONCRETE',
+     'Smooth floor slab with oil stains, tire grime and cracks.',
+     thumb=CONCRETE_THUMB, Oil_Stains=0.6, Joints=0.8, Joint_Spacing=4.0, Dirt=0.4, Roughness=0.7, Polish=0.15,
+     Cracks=0.2,
+     Water_Stains=0.0)
+_add('concrete_wet', 'Wet Concrete', 'CONCRETE',
+     'Rain-soaked concrete: dark and shiny.',
+     thumb=CONCRETE_THUMB, Wetness=0.8, Water_Stains=0.4, Dirt=0.3)
+_add('concrete_burnt', 'Fire-Damaged Concrete', 'CONCRETE',
+     'Blackened by fire, spalled and cracked by the heat.',
+     thumb=CONCRETE_THUMB, Soot=0.9, Spalling=0.4, Cracks=0.5, Chipped_Edges=0.5, Rebar=0.4)
+_add('concrete_underpass', 'Dirty Underpass', 'CONCRETE',
+     'Grimy, damp underpass walls with rust and salt streaks.',
+     thumb=CONCRETE_THUMB, Concrete_Color=(0.30, 0.29, 0.27), Dirt=0.8, Water_Stains=0.8, Rust_Stains=0.4,
+     Efflorescence=0.3,
+     Cracks=0.3, Moss=0.1)
+_add('concrete_bridge', 'Bridge Pier', 'CONCRETE',
+     'Massive pier concrete: rust streaks, damp low down, rebar showing.',
+     thumb=CONCRETE_THUMB, Form_Panels=0.6, Rust_Stains=0.6, Water_Stains=0.7, Moss=0.3, Efflorescence=0.3,
+     Spalling=0.2, Rebar=0.8)
 
 # ------------------------------------------------------------------------ wood
 OAK = (0.50, 0.27, 0.11)

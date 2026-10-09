@@ -551,6 +551,35 @@ def overlay_menu_lists_every_overlay():
     assert bpy.ops.bpm.overlay_seed(index=1) == {'FINISHED'}
 
 
+@test
+def concrete_finishes_and_damage():
+    """Concrete: block, slab and board patterns stay seamless as tiles; rebar is metal; fresh concrete isn't."""
+    fresh_scene()
+    ids = ('concrete_blocks', 'concrete_sidewalk', 'concrete_board_formed', 'concrete_brutalist', 'concrete_spalled')
+    mats = [L.create_material(pid) for pid in ids]
+    job = B.TileBakeJob(bpy.context, mats, settings(resolution=128, maps={'BASE_COLOR', 'HEIGHT'}))
+    B.run_to_end(job)
+    assert len(job.written) == 2 * len(ids), job.written
+    for path in job.written:
+        a = read_png(path)[..., :3].astype(np.float64)
+        assert seam_ok(a), 'visible seam in ' + os.path.basename(path)
+        assert a.std() > 0.004, 'flat texture: ' + os.path.basename(path)
+    # spalls show the rusty reinforcing bars: metal in the metallic map
+    out = os.path.join(TMP, 'concrete')
+    wall = add_cube('Wall')
+    wall.data.materials.append(L.create_material('concrete_spalled'))
+    L.apply_values(L.find_bpm_node(wall.active_material), {'Spalling': 1.0, 'Rebar': 1.0})
+    clean = add_cube('Clean', location=(4, 0, 0))
+    clean.data.materials.append(L.create_material('concrete_fresh'))
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [wall, clean], settings(maps={'BASE_COLOR', 'METALLIC'},
+                                                                     output_dir=out, assign_baked=False,
+                                                                     resolution=128)))
+    metal = read_png(os.path.join(out, 'Wall_Metallic.png'))[..., 0]
+    assert (metal > 0.15).mean() > 0.002, 'no rebar in the spalls'
+    assert not os.path.exists(os.path.join(out, 'Clean_Metallic.png')) or \
+        read_png(os.path.join(out, 'Clean_Metallic.png'))[..., 0].max() < 0.05
+
+
 def decal_image(name='Logo', size=64):
     """A red disc on a transparent background, saved as a PNG: a test decal."""
     folder = os.path.join(TMP, 'decal_src')

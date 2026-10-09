@@ -1,9 +1,9 @@
 schema_version = "1.0.0"
 
 id = "bpm_procedural_metals"
-version = "1.4.0"
+version = "1.5.0"
 name = "BPM - Procedural Materials"
-tagline = "Metal, camo, glass, lenses, decals, wear, 1-click auto texture"
+tagline = "Metal, camo, concrete, glass, decals, wear, 1-click auto texture"
 maintainer = "verdictzero"
 type = "add-on"
 website = "https://github.com/verdictzero/bpm"
