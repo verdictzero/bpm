@@ -27,8 +27,8 @@ def fac(name, default, panel, desc, key=False):
     return Param(name, 'FLOAT', default, 0.0, 1.0, panel, desc, 'FACTOR', key=key)
 
 
-def scale(name, default, lo, hi, panel, desc):
-    return Param(name, 'FLOAT', default, lo, hi, panel, desc)
+def scale(name, default, lo, hi, panel, desc, key=False):
+    return Param(name, 'FLOAT', default, lo, hi, panel, desc, key=key)
 
 
 def color(name, default, panel, desc, key=False):
@@ -89,16 +89,24 @@ def dirt_mask(b, S, amount, cav, edge, offset, extra=0.0, spots=0.5):
     return b.clamp01(b.add(grime, b.mul(extra, amount)))
 
 
-def finish(b, gout, inputs, color, metallic, rough, h_macro, h_micro, extra=None, distance=MACRO_BUMP):
+def finish(b, gout, inputs, color, metallic, rough, h_macro, h_micro, extra=None, distance=MACRO_BUMP,
+           cover=None):
     """Shared tail: normals from height, clamp and connect the group outputs.
 
     `distance` is the relief depth (meters at Scale 1) of the full 0..1 height
     range; it must match the generator's 'bump' entry (used for tile normals).
+    `cover` is an optional (mask, level) of a soft layer on top, like mud: it
+    hides the relief below where `mask` is 1 and lies at `level` in the Height
+    output.  It is not part of the bump, which keeps Cycles' shader stack small.
     """
     # One bump node for everything: two chained ones make Cycles' shader stack overflow.
     height = b.clamp01(b.madd(h_micro, MICRO_BUMP / distance, h_macro))
     normal = b.bump(height, strength=inputs['Bump Strength'], distance=bump_distance(b, inputs['Scale'], distance),
                     label='Bump')
+    if cover is not None:
+        mask, level = cover
+        normal = b.vmath('NORMALIZE', b.mix_vector(mask, normal, b.geometry().outputs['Normal']))
+        height = b.clamp01(b.mix(mask, height, level))
     b.feed(gout.inputs['Base Color'], color)
     b.feed(gout.inputs['Metallic'], b.clamp01(metallic))
     b.feed(gout.inputs['Roughness'], b.clamp01(rough))
@@ -106,5 +114,3 @@ def finish(b, gout, inputs, color, metallic, rough, h_macro, h_micro, extra=None
     b.feed(gout.inputs['Height'], height)
     for name, value in (extra or {}).items():
         b.feed(gout.inputs[name], value)
-
-

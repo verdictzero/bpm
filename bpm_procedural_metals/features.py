@@ -76,14 +76,92 @@ class Space:
         offset: a vector (object mode, pattern units) or a (du, dv) pair of
         periodic UV shifts (tile mode, so the result stays seamless).
         """
+        if self.tile:
+            du, dv = offset
+            return self.at(uv=(self.b.add(self.u, du), self.b.add(self.v, dv)))
+        return self.at(P=self.b.vadd(self.P, offset))
+
+    def at(self, P=None, uv=None):
+        """A copy of this space using other coordinates: P (object mode) or (u, v) (tile mode)."""
         other = copy.copy(self)
         other._trig = {}
         if self.tile:
-            du, dv = offset
-            other.u, other.v = self.b.add(self.u, du), self.b.add(self.v, dv)
+            other.u, other.v = uv
         else:
-            other.P = self.b.vadd(self.P, offset)
+            other.P = P
         return other
+
+    def pixelated(self, size, amount, span=None):
+        """A copy whose coordinates snap to squares of `size` (pattern units): digital patterns.
+
+        `amount` blends from smooth (0) to snapped (1) coordinates.  Tiles need
+        `span` (pattern units across the tile) to fit a whole number of pixels.
+        """
+        b = self.b
+        if self.tile:
+            n = b.maximum(1.0, b.math('ROUND', b.div(span, size)))
+
+            def snap(x):
+                return b.div(b.add(b.floor(b.mul(x, n)), 0.5), n)
+            return self.at(uv=(b.mix(amount, self.u, snap(self.u)), b.mix(amount, self.v, snap(self.v))))
+        grid = (0.37, 0.61, 0.23)  # shifted grid: faces at round coordinates don't sit on a pixel border
+        q = b.vadd(b.vscale(self.P, b.div(1.0, size)), grid)
+        snapped = b.vscale(b.vadd(b.vmath('FLOOR', q), tuple(0.5 - g for g in grid)), size)
+        return self.at(P=b.mix_vector(amount, self.P, snapped))
+
+    def shattered(self, freq, offset, amount, aniso=None):
+        """A copy whose coordinates snap to the cells of a Voronoi pattern.
+
+        Every lookup inside a cell then returns the value at the cell's center,
+        so patterns turn into straight-edged shards (splinter camouflage).
+        `amount` blends from smooth (0) to snapped (1) coordinates.
+        """
+        b = self.b
+        if self.tile:
+            cu, cv = self._periodic_cells(freq, offset, aniso)
+
+            def blend(a, c):  # the short way around the tile
+                return b.madd(b.sub(b.wrap(b.add(b.sub(c, a), 0.5), 1.0), 0.5), amount, a)
+            return self.at(uv=(blend(self.u, cu), blend(self.v, cv)))
+        cells = self.voronoi(freq, offset, aniso=aniso, label='Shards')
+        off, _off_w = self._offsets(offset)
+        if aniso is None:  # the same frequencies as sample()
+            f = b.combine(freq, freq, freq)
+        else:
+            f = b.vscale(tuple(aniso) + (1.0,) * (3 - len(aniso)), freq)
+        center = b.vmath('DIVIDE', b.vmath('SUBTRACT', cells.outputs['Position'], off), f)
+        return self.at(P=b.mix_vector(amount, self.P, center))
+
+    def _periodic_cells(self, freq, offset, aniso=None):
+        """Tiles: (u, v) of the nearest cell center of a seamless 2D Voronoi pattern.
+
+        Blender's Voronoi texture does not repeat, so this one is built from a
+        whole number of jittered cells across the tile, searching the 3 x 3
+        cells around each point (cell numbers wrap around at the tile border).
+        """
+        b = self.b
+        ax, ay = (aniso[0], aniso[1]) if aniso is not None else (1.0, 1.0)
+        cells = b.mul(b.mul(self.k, TAU), freq)  # cells across the tile at `freq`
+        nu = b.maximum(1.0, b.math('ROUND', b.mul(cells, ax)))
+        nv = b.maximum(1.0, b.math('ROUND', b.mul(cells, ay)))
+        x, y = b.mul(self.u, nu), b.mul(self.v, nv)
+        cx, cy = b.floor(x), b.floor(y)
+        key_w = b.add(self._seed_w, float(offset))
+        best = None
+        for dj in (-1.0, 0.0, 1.0):
+            for di in (-1.0, 0.0, 1.0):
+                i, j = b.add(cx, di), b.add(cy, dj)
+                _value, rnd = b.white_noise(b.combine(b.wrap(i, nu), b.wrap(j, nv), key_w))
+                jx, jy, _jz = b.separate_color(rnd)
+                px, py = b.add(i, jx), b.add(j, jy)
+                dx, dy = b.sub(px, x), b.sub(py, y)
+                d = b.madd(dx, dx, b.mul(dy, dy))
+                if best is None:
+                    best = (d, px, py)
+                    continue
+                closer = b.math('LESS_THAN', d, best[0])
+                best = (b.minimum(d, best[0]), b.mix(closer, best[1], px), b.mix(closer, best[2], py))
+        return b.div(best[1], nu), b.div(best[2], nv)
 
     # -- internals ------------------------------------------------------------
     def _offsets(self, index):
@@ -307,6 +385,36 @@ def box_coords(b, space):
     return s, t
 
 
+def squashed(b, p, direction, stretch):
+    """Coordinates squashed along `direction`: patterns get `stretch` times longer that way."""
+    d = b.vmath('NORMALIZE', direction)
+    along = b.mul(b.vmath('DOT_PRODUCT', p, d), b.one_minus(b.div(1.0, stretch)))
+    return b.vmath('SUBTRACT', p, b.vscale(d, along))
+
+
+def chip_field(b, space, scale, detail, edge, cav, edge_wear, offset, edge_weight=3.5):
+    """Where paint chips off first (highest values): ragged clusters, edges, never crevices."""
+    cz = space.znoise(scale, offset, detail=b.madd(detail, 8.0, 2.0), roughness=b.madd(detail, 0.25, 0.45),
+                      label='Chips')
+    clz = space.znoise(b.mul(scale, 0.18), offset + 1, detail=2.0, label='Chip Clusters')
+    field = b.madd(clz, 0.5, b.mul(cz, 0.85))
+    if is_socket(edge):
+        field = b.madd(edge, b.mul(edge_wear, edge_weight), field)
+        field = b.madd(cav, -1.0, field)
+    return field
+
+
+def chip_layers(b, field, wear, edge_wear, primer):
+    """(bare, primer) masks of chipped paint: `wear` is the share chipped off all over,
+    `primer` how far the primer shows around the chips."""
+    threshold = amount_to_z(b, b.maximum(wear, 0.002))
+    gate = b.clamp01(b.mul(b.add(wear, edge_wear), 25.0))
+    bare = b.mul(b.smoothstep(threshold, b.add(threshold, 0.15), field), gate)
+    primer_t = b.sub(threshold, b.mul(primer, 0.7))
+    under = b.mul(b.smoothstep(primer_t, b.add(primer_t, 0.15), field), gate)
+    return bare, under
+
+
 def stretched_base(b, space, direction, stretch, fallback=True):
     """Object-space coordinates squashed along a surface direction (long features)."""
     t = surface_direction(b, direction, fallback)
@@ -322,28 +430,47 @@ def scratch_mask(b, space, amount, scale, offset):
     seg_z = space.znoise(b.mul(scale, 4.0), offset + 10, detail=2.0, roughness=0.5, label='Scratch Patches')
     threshold = amount_to_z(b, b.mul(amount, 0.5))
     patches = b.smoothstep(b.sub(threshold, 0.4), b.add(threshold, 0.4), seg_z)
-    layers = (
-        # freq, half-width, stretch, strength
-        (6.0, 0.011, 45.0, 1.0),
-        (11.0, 0.008, 32.0, 0.8),
-        (30.0, 0.005, 22.0, 0.45),  # fine hairlines
-    )
+    mask = scratch_lines(b, space, scale, offset)
+    gate = b.clamp01(b.mul(amount, 25.0))
+    return b.mul(b.mul(mask, patches), gate)
+
+
+SCRATCH_LAYERS = (
+    # freq, half-width, stretch, strength
+    (6.0, 0.011, 45.0, 1.0),
+    (11.0, 0.008, 32.0, 0.8),
+    (30.0, 0.005, 22.0, 0.45),  # fine hairlines
+)
+HAIRLINE_LAYERS = (
+    (55.0, 0.006, 28.0, 0.8),
+    (90.0, 0.005, 22.0, 0.6),
+)
+
+
+def scratch_lines(b, space, scale, offset, direction=None, layers=SCRATCH_LAYERS, first=0):
+    """Scratch lines everywhere (0..1): in random directions, or all along `direction`
+    (object mode; tiles: along U).  `first` picks other random directions for other layers."""
     mask = None
     for i, (freq, width, stretch, strength) in enumerate(layers):
+        k = first + i
         if space.tile:
             n = space.noise(b.mul(scale, freq), offset + i, detail=2.0, roughness=0.5,
-                            aniso=(1.0 / stretch, 1.0, 1.0), direction=_SCRATCH_DIRECTIONS[i],
+                            aniso=(1.0 / stretch, 1.0, 1.0),
+                            direction=_SCRATCH_DIRECTIONS[k % 3] if direction is None else 'UV',
                             label='Scratch Lines')
         else:
-            # random directions are never exactly perpendicular to a face, so no fallback needed
-            base, _ = stretched_base(b, space, _rotate_x_axis(_SCRATCH_ROTATIONS[i]), stretch, fallback=False)
+            if direction is None:
+                # random directions are never exactly perpendicular to a face, so no fallback needed
+                base, _ = stretched_base(b, space, _rotate_x_axis(_SCRATCH_ROTATIONS[k % 4]), stretch,
+                                         fallback=False)
+            else:
+                base, _ = stretched_base(b, space, direction, stretch)
             n = space.noise(b.mul(scale, freq), offset + i, detail=2.0, roughness=0.5, base=base,
                             label='Scratch Lines')
         line = b.one_minus(b.smoothstep(0.0, width, b.absolute(b.sub(n, 0.5))))
         layer = b.mul(line, strength)
         mask = layer if mask is None else b.maximum(mask, layer)
-    gate = b.clamp01(b.mul(amount, 25.0))
-    return b.mul(b.mul(mask, patches), gate)
+    return mask
 
 
 def rust_layer(b, space, scale, color_a, color_b, offset):

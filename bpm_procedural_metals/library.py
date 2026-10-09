@@ -27,6 +27,8 @@ OVERLAY_STEP = 280.0  # horizontal room made for every overlay node
 # ---------------------------------------------------------------- node groups
 def ensure_group(generator, tile=False):
     """Return the up-to-date node group for a generator, building it if needed."""
+    if G.GENERATORS[generator]['custom']:
+        raise ValueError('%s groups are made one by one (decals.py)' % generator)
     version = G.GENERATORS[generator]['version']
     for ng in bpy.data.node_groups:
         if (ng.get('bpm_generator') == generator and bool(ng.get('bpm_tile')) == bool(tile)
@@ -255,6 +257,8 @@ class OverlayState:
         self.label = node.label
         self.from_preset = bool(node.get(PRESET_OVERLAY_TAG))
         self.hidden_opacity = node.get('bpm_opacity')
+        # a decal keeps its own node group
+        self.tree = node.node_tree if G.GENERATORS[self.generator]['custom'] else None
 
 
 def overlay_nodes(mat):
@@ -321,18 +325,21 @@ class OverlayError(Exception):
     """A message meant for the user."""
 
 
-def add_overlay(mat, generator, values=None, tile=False):
-    """Insert an overlay between the material and its Principled BSDF (on top of the stack)."""
+def add_overlay(mat, generator, values=None, tile=False, group=None):
+    """Insert an overlay between the material and its Principled BSDF (on top of the stack).
+
+    `group`: the overlay's own node group (decals); otherwise the generator's shared one.
+    """
     if not G.is_overlay(generator):
         raise ValueError(generator)
     tree = ensure_node_tree(mat)
     bsdf = find_principled(tree)
     if bsdf is None:
-        raise OverlayError('"%s" has no Principled BSDF node, so dirt and dust cannot be layered on it.'
-                           % mat.name)
+        raise OverlayError('"%s" has no Principled BSDF node, so overlays (dirt, dust, wear) cannot be '
+                           'layered on it.' % mat.name)
     height = height_source(mat)
     node = tree.nodes.new('ShaderNodeGroup')
-    node.node_tree = ensure_group(generator, tile)
+    node.node_tree = group if group is not None else ensure_group(generator, tile)
     node.label = G.GENERATORS[generator]['label']
     node.width = 220
     x0 = bsdf.location.x
@@ -361,9 +368,12 @@ def add_overlay(mat, generator, values=None, tile=False):
 
 
 def add_overlay_state(mat, state, tile=False, extra=None):
+    """Re-create an overlay.  Decals are left out of seamless tiles (a tile has no place for them)."""
+    if state.tree is not None and tile:
+        return None
     values = dict(state.values)
     values.update(extra or {})
-    node = add_overlay(mat, state.generator, values, tile)
+    node = add_overlay(mat, state.generator, values, tile, group=state.tree)
     node.label = state.label or node.label
     if state.from_preset:
         node[PRESET_OVERLAY_TAG] = True

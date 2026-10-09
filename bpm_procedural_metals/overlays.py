@@ -1,15 +1,19 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Overlay generators: dirt and dust layered on top of any material.
+"""Overlay generators: dirt, dust, edge wear and scratches layered on top of
+any material.
 
 An overlay node group takes the PBR channels of the material below as inputs
 (Base Color, Metallic, Roughness, Normal, Height, Coat, Transmission) and
-outputs the same channels with dirt or dust mixed on top.  Dirt and dust are
-opaque: on glass they block the view through it.  It is inserted between the material
-and its Principled BSDF, so overlays stack, work on non-BPM materials too and
-end up in baked textures automatically.
+outputs the same channels with its layer mixed on top.  Dirt and dust are
+opaque: on glass they block the view through it.  It is inserted between the
+material and its Principled BSDF, so overlays stack, work on non-BPM materials
+too and end up in baked textures automatically.
 
-Overlays deliberately use no Bump node: the dirt hides ("fills") the relief
-below instead.  That keeps stacked shaders well inside Cycles' shader limits.
+Overlays use no Bump node: one Bump node in an overlay takes about 60 of the
+255 slots of Cycles' shader stack (measured), so a stack of overlays would
+overflow it.  Their relief goes into the Height output only (displacement,
+height maps); in the Normal output they hide ("fill") the relief below where
+they cover it, or let it through.
 
 Overlays are switched off with their Opacity input, not by muting the node:
 Blender passes muted group nodes through by socket type, which would send
@@ -205,6 +209,155 @@ def build_dust(b, I, gout, tile):
     _finish(b, gout, I, mask, col, I['Dust Roughness'], I['Fill'], thickness, 1.0, normal, height, geo_n)
 
 
+# ------------------------------------------------------------------ edge wear
+WEAR_PARAMS = [
+    C.fac('Amount', 0.6, 'Edge Wear', 'How far the edges are worn (visible in Cycles and in baked textures)',
+          key=True),
+    C.fac('Opacity', 1.0, 'Edge Wear', 'Fade the whole layer in or out (0 = hidden)'),
+    C.Param('Edge Width', 'FLOAT', 0.05, 0.001, 0.3, 'Edge Wear', 'Width of the worn band along the edges',
+            subtype='DISTANCE', key=True),
+    C.fac('Chips', 0.02, 'Edge Wear', 'Chips knocked off all over, not only on the edges (0.1 = 10%)', key=True),
+    C.scale('Chip Scale', 5.0, 0.05, 100.0, 'Edge Wear', 'Chip size (higher = smaller chips)'),
+    C.fac('Chip Detail', 0.6, 'Edge Wear', 'Ragged, detailed chip borders'),
+    C.fac('Rubbed', 0.0, 'Underneath',
+          '0 = chipped through to what is underneath (bare metal...); 1 = only rubbed: the same material, '
+          'lighter and smoother (wood, plastic, leather)', key=True),
+    C.color('Underneath Color', C.STEEL, 'Underneath', 'Color of what shows through the chips'),
+    C.fac('Underneath Metallic', 1.0, 'Underneath', '1 = metal shows through, 0 = wood, primer, plastic...'),
+    C.fac('Underneath Roughness', 0.3, 'Underneath', 'Glossiness of what shows through'),
+    C.fac('Primer', 0.0, 'Underneath', 'Primer showing around the chips'),
+    C.color('Primer Color', (0.32, 0.32, 0.30), 'Underneath', 'Color of the primer'),
+    C.fac('Lighten', 0.5, 'Underneath', 'How much lighter rubbed edges get'),
+    C.fac('Rust', 0.0, 'Look', 'Rust on the bare metal'),
+    C.fac('Paint Thickness', 0.5, 'Look', 'Depth of the chip edges'),
+] + OVERLAY_PATTERN
+
+def _lighter(b, color, amount):
+    """`color` rubbed lighter (worn wood, plastic or leather edges)."""
+    light = b.mix_color(0.3, b.hsv(color, saturation=0.8, value=2.2), (0.55, 0.54, 0.52))
+    return b.mix_color(amount, color, light)
+
+
+def build_wear(b, I, gout, tile):
+    S = _space(b, I, tile, 3)
+    inv = b.div(1.0, I['Scale'])
+    edge = F.edge_mask(b, S, b.mul(I['Edge Width'], inv))
+    cav = F.cavity_mask(b, S, b.mul(inv, 0.3))
+    col, metal, rough, normal, height, _coat, geo_n = _below(b, I)
+
+    field = F.chip_field(b, S, I['Chip Scale'], I['Chip Detail'], edge, cav, I['Amount'], 51, edge_weight=4.5)
+    bare, primer = F.chip_layers(b, field, I['Chips'], I['Amount'], I['Primer'])
+    opacity = I['Opacity']
+    rubbed = I['Rubbed']
+    chipped = b.one_minus(rubbed)
+    bare = b.mul(bare, opacity)
+    primer = b.mul(b.mul(primer, opacity), chipped)  # rubbed edges have no primer
+
+    # what shows through: something underneath, or the same material rubbed lighter
+    zu = S.znoise(10.0, 52, detail=3.0, roughness=0.5, label='Underneath Variation')
+    under = b.color_scale(I['Underneath Color'], b.madd(zu, 0.06, 1.0))
+    shown = b.mix_color(rubbed, under, _lighter(b, col, I['Lighten']))
+    shown_metal = b.mix(rubbed, I['Underneath Metallic'], metal)
+    shown_rough = b.mix(rubbed, b.madd(zu, 0.04, I['Underneath Roughness']), b.mul(rough, 0.7))
+    rz = S.znoise(4.0, 53, detail=6.0, roughness=0.6, label='Rust')
+    rust = b.mul(b.mul(bare, F.cover(b, rz, I['Rust'], 0.3)), b.mul(chipped, shown_metal))
+    rust_col = b.mix_color(b.smoothstep(-0.8, 1.4, b.mul(rz, 0.7)), C.RUST_B, C.RUST_A)
+
+    color = b.mix_color(primer, col, I['Primer Color'])
+    color = b.mix_color(bare, color, shown)
+    color = b.mix_color(rust, color, rust_col)
+    b.feed(gout.inputs['Base Color'], color)
+    metallic = b.mix(bare, b.mul(metal, b.one_minus(primer)), shown_metal)
+    b.feed(gout.inputs['Metallic'], b.mul(metallic, b.one_minus(rust)))
+    rough = b.mix(bare, b.mix(primer, rough, 0.6), shown_rough)
+    b.feed(gout.inputs['Roughness'], b.mix(rust, rough, b.madd(rz, 0.04, 0.85)))
+    b.feed(gout.inputs['Coat'], b.mul(I['Coat'], b.one_minus(b.mul(primer, chipped))))
+    b.feed(gout.inputs['Transmission'], b.mul(I['Transmission'], b.one_minus(primer)))
+
+    # chips step down through the paint (in the Height output only, see the module docstring);
+    # the revealed surface is smooth: no relief of the paint above
+    depth = b.mul(b.madd(primer, 0.45, b.mul(bare, 0.55)), b.mul(I['Paint Thickness'], chipped))
+    b.feed(gout.inputs['Height'], b.clamp01(b.madd(depth, -0.4, height)))
+    b.feed(gout.inputs['Normal'], b.vmath('NORMALIZE', b.mix_vector(b.mul(bare, chipped), normal, geo_n)))
+
+
+# ------------------------------------------------------------------ scratches
+SCRATCH_PARAMS = [
+    C.fac('Amount', 0.5, 'Scratches', 'How scratched the surface is', key=True),
+    C.fac('Opacity', 1.0, 'Scratches', 'Fade the whole layer in or out (0 = hidden)'),
+    C.scale('Scratch Scale', 1.0, 0.05, 20.0, 'Scratches', 'Scratch size (higher = smaller, denser)', key=True),
+    C.fac('Straight', 0.0, 'Scratches', '0 = scratches in every direction, 1 = all along the Scratch Direction'),
+    C.axis('Scratch Direction', (1.0, 0.0, 0.0), 'Scratches', 'Direction of straight scratches'),
+    C.fac('Fine Scratches', 0.4, 'Scratches', 'Dense hairline scratches that show in reflections', key=True),
+    C.fac('Swirls', 0.0, 'Scratches', 'Circular polishing marks (car paint, polished metal)', key=True),
+    C.fac('Scuffs', 0.0, 'Scratches', 'Dull, rubbed patches', key=True),
+    C.fac('Reveal', 0.0, 'Look',
+          '0 = scratches only lighten the surface (plastic, glass, wood); 1 = deep scratches cut through to '
+          'the color underneath (paint over metal)', key=True),
+    C.color('Scratch Color', (0.62, 0.62, 0.62), 'Look', 'Color revealed by deep scratches (with Reveal)'),
+    C.fac('Scratch Metallic', 1.0, 'Look', '1 = metal under the scratches (with Reveal)'),
+    C.fac('Lighten', 0.5, 'Look', 'How much lighter the scratches are (without Reveal)'),
+    C.fac('Scratch Roughness', 0.4, 'Look', 'Glossiness inside the scratches'),
+    C.fac('Depth', 0.5, 'Look', 'Depth of the scratches in the relief'),
+] + OVERLAY_PATTERN
+
+def build_scratches(b, I, gout, tile):
+    S = _space(b, I, tile, 4)
+    col, metal, rough, normal, height, _coat, geo_n = _below(b, I)
+    scale = I['Scratch Scale']
+    amount = I['Amount']
+    opacity = I['Opacity']
+
+    # deep scratches: in patches, in random directions or all one way
+    seg_z = S.znoise(b.mul(scale, 4.0), 70, detail=2.0, roughness=0.5, label='Scratch Patches')
+    threshold = F.amount_to_z(b, b.mul(amount, 0.5))
+    patches = b.smoothstep(b.sub(threshold, 0.4), b.add(threshold, 0.4), seg_z)
+    lines = b.mix(I['Straight'], F.scratch_lines(b, S, scale, 71),
+                  F.scratch_lines(b, S, scale, 74, direction=I['Scratch Direction']))
+    deep = b.mul(b.mul(lines, patches), b.mul(b.clamp01(b.mul(amount, 25.0)), opacity))
+
+    # hairlines all over, a little denser where the deep scratches are
+    hz = S.znoise(b.mul(scale, 2.0), 77, detail=2.0, roughness=0.5, label='Hairline Patches')
+    hair_on = F.cover(b, b.madd(seg_z, 0.4, hz), b.mul(I['Fine Scratches'], 0.8), 0.6)
+    hair = b.mul(b.mul(F.scratch_lines(b, S, scale, 78, layers=F.HAIRLINE_LAYERS, first=1), hair_on), opacity)
+
+    # swirls: arcs around random centers, like a polishing pad leaves them
+    sv = S.voronoi(b.mul(scale, 2.0), 80, label='Swirl Centers')
+    d = sv.outputs['Distance']
+    sr, _sg, _sb = b.separate_color(sv.outputs['Color'])
+    ring = b.fract(b.madd(d, 14.0, b.mul(sr, 7.0)))
+    ring = b.one_minus(b.smoothstep(0.05, 0.16, b.minimum(ring, b.one_minus(ring))))
+    az = S.znoise(b.mul(scale, 9.0), 81, detail=2.0, roughness=0.5, label='Swirl Arcs')
+    arcs = b.mul(ring, b.smoothstep(0.2, 1.2, az))
+    swirl = b.mul(b.mul(arcs, b.one_minus(b.smoothstep(0.25, 0.55, d))), b.mul(I['Swirls'], opacity))
+
+    # scuffs: dull, rubbed patches with faint streaks
+    scz = S.znoise(b.mul(scale, 1.5), 82, detail=4.0, roughness=0.6, label='Scuffs')
+    scuff = b.mul(F.cover(b, scz, b.mul(I['Scuffs'], 0.5), 0.6), opacity)
+    scuff = b.mul(scuff, b.clamp01(b.madd(hair, 0.5, 0.75)))
+
+    reveal = I['Reveal']
+    cut = b.mul(deep, reveal)
+    marks = b.maximum(b.maximum(b.mul(deep, 0.85), b.mul(hair, 0.35)), b.mul(swirl, 0.6))
+    light = b.mul(b.mul(marks, b.one_minus(reveal)), I['Lighten'])
+    color = b.mix_color(b.mul(scuff, 0.35), col, _lighter(b, col, 0.5))
+    color = b.mix_color(light, color, _lighter(b, col, 1.0))
+    color = b.mix_color(cut, color, I['Scratch Color'])
+    b.feed(gout.inputs['Base Color'], color)
+    b.feed(gout.inputs['Metallic'], b.mix(cut, metal, I['Scratch Metallic']))
+    rough = b.mix(scuff, rough, b.maximum(rough, 0.65))
+    rough = b.madd(hair, 0.12, b.madd(swirl, 0.25, rough))
+    b.feed(gout.inputs['Roughness'], b.clamp01(b.mix(deep, rough, I['Scratch Roughness'])))
+    # marks in a clear coat (car paint) show as duller lines in its reflection
+    b.feed(gout.inputs['Coat'], b.mul(I['Coat'], b.one_minus(b.maximum(cut, b.maximum(b.mul(marks, 0.6),
+                                                                                       b.mul(swirl, 0.7))))))
+    b.feed(gout.inputs['Transmission'], b.mul(I['Transmission'], b.one_minus(b.maximum(cut, b.mul(marks, 0.3)))))
+
+    groove = b.mul(b.maximum(b.maximum(deep, b.mul(hair, 0.3)), b.mul(swirl, 0.2)), I['Depth'])
+    b.feed(gout.inputs['Height'], b.clamp01(b.madd(groove, -0.08, height)))
+    b.feed(gout.inputs['Normal'], normal)
+
+
 DIRT_SPEC = dict(
     label='Dirt Overlay', category='OVERLAY', kind='overlay', params=_channel_params() + DIRT_PARAMS,
     outputs=OUTPUTS, build=build_dirt, version=OVERLAY_VERSION,
@@ -212,4 +365,18 @@ DIRT_SPEC = dict(
 DUST_SPEC = dict(
     label='Dust Overlay', category='OVERLAY', kind='overlay', params=_channel_params() + DUST_PARAMS,
     outputs=OUTPUTS, build=build_dust, version=OVERLAY_VERSION,
+)
+# Decals (decals.py) are overlays too, but every decal has a node group of its own.
+DECAL_SPEC = dict(
+    label='Decal', category='OVERLAY', kind='overlay', custom=True, outputs=OUTPUTS, build=None,
+    params=_channel_params() + [C.fac('Opacity', 1.0, 'Decal', 'Fade this decal in or out (0 = hidden)')],
+    version=OVERLAY_VERSION,
+)
+WEAR_SPEC = dict(
+    label='Edge Wear Overlay', category='WEAR', kind='overlay', params=_channel_params() + WEAR_PARAMS,
+    outputs=OUTPUTS, build=build_wear, version=OVERLAY_VERSION,
+)
+SCRATCH_SPEC = dict(
+    label='Scratches Overlay', category='WEAR', kind='overlay', params=_channel_params() + SCRATCH_PARAMS,
+    outputs=OUTPUTS, build=build_scratches, version=OVERLAY_VERSION,
 )

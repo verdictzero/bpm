@@ -7,12 +7,12 @@ All user-facing settings are inputs of that group, so they can be tweaked live
 recompiling anything.
 
 Material generators output PBR channels for a Principled BSDF.  Overlay
-generators take those channels as inputs and put dirt, dust... on top, so they
-can be stacked on any material.
+generators take those channels as inputs and put dirt, dust, edge wear or
+scratches on top, so they can be stacked on any material.
 """
 
-from . import (mat_fabric, mat_glass, mat_leather, mat_metal, mat_organic, mat_paint, mat_plastic, mat_wood,
-               overlays)
+from . import (mat_camo, mat_fabric, mat_glass, mat_leather, mat_lens, mat_metal, mat_organic, mat_paint,
+               mat_plastic, mat_wood, overlays)
 from .gencommon import MACRO_BUMP, MICRO_BUMP, TILE_PARAM  # noqa: F401  (used by bake.py / tests)
 from .nodebuilder import Builder, auto_layout, create_group
 
@@ -30,19 +30,25 @@ def _register(key, spec):
     spec.setdefault('fit', 0.75)  # how strongly "Fit Pattern Size to Object" adapts the scale
     spec.setdefault('bump', MACRO_BUMP)  # relief depth of the 0..1 height range (meters at Scale 1)
     spec.setdefault('glass', False)  # transmissive: EEVEE refraction settings, IOR kept when baking
+    spec.setdefault('custom', False)  # True: every use has its own node group (decals), never built here
     GENERATORS[key] = spec
 
 
 _register('METAL', mat_metal.SPEC)
 _register('PAINT', mat_paint.SPEC)
+_register('CAMO', mat_camo.SPEC)
 _register('WOOD', mat_wood.SPEC)
 _register('PLASTIC', mat_plastic.SPEC)
 _register('GLASS', mat_glass.SPEC)
+_register('LENS', mat_lens.SPEC)
 _register('LEATHER', mat_leather.SPEC)
 _register('FABRIC', mat_fabric.SPEC)
 _register('ORGANIC', mat_organic.SPEC)
 _register('DIRT', overlays.DIRT_SPEC)
 _register('DUST', overlays.DUST_SPEC)
+_register('WEAR', overlays.WEAR_SPEC)
+_register('SCRATCH', overlays.SCRATCH_SPEC)
+_register('DECAL', overlays.DECAL_SPEC)
 
 
 def is_overlay(generator):

@@ -151,6 +151,13 @@ def make_shape(shape='cube'):
         obj = bpy.context.active_object
         for poly in obj.data.polygons:
             poly.use_smooth = True
+    elif shape == 'dome':  # a flattened sphere: lenses and visors
+        from mathutils import Matrix
+        bpy.ops.mesh.primitive_uv_sphere_add(radius=1.1, segments=64, ring_count=32)
+        obj = bpy.context.active_object
+        obj.data.transform(Matrix.Diagonal((1.0, 1.0, 0.45, 1.0)))  # in the mesh: zoom scales the object
+        for poly in obj.data.polygons:
+            poly.use_smooth = True
     elif shape == 'steps':
         obj = make_steps()
     elif shape == 'cylinder':

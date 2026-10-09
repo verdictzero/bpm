@@ -9,6 +9,7 @@ import bpy
 from bpy.props import EnumProperty, FloatProperty, FloatVectorProperty, IntProperty, StringProperty
 
 from . import bake as B
+from . import decals as D
 from . import library as L
 from . import presets as P
 from .nodebuilder import set_socket_value
@@ -265,7 +266,11 @@ class BPM_OT_preview_material(bpy.types.Operator):
 
 # ------------------------------------------------------------------ overlays
 def _overlay_items(self, context):
-    items = [(p['id'], p['name'], p['desc']) for p in P.PRESETS if P.is_overlay(p)]
+    items = []
+    for category, label, *_rest in P.CATEGORIES:
+        if category in P.OVERLAY_CATEGORIES:
+            items.append(('', label, ''))  # heading in the menu
+            items += [(p['id'], p['name'], p['desc']) for p in P.by_category(category)]
     _overlay_items.cache = items
     return items
 
@@ -279,9 +284,9 @@ def _plain_material(obj):
 
 
 class BPM_OT_add_overlay(bpy.types.Operator):
-    """Layer dirt or dust on top of the material of the selected objects"""
+    """Layer dirt, dust, edge wear or scratches on top of the material of the selected objects"""
     bl_idname = 'bpm.add_overlay'
-    bl_label = 'Add Dirt or Dust'
+    bl_label = 'Add Overlay'
     bl_options = {'REGISTER', 'UNDO'}
 
     preset: EnumProperty(items=_overlay_items, name='Overlay')
@@ -333,7 +338,7 @@ class _OverlayOperator:
 
 
 class BPM_OT_remove_overlay(_OverlayOperator, bpy.types.Operator):
-    """Remove this layer of dirt / dust"""
+    """Remove this layer (a decal stays off this material until you click Update Decal)"""
     bl_idname = 'bpm.remove_overlay'
     bl_label = 'Remove Overlay'
 
@@ -341,6 +346,8 @@ class BPM_OT_remove_overlay(_OverlayOperator, bpy.types.Operator):
         mat, node = self._target(context)
         if node is None:
             return {'CANCELLED'}
+        if D.is_decal_group(node.node_tree):
+            D.exclude(mat, node.node_tree)  # baking would put it back otherwise
         L.remove_overlay(mat, node)
         return {'FINISHED'}
 
@@ -379,7 +386,7 @@ class BPM_OT_overlay_seed(_OverlayOperator, bpy.types.Operator):
 
     def execute(self, context):
         mat, node = self._target(context)
-        if node is None:
+        if node is None or 'Seed' not in node.inputs:
             return {'CANCELLED'}
         node.inputs['Seed'].default_value = round(random.uniform(0.0, 100.0), 2)
         return {'FINISHED'}
@@ -595,6 +602,239 @@ class BPM_OT_show_baked(bpy.types.Operator):
         return {'FINISHED'}
 
 
+# ------------------------------------------------------------------- decals
+def _view_region(area):
+    for region in area.regions:
+        if region.type == 'WINDOW':
+            return region
+    return None
+
+
+def _draw_drag_box(op):
+    if op.start is None or op.end is None:
+        return
+    import gpu
+    from gpu_extras.batch import batch_for_shader
+    (x0, y0), (x1, y1) = op.start, op.end
+    corners = [(x0, y0), (x1, y0), (x1, y1), (x0, y1)]
+    shader = gpu.shader.from_builtin('UNIFORM_COLOR')
+    gpu.state.blend_set('ALPHA')
+    batch = batch_for_shader(shader, 'TRIS', {'pos': corners}, indices=((0, 1, 2), (0, 2, 3)))
+    shader.uniform_float('color', (1.0, 0.55, 0.1, 0.15))
+    batch.draw(shader)
+    batch = batch_for_shader(shader, 'LINE_LOOP', {'pos': corners})
+    shader.uniform_float('color', (1.0, 0.55, 0.1, 1.0))
+    batch.draw(shader)
+    gpu.state.blend_set('NONE')
+
+
+def place_decal(context, region, rv3d, rect, image):
+    """Shoot rays through the rectangle `rect` (region pixels: x0, y0, x1, y1) and put a decal box
+    on what they hit.  Returns (box, objects showing the decal, warnings), box None if nothing was hit."""
+    from bpy_extras import view3d_utils
+    from mathutils import Vector
+    x0, y0, x1, y1 = rect
+    scene = context.scene
+    depsgraph = context.evaluated_depsgraph_get()
+
+    def ray(px, py):
+        return (view3d_utils.region_2d_to_origin_3d(region, rv3d, (px, py)),
+                view3d_utils.region_2d_to_vector_3d(region, rv3d, (px, py)))
+
+    steps = 8
+    points = [((x0 + x1) / 2.0, (y0 + y1) / 2.0)]
+    points += [(x0 + (x1 - x0) * i / steps, y0 + (y1 - y0) * j / steps)
+               for i in range(steps + 1) for j in range(steps + 1)]
+    hits, hit = [], set()
+    for px, py in points:
+        origin, direction = ray(px, py)
+        found, location, normal, _index, obj, _matrix = scene.ray_cast(depsgraph, origin, direction)
+        obj = getattr(obj, 'original', obj)
+        if found and L.can_have_material(obj) and not D.is_box(obj):
+            hits.append((location, normal))
+            hit.add(obj)
+    if not hits:
+        return None, [], []
+    corners = [ray(x0, y0), ray(x1, y0), ray(x1, y1), ray(x0, y1)]
+    width, height = image.size
+    aspect = width / height if width and height else 1.0
+    matrix = D.box_from_hits(hits, corners, rv3d.view_rotation @ Vector((1.0, 0.0, 0.0)),
+                             rv3d.view_rotation @ Vector((0.0, 0.0, -1.0)), aspect)
+    box = D.create(scene, image, matrix)
+    targets = list(hit) + [o for o in D.candidates(scene) if o not in hit and D.touches(box, o)]
+    warnings, shown = [], []
+    for obj in targets:
+        B.restore_procedural(obj)  # the decal goes on the procedural material, not a baked one
+        if D.add_to(box, obj, warnings, force=True):
+            shown.append(obj)
+    for obj in context.selected_objects:
+        obj.select_set(False)
+    box.select_set(True)
+    context.view_layer.objects.active = box
+    return box, shown, warnings
+
+
+class BPM_OT_place_decal(bpy.types.Operator):
+    """Drag a box over your model: the decal goes on everything inside the box"""
+    bl_idname = 'bpm.place_decal'
+    bl_label = 'Place Decal'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    @classmethod
+    def poll(cls, context):
+        if context.scene.bpm.decal_image is None:
+            cls.poll_message_set('Open the decal image first')
+            return False
+        return context.screen is not None
+
+    def invoke(self, context, event):
+        area = context.area if context.area is not None and context.area.type == 'VIEW_3D' else \
+            next((a for a in context.screen.areas if a.type == 'VIEW_3D'), None)
+        region = _view_region(area) if area is not None else None
+        if region is None or area.spaces.active.region_3d is None:
+            self.report({'ERROR'}, 'Use this in a 3D view.')
+            return {'CANCELLED'}
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+        self.area, self.region, self.rv3d = area, region, area.spaces.active.region_3d
+        self.start = self.end = None
+        self.handle = bpy.types.SpaceView3D.draw_handler_add(_draw_drag_box, (self,), 'WINDOW', 'POST_PIXEL')
+        context.window_manager.modal_handler_add(self)
+        context.window.cursor_modal_set('CROSSHAIR')
+        area.header_text_set('Decal: drag a box over your model    (right-click or Esc: cancel)')
+        return {'RUNNING_MODAL'}
+
+    def _stop(self, context):
+        bpy.types.SpaceView3D.draw_handler_remove(self.handle, 'WINDOW')
+        context.window.cursor_modal_restore()
+        self.area.header_text_set(None)
+        self.area.tag_redraw()
+
+    def modal(self, context, event):
+        x, y = event.mouse_x - self.region.x, event.mouse_y - self.region.y
+        inside = 0 <= x < self.region.width and 0 <= y < self.region.height
+        if event.type in {'RIGHTMOUSE', 'ESC'} and event.value == 'PRESS':
+            self._stop(context)
+            return {'CANCELLED'}
+        if event.type == 'LEFTMOUSE':
+            if event.value == 'PRESS' and inside:
+                self.start = self.end = (x, y)
+            elif event.value == 'RELEASE' and self.start is not None:
+                self.end = (x, y)
+                self._stop(context)
+                return self._place(context)
+            return {'RUNNING_MODAL'}
+        if event.type == 'MOUSEMOVE':
+            if self.start is not None:
+                self.end = (x, y)
+                self.area.tag_redraw()
+            return {'RUNNING_MODAL'}
+        if event.type in {'MIDDLEMOUSE', 'WHEELUPMOUSE', 'WHEELDOWNMOUSE', 'TRACKPADPAN', 'TRACKPADZOOM'} \
+                or event.type.startswith(('NDOF', 'NUMPAD')):
+            return {'PASS_THROUGH'}  # look around while placing
+        return {'RUNNING_MODAL'}
+
+    def _place(self, context):
+        (x0, y0), (x1, y1) = self.start, self.end
+        if abs(x1 - x0) < 6 or abs(y1 - y0) < 6:  # just a click: a box a quarter of the view high
+            half = self.region.height / 8.0
+            x0, x1, y0, y1 = x1 - half, x1 + half, y1 - half, y1 + half
+        rect = (min(x0, x1), min(y0, y1), max(x0, x1), max(y0, y1))
+        box, shown, warnings = place_decal(context, self.region, self.rv3d, rect, context.scene.bpm.decal_image)
+        if box is None:
+            self.report({'WARNING'}, 'No object under the box: drag it over your model.')
+            return {'CANCELLED'}
+        for text in warnings:
+            self.report({'WARNING'}, text)
+        self.report({'INFO'}, 'Decal on %d object%s. Move, scale or rotate the box (G, S, R) to adjust it.'
+                    % (len(shown), 's' * (len(shown) != 1)))
+        return {'FINISHED'}
+
+
+def _decal_box(context, name):
+    obj = bpy.data.objects.get(name) if name else context.active_object
+    return obj if D.is_box(obj) else None
+
+
+class BPM_OT_decal_refresh(bpy.types.Operator):
+    """Put the decal on everything that is inside its box now (after moving it over other objects)"""
+    bl_idname = 'bpm.decal_refresh'
+    bl_label = 'Update Decal'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    name: StringProperty()
+
+    def execute(self, context):
+        box = _decal_box(context, self.name)
+        if box is None:
+            return {'CANCELLED'}
+        inside = [o for o in D.candidates(context.scene) if D.touches(box, o)]
+        for obj in inside:
+            B.restore_procedural(obj)
+        warnings = []
+        shown = [o for o in inside if D.add_to(box, o, warnings, force=True)]
+        for text in warnings:
+            self.report({'WARNING'}, text)
+        self.report({'INFO'}, '"%s" is on %d object%s.' % (box.name, len(shown), 's' * (len(shown) != 1)))
+        return {'FINISHED'}
+
+
+class BPM_OT_decal_remove(bpy.types.Operator):
+    """Delete this decal (its box and the decal on every material)"""
+    bl_idname = 'bpm.decal_remove'
+    bl_label = 'Remove Decal'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    name: StringProperty()
+
+    def execute(self, context):
+        box = _decal_box(context, self.name)
+        if box is None:
+            return {'CANCELLED'}
+        D.remove(box)
+        return {'FINISHED'}
+
+
+class BPM_OT_decal_select(bpy.types.Operator):
+    """Select this decal's box (to move, scale or rotate it and change its settings)"""
+    bl_idname = 'bpm.decal_select'
+    bl_label = 'Select Decal'
+    bl_options = {'REGISTER', 'UNDO', 'INTERNAL'}
+
+    name: StringProperty()
+
+    def execute(self, context):
+        box = _decal_box(context, self.name)
+        if box is None or not box.visible_get():
+            return {'CANCELLED'}
+        if context.mode != 'OBJECT':
+            bpy.ops.object.mode_set(mode='OBJECT')
+        for obj in context.selected_objects:
+            obj.select_set(False)
+        box.select_set(True)
+        context.view_layer.objects.active = box
+        return {'FINISHED'}
+
+
+class BPM_OT_decal_find_maps(bpy.types.Operator):
+    """Look for the decal's normal, roughness, metallic and height maps next to its image file"""
+    bl_idname = 'bpm.decal_find_maps'
+    bl_label = 'Find PBR Maps'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        box = _decal_box(context, '')
+        if box is None or box.bpm_decal.color_map is None:
+            return {'CANCELLED'}
+        found = D.image_maps(box.bpm_decal.color_map)
+        for key, image in found.items():
+            if key != 'COLOR':
+                setattr(box.bpm_decal, D.MAP_PROPS[key], image)
+        names = [k.title() for k in found if k != 'COLOR']
+        self.report({'INFO'}, 'Found: %s.' % ', '.join(names) if names else 'No other maps next to the image.')
+        return {'FINISHED'}
+
+
 CLASSES = (
     BPM_OT_apply_preset,
     BPM_OT_gallery_step,
@@ -617,6 +857,11 @@ CLASSES = (
     BPM_OT_open_folder,
     BPM_OT_show_procedural,
     BPM_OT_show_baked,
+    BPM_OT_place_decal,
+    BPM_OT_decal_refresh,
+    BPM_OT_decal_remove,
+    BPM_OT_decal_select,
+    BPM_OT_decal_find_maps,
 )
 
 

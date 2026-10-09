@@ -22,6 +22,7 @@ import re
 import bpy
 import numpy as np
 
+from . import decals as D
 from . import generators as G
 from . import library as L
 from .nodebuilder import is_socket
@@ -37,6 +38,9 @@ MAPS = {
     'AO': ('Ambient Occlusion', 'AO', 'AO', None, False),
 }
 MAP_ORDER = ('BASE_COLOR', 'METALLIC', 'ROUGHNESS', 'TRANSMISSION', 'NORMAL', 'HEIGHT', 'AO')
+# Principled BSDF settings that cannot be baked into a texture: baked materials copy them
+KEPT_INPUTS = ('IOR', 'Thin Film Thickness', 'Thin Film IOR')
+KEPT_DEFAULTS = {'IOR': 1.5, 'Thin Film Thickness': 0.0, 'Thin Film IOR': 1.33}
 
 QUALITY_SAMPLES = {
     # quality: (color/data samples, ambient occlusion samples)
@@ -441,19 +445,30 @@ class MaterialRig:
         value = self.source('TRANSMISSION')
         return is_socket(value) or (value is not None and float(value) > 0.0)
 
-    def ior(self):
-        """Index of refraction (a BPM glass passes its IOR slider straight through)."""
-        if self.bsdf is None or 'IOR' not in self.bsdf.inputs:
-            return 1.5
-        sock = self.bsdf.inputs['IOR']
-        if not sock.is_linked:
-            return float(sock.default_value)
-        link = sock.links[0]
-        slider = link.from_node.inputs.get(link.from_socket.name) if link.from_node.bl_idname == 'ShaderNodeGroup' \
-            else None
-        if slider is not None and not slider.is_linked and hasattr(slider, 'default_value'):
-            return float(slider.default_value)
-        return 1.5
+    def kept(self):
+        """BSDF settings that are copied into the baked material instead of baked (see KEPT_INPUTS).
+
+        A BPM material passes them straight through from the slider of the same
+        name as its group output (IOR, lens Coating...): that slider's value is used.
+        """
+        values = {}
+        if self.bsdf is None:
+            return values
+        for name in KEPT_INPUTS:
+            sock = self.bsdf.inputs.get(name)
+            if sock is None:
+                continue
+            if not sock.is_linked:
+                values[name] = float(sock.default_value)
+                continue
+            link = sock.links[0]
+            node = link.from_node
+            if node.bl_idname != 'ShaderNodeGroup':
+                continue
+            slider = node.inputs.get(link.from_socket.name)
+            if slider is not None and not slider.is_linked and hasattr(slider, 'default_value'):
+                values[name] = float(slider.default_value)
+        return values
 
     # -- pass setup --------------------------------------------------------
     def set_target(self, image):
@@ -676,8 +691,22 @@ def _save_packed(name, path, size, channels, alpha=False, float_buffer=False):
 
 
 # ---------------------------------------------------------- baked material
-def build_baked_material(name, images, uv_name, directx=False, tag_value=True, ior=None):
-    """Create (or rebuild) an image-texture material from baked maps."""
+def merge_kept(rigs):
+    """One set of kept BSDF settings for the baked material: the first material that
+    changes a setting from Blender's default wins (glass first, so its IOR is used)."""
+    kept = {}
+    for rig in rigs:
+        for name, value in rig.kept().items():
+            if name not in kept or (kept[name] == KEPT_DEFAULTS.get(name) and value != KEPT_DEFAULTS.get(name)):
+                kept[name] = value
+    return kept
+
+
+def build_baked_material(name, images, uv_name, directx=False, tag_value=True, kept=None):
+    """Create (or rebuild) an image-texture material from baked maps.
+
+    `kept`: {Principled BSDF input: value} copied as is (IOR, lens coating).
+    """
     mat = bpy.data.materials.get(name)
     if mat is None or not mat.get(L.BAKED_TAG):
         mat = bpy.data.materials.new(name)
@@ -712,9 +741,11 @@ def build_baked_material(name, images, uv_name, directx=False, tag_value=True, i
     if 'ROUGHNESS' in images:
         links.new(tex('ROUGHNESS', y).outputs['Color'], bsdf.inputs['Roughness'])
     y -= 300
+    for input_name, value in (kept or {}).items():
+        if input_name in bsdf.inputs:
+            bsdf.inputs[input_name].default_value = value
     if 'TRANSMISSION' in images:
         links.new(tex('TRANSMISSION', y).outputs['Color'], bsdf.inputs['Transmission Weight'])
-        bsdf.inputs['IOR'].default_value = ior if ior is not None else 1.5
         L.setup_glass(mat)
         y -= 300
     if 'NORMAL' in images:
@@ -1051,6 +1082,7 @@ class ObjectBakeJob(Job):
         s = self.settings
         context = self.context
         was_baked = _restore_for_bake(obj)
+        D.refresh_object(obj, context.scene)  # decals whose box reaches the object (it may have moved)
         stand_ins = {}
         rigs = []
         hidden_render = obj.hide_render
@@ -1075,7 +1107,7 @@ class ObjectBakeJob(Job):
             glass = [r for r in rigs if r.transmissive()]
             if 'TRANSMISSION' in keys and not glass:
                 keys.remove('TRANSMISSION')  # opaque: no light goes through anywhere
-            ior = glass[0].ior() if glass else None
+            kept = merge_kept(glass + [r for r in rigs if r not in glass])
             if 'HEIGHT' in keys and all(r.source('HEIGHT') is None for r in rigs):
                 keys.remove('HEIGHT')
                 self.info('"%s": its material has no height information, skipped the height map.' % obj.name)
@@ -1111,7 +1143,7 @@ class ObjectBakeJob(Job):
             stand_ins = {}
             loaded = self._save_set(set_name, self.output_dir, images, s.resolution)
             uv_name = self._commit_uvs(obj.data, uv_name)
-            mat = build_baked_material('%s Baked' % obj.name, loaded, uv_name, s.normal_directx, ior=ior)
+            mat = build_baked_material('%s Baked' % obj.name, loaded, uv_name, s.normal_directx, kept=kept)
             mat['bpm_source_object'] = obj.name
             if s.assign_baked or was_baked:
                 assign_baked(obj, mat)
@@ -1296,7 +1328,7 @@ class TileBakeJob(Job):
         keys = [k for k in MAP_ORDER if k in s.maps and k != 'AO']
         rig = MaterialRig(temp_mat)
         glass = rig.transmissive()
-        ior = rig.ior() if glass else None
+        kept = merge_kept([rig])
         if not glass and 'TRANSMISSION' in keys:
             keys.remove('TRANSMISSION')  # opaque: no light goes through anywhere
         # The normal map is computed from the height map (exact and seamless),
@@ -1328,7 +1360,7 @@ class TileBakeJob(Job):
         yield 'Saving tile textures for %s' % source_mat.name
         loaded = self._save_set(name, folder, images, s.resolution)
         if s.create_tile_material:
-            mat = build_tiled_material('%s Tiled' % source_mat.name, loaded, s.tile_size, s.normal_directx, ior)
+            mat = build_tiled_material('%s Tiled' % source_mat.name, loaded, s.tile_size, s.normal_directx, kept)
             self.tile_materials.append(mat)
         self.info('Made seamless tile "%s" (%d maps) in %s' % (source_mat.name, len(loaded), folder))
         self.done_steps += 1
@@ -1369,9 +1401,9 @@ def normal_from_height(height, texel_size, distance, strength=1.0, directx=False
     return n * 0.5 + 0.5
 
 
-def build_tiled_material(name, images, tile_size, directx=False, ior=None):
+def build_tiled_material(name, images, tile_size, directx=False, kept=None):
     """Material using the seamless textures on the object's UVs (Mapping node = repeat count)."""
-    mat = build_baked_material(name, images, '', directx, tag_value='TILE', ior=ior)
+    mat = build_baked_material(name, images, '', directx, tag_value='TILE', kept=kept)
     tree = mat.node_tree
     uv = next(n for n in tree.nodes if n.bl_idname == 'ShaderNodeUVMap')
     coord = tree.nodes.new('ShaderNodeTexCoord')

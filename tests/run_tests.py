@@ -17,6 +17,7 @@ import traceback
 
 import bpy
 import numpy as np
+from mathutils import Vector
 
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, ROOT)
@@ -106,6 +107,8 @@ def register_unregister():
 def groups_are_clean():
     fresh_scene()
     for gen in G.GENERATORS:
+        if G.GENERATORS[gen]['custom']:  # decals: built per decal (see decals_project_and_bake)
+            continue
         for tile in (False, True):
             ng = G.build_group(gen, tile)
             assert all(link.is_valid for link in ng.links), ng.name
@@ -142,7 +145,8 @@ def presets_are_valid():
     for cat, *_rest in P.CATEGORIES:
         assert P.by_category(cat), cat
     for gen in G.GENERATORS:
-        assert any(p['generator'] == gen for p in P.PRESETS), 'no preset uses ' + gen
+        assert G.GENERATORS[gen]['custom'] or any(p['generator'] == gen for p in P.PRESETS), \
+            'no preset uses ' + gen
 
 
 @test
@@ -437,6 +441,236 @@ def glass_bakes_to_glass():
 
 
 @test
+def military_patterns():
+    """Camouflage shapes stay seamless as tiles; digital camouflage really is made of square pixels."""
+    fresh_scene()
+    ids = ('mil_woodland', 'mil_digital_woodland', 'mil_splinter', 'mil_tiger', 'mil_ambush')
+    mats = [L.create_material(pid) for pid in ids]
+    clean = {'Mud': 0.0, 'Splatter': 0.0, 'Dust': 0.0, 'Grime': 0.0, 'Rain Streaks': 0.0, 'Chips': 0.0,
+             'Edge Wear': 0.0, 'Scratches': 0.0, 'Color Variation': 0.0, 'Fading': 0.0, 'Rust Streaks': 0.0}
+    for mat in mats[:2]:
+        L.apply_values(L.find_bpm_node(mat), clean)
+    job = B.TileBakeJob(bpy.context, mats, settings(resolution=128, maps={'BASE_COLOR'}))
+    B.run_to_end(job)
+    assert len(job.written) == len(ids), job.written
+    changing = {}
+    for path in job.written:
+        a = read_png(path)[..., :3].astype(np.float64)
+        name = os.path.basename(path)
+        assert seam_ok(a), 'visible seam in ' + name
+        assert a.std() > 0.01, 'no camouflage in ' + name
+        steps = np.abs(np.diff(a, axis=1)).max(axis=2) > 0.02
+        changing[name] = int((steps.mean(axis=0) > 0.02).sum())  # columns where colors change
+    digital = changing['Digital_Woodland_BaseColor.png']
+    smooth = changing['Woodland_Camo_BaseColor.png']
+    assert digital <= 64 < smooth, changing  # pixels: colors only change on the pixel grid
+
+
+@test
+def wear_and_scratch_overlays():
+    """Edge wear and scratches stack like dirt and dust, cut through clear coat and reach the bake."""
+    fresh_scene()
+    mat = L.create_material('paint_car_red')  # has a clear coat
+    group = L.find_bpm_node(mat)
+    wear = L.add_overlay(mat, 'WEAR', {'Amount': 1.0, 'Chips': 0.3})
+    scratch = L.add_overlay(mat, 'SCRATCH', {'Amount': 1.0, 'Reveal': 1.0})
+    assert L.overlay_stack(mat) == [wear, scratch]
+    assert bsdf_source(mat, 'Coat Weight') == scratch and linked_from(wear.inputs['Coat']) == group
+    assert linked_from(scratch.inputs['Normal']) == wear and linked_from(wear.inputs['Height']) == group
+    L.remove_overlay(mat, scratch)
+    L.remove_overlay(mat, wear)
+    assert bsdf_source(mat, 'Coat Weight') == group and bsdf_source(mat, 'Normal') == group
+    # plastic chipped through to steel: metal shows up in the baked metallic map, and a height map
+    obj = add_cube()
+    plastic = L.create_material('plastic_glossy_red')
+    L.add_overlay(plastic, 'WEAR', {'Amount': 1.0, 'Chips': 0.3})
+    obj.data.materials.append(plastic)
+    out = os.path.join(TMP, 'wear')
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [obj], settings(maps={'BASE_COLOR', 'METALLIC', 'HEIGHT'},
+                                                             output_dir=out, assign_baked=False)))
+    covered = read_png(os.path.join(out, 'Cube_BaseColor.png'))[..., 0] > 0.02
+    metal = read_png(os.path.join(out, 'Cube_Metallic.png'))[..., 0]
+    assert 0.03 < (metal[covered] > 0.5).mean() < 0.9, (metal[covered] > 0.5).mean()
+    assert os.path.exists(os.path.join(out, 'Cube_Height.png'))
+    # rubbed edges stay the same material: no metal
+    L.apply_values(L.overlay_stack(plastic)[0], {'Rubbed': 1.0})
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [obj], settings(maps={'METALLIC'}, output_dir=out,
+                                                             assign_baked=False)))
+    metal = read_png(os.path.join(out, 'Cube_Metallic.png'))[..., 0]
+    assert metal.max() < 0.05, metal.max()
+
+
+@test
+def lens_keeps_its_coating():
+    """Lenses are opaque; their coating (thin film) and IOR are copied into the baked material."""
+    fresh_scene()
+    mat = L.create_material('lens_camera')
+    node = L.find_bpm_node(mat)
+    bsdf = L.find_principled(mat.node_tree)
+    assert linked_from(bsdf.inputs['Thin Film Thickness']) == node
+    assert linked_from(bsdf.inputs['Thin Film IOR']) == node and linked_from(bsdf.inputs['IOR']) == node
+    obj = add_cube('Lens')
+    obj.data.materials.append(mat)
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    # the coating color buttons set the thickness slider
+    assert bpy.ops.bpm.set_value(socket='Coating', value=350.0) == {'FINISHED'}
+    assert node.inputs['Coating'].default_value == 350.0
+    job = B.ObjectBakeJob(bpy.context, [obj], settings(maps={'BASE_COLOR', 'ROUGHNESS', 'TRANSMISSION'},
+                                                       output_dir=os.path.join(TMP, 'lens')))
+    B.run_to_end(job)
+    names = os.listdir(job.output_dir)
+    assert 'Lens_BaseColor.png' in names, names
+    assert not any('Transmission' in n or 'Opacity' in n for n in names), 'lenses are not see-through'
+    baked = L.find_principled(obj.active_material.node_tree)
+    assert abs(baked.inputs['Thin Film Thickness'].default_value - 350.0) < 1e-3
+    assert abs(baked.inputs['Thin Film IOR'].default_value - 1.38) < 1e-3
+    assert abs(baked.inputs['IOR'].default_value - 1.6) < 1e-3
+    assert read_png(os.path.join(job.output_dir, 'Lens_Roughness.png'))[..., 0].max() < 0.3, 'lenses are glossy'
+    # seamless tiles keep the coating too
+    tiles = B.TileBakeJob(bpy.context, [L.create_material('lens_tail_light')], settings(resolution=64,
+                                                                                      maps={'BASE_COLOR'}))
+    B.run_to_end(tiles)
+    tiled = L.find_principled(tiles.tile_materials[0].node_tree)
+    assert abs(tiled.inputs['IOR'].default_value - 1.5) < 1e-3
+
+
+@test
+def overlay_menu_lists_every_overlay():
+    from bpm_procedural_metals import operators as OPS
+    fresh_scene()
+    items = OPS._overlay_items(None, bpy.context)
+    assert [i[0] for i in items if i[0]] == [p['id'] for p in P.PRESETS if P.is_overlay(p)]
+    assert [i[1] for i in items if not i[0]] == ['Dirt & Dust', 'Edge Wear & Scratches']
+    obj = add_cube()
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    assert bpy.ops.bpm.add_overlay(preset='scratch_light') == {'FINISHED'}
+    assert bpy.ops.bpm.apply_preset(preset='wear_chipped_paint') == {'FINISHED'}
+    assert [n.label for n in L.overlay_stack(obj.active_material)] == ['Light Scratches', 'Chipped Paint Edges']
+    assert bpy.ops.bpm.overlay_seed(index=1) == {'FINISHED'}
+
+
+def decal_image(name='Logo', size=64):
+    """A red disc on a transparent background, saved as a PNG: a test decal."""
+    folder = os.path.join(TMP, 'decal_src')
+    os.makedirs(folder, exist_ok=True)
+    img = bpy.data.images.new(name + '_BaseColor', size, size, alpha=True)
+    yy, xx = np.mgrid[0:size, 0:size]
+    px = np.zeros((size, size, 4), np.float32)
+    px[(xx - size / 2) ** 2 + (yy - size / 2) ** 2 < (size * 0.4) ** 2] = (1.0, 0.0, 0.0, 1.0)
+    img.pixels.foreach_set(px.ravel())
+    img.filepath_raw = os.path.join(folder, name + '_BaseColor.png')
+    img.file_format = 'PNG'
+    img.save()
+    return img
+
+
+@test
+def decal_maps_are_found():
+    from bpm_procedural_metals import decals as D
+    folder = os.path.join(TMP, 'maps')
+    os.makedirs(folder, exist_ok=True)
+    for name in ('Rust_Logo_BaseColor.png', 'Rust_Logo_Normal.png', 'Rust_Logo_Roughness.jpg', 'Rust_Logo2_Normal.png',
+                 'sign.png', 'sign_normal.png', 'sign-rough.png', 'sign_metallic.tga', 'sign_height.exr',
+                 'sign_notes.txt'):
+        open(os.path.join(folder, name), 'w').close()
+    found = D.find_maps(os.path.join(folder, 'Rust_Logo_BaseColor.png'))
+    assert {k: os.path.basename(v) for k, v in found.items()} == {
+        'COLOR': 'Rust_Logo_BaseColor.png', 'NORMAL': 'Rust_Logo_Normal.png', 'ROUGHNESS': 'Rust_Logo_Roughness.jpg'}
+    found = D.find_maps(os.path.join(folder, 'sign.png'))
+    assert sorted(found) == ['COLOR', 'HEIGHT', 'METALLIC', 'NORMAL', 'ROUGHNESS'], found
+    # the box of a rectangle dragged over a floor (seen from above): 2 x 1, keeps the image proportions
+    hits = [((0.0, 0.0, 0.0), (0.0, 0.0, 1.0)), ((0.5, 0.2, 0.05), (0.0, 0.0, -1.0))]
+    rays = [((x, y, 5.0), (0.0, 0.0, -1.0)) for x, y in ((-1, -0.5), (1, -0.5), (1, 0.5), (-1, 0.5))]
+    m = D.box_from_hits(hits, rays, (1.0, 0.0, 0.0), (0.0, 0.0, -1.0), aspect=2.0)
+    loc, rot, scale = m.decompose()
+    assert (loc - Vector((0.0, 0.0, 0.0))).length < 1e-5, loc
+    assert (rot.to_matrix().col[2] - Vector((0.0, 0.0, 1.0))).length < 1e-5, 'projects down onto the floor'
+    assert abs(scale.x - 1.0) < 1e-5 and abs(scale.y - 0.5) < 1e-5 and 0.3 < scale.z < 0.4, scale
+    m = D.box_from_hits(hits, rays, (1.0, 0.0, 0.0), (0.0, 0.0, -1.0), aspect=1.0)
+    assert abs(m.to_scale().x - 0.5) < 1e-5 and abs(m.to_scale().y - 0.5) < 1e-5, 'square image, square decal'
+    assert D.box_from_hits([], rays, (1, 0, 0), (0, 0, -1)) is None
+
+
+@test
+def decals_project_and_bake():
+    """A decal goes on what is inside its box, follows the box, survives rebuilds and is baked."""
+    from bpm_procedural_metals import decals as D
+    fresh_scene()
+    scene = bpy.context.scene
+    crate = add_cube('Crate')
+    crate.data.materials.append(L.create_material('plastic_white_abs'))
+    far = add_cube('Far', location=(10, 0, 0))
+    far.data.materials.append(generic_material((0.8, 0.8, 0.8, 1.0)))
+    box = D.create(scene, decal_image(), D.box_matrix(Vector((1.0, 0.0, 0.0)), (0, 1, 0), (1, 0, 0), 1.2, 1.2, 0.3))
+    assert D.is_box(box) and box.empty_display_type == 'CUBE'
+    group = box.bpm_decal.group
+    assert D.refresh(box, scene) == [crate]
+    mat = crate.active_material
+    assert [n.node_tree for n in L.overlay_stack(mat)] == [group]
+    assert D.add_to(box, crate) and len(L.overlay_stack(mat)) == 1, 'a decal goes on a material only once'
+    # taken off by hand: it stays off until asked for again
+    crate.select_set(True)
+    bpy.context.view_layer.objects.active = crate
+    assert bpy.ops.bpm.remove_overlay(index=0) == {'FINISHED'} and not L.overlay_stack(mat)
+    assert not D.refresh(box, scene) and not L.overlay_stack(mat)
+    assert D.refresh(box, scene, force=True) == [crate] and len(L.overlay_stack(mat)) == 1
+    # the box's axes reach the shader through drivers that need no Python
+    drivers = group.animation_data.drivers
+    assert len(drivers) == 9 and all(d.driver.is_simple_expression for d in drivers)
+    box.rotation_euler = (0.3, -0.5, 1.1)
+    bpy.context.view_layer.update()
+    rot = box.matrix_world.to_3x3().normalized()
+    for i, axis in enumerate('XYZ'):
+        driven = Vector([s.default_value for s in group.nodes['BPM Axis ' + axis].inputs[:3]])
+        assert (driven - rot.col[i]).length < 1e-4, (axis, driven, rot.col[i])
+    box.rotation_euler = D.box_matrix(Vector((1, 0, 0)), (0, 1, 0), (1, 0, 0), 1, 1, 1).to_euler()
+    bpy.context.view_layer.update()
+    # settings land in the group
+    box.bpm_decal.opacity = 0.75
+    assert abs(group.nodes['BPM Opacity'].outputs[0].default_value - 0.75) < 1e-6
+    box.bpm_decal.opacity = 1.0
+    # the decal is baked into the object's textures, only where the box is
+    out = os.path.join(TMP, 'decal')
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [crate], settings(maps={'BASE_COLOR'}, output_dir=out,
+                                                               assign_baked=False, resolution=128)))
+    color = read_png(os.path.join(out, 'Crate_BaseColor.png'))
+    red = (color[..., 0] > 0.5) & (color[..., 1] < 0.2)
+    white = (color[..., 0] > 0.6) & (color[..., 1] > 0.6)
+    assert 0.003 < red.mean() < 0.1 and white.mean() > 0.2, (red.mean(), white.mean())
+    # loading another preset keeps the decal
+    L.load_preset_into(mat, 'plastic_glossy_red')
+    assert [n.node_tree for n in L.overlay_stack(mat)] == [group]
+    # seamless tiles leave decals out
+    tiles = B.TileBakeJob(bpy.context, [mat], settings(resolution=32, maps={'BASE_COLOR'}))
+    B.run_to_end(tiles)
+    assert not L.overlay_stack(tiles.tile_materials[0])
+    # moved onto another object: baking it puts the decal there by itself
+    box.location = (11.0, 0.0, 0.0)
+    bpy.context.view_layer.update()
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [far], settings(maps={'BASE_COLOR'}, output_dir=out,
+                                                             assign_baked=False)))
+    assert [n.node_tree for n in L.overlay_stack(far.active_material)] == [group]
+    # a copied box (Shift+D) gets a decal of its own
+    copy = box.copy()
+    box.users_collection[0].objects.link(copy)
+    D._fix_decals()
+    assert copy.bpm_decal.group not in {None, group} and D.box_of(copy.bpm_decal.group) == copy
+    # deleting a box takes its decal off every material
+    bpy.data.objects.remove(box)
+    D._fix_decals()
+    left = [t for t in bpy.data.node_groups if D.is_decal_group(t)]
+    assert len(left) == 1 and D.box_of(left[0]) == copy, left
+    for m in (mat, far.active_material):
+        assert not any(D.is_decal_group(n.node_tree) and D.box_of(n.node_tree) is None
+                       for n in L.overlay_stack(m))
+    assert bsdf_source(mat, 'Base Color') == L.find_bpm_node(mat)
+    D.remove(copy)
+    assert not [t for t in bpy.data.node_groups if D.is_decal_group(t)]
+
+
+@test
 def apply_operator_and_fit():
     fresh_scene()
     big = add_cube('Big', size=10.0)
@@ -712,8 +946,10 @@ def new_families_tile_seamlessly():
     """Every family (and overlays on top) must bake to seamless tiles."""
     fresh_scene()
     ids = ('wood_barn_red', 'plastic_dirty_bin', 'leather_sofa', 'fabric_carbon_twill', 'bio_xeno_tubes',
-           'glass_abandoned', 'wood_walnut')
+           'glass_abandoned', 'lens_fresnel', 'mil_battle_worn', 'wood_walnut')
     mats = [L.create_material(pid) for pid in ids]
+    L.add_overlay(mats[-2], 'WEAR', {'Chips': 0.2})
+    L.add_overlay(mats[-2], 'SCRATCH', {'Swirls': 0.5, 'Scuffs': 0.5})
     L.add_overlay(mats[-1], 'DUST', {'Amount': 0.8})
     job = B.TileBakeJob(bpy.context, mats, settings(resolution=128, maps={'BASE_COLOR', 'NORMAL', 'HEIGHT'}))
     B.run_to_end(job)
@@ -1057,6 +1293,7 @@ from bpm_procedural_metals import generators as G
 bpy.ops.mesh.primitive_cube_add(); ob = bpy.context.active_object
 combos = [(gen, ()) for gen in G.material_generators()]
 combos += [(gen, ('DIRT', 'DUST')) for gen in G.material_generators()]
+combos += [(gen, ('DIRT', 'DUST', 'WEAR', 'SCRATCH')) for gen in G.material_generators()]
 for gen, overlays in combos:
     for tile in (False, True):
         # tile bakes only use emission passes (their normal maps are computed from the height)

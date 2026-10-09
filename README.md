@@ -1,9 +1,11 @@
 # BPM – Procedural Materials for Blender
 
-139 ready-made materials for Blender — **bare metal, painted metal, wood, plastic,
-glass, leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and H.R.
-Giger-style biomechanical surfaces** — plus 10 **dirt and dust overlays** that you
-can stack on top of *any* material. Every material has plain sliders you can tweak, and
+178 ready-made materials for Blender — **bare metal, painted metal, military paint and
+camouflage, wood, plastic, glass, lenses and visors, leather, fabric & composites (carbon
+fiber, kevlar, ballistic nylon…), and H.R. Giger-style biomechanical surfaces** — plus 26
+**overlays (dirt, dust, edge wear and scratches)** that you can stack on top of *any*
+material, and **decals**: put any image (with its normal, roughness, metallic and height
+maps if it has them) on your model by dragging a box over it. Every material has plain sliders you can tweak, and
 one click on **Auto Texture** turns it into normal image textures (Base Color,
 Metallic, Roughness, Normal, Height, AO) for game engines or any other software: it
 unwraps the UVs, packs them, bakes, saves the files and puts the textures on the
@@ -14,13 +16,16 @@ material, click **Apply**, move some sliders, click **Auto Texture**.
 
 ![Bare metal materials](docs/gallery_metal.png)
 ![Painted metal materials](docs/gallery_paint.png)
+![Military paint and camouflage](docs/gallery_military.png)
 ![Wood materials](docs/gallery_wood.png)
 ![Plastic materials](docs/gallery_plastic.png)
 ![Glass materials](docs/gallery_glass.png)
+![Lenses and visors](docs/gallery_lens.png)
 ![Leather materials](docs/gallery_leather.png)
 ![Fabric and composite materials](docs/gallery_fabric.png)
 ![Biomechanical materials](docs/gallery_organic.png)
 ![Dirt and dust overlays](docs/gallery_overlay.png)
+![Edge wear and scratch overlays](docs/gallery_wear.png)
 
 Works with **Blender 4.2 or newer**. Tested on Blender 4.2 LTS, 4.5 LTS and 5.2 LTS
 on Linux; it is pure Python, so Windows and macOS work the same way.
@@ -29,13 +34,13 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.3.0.zip`](dist/bpm_procedural_metals-1.3.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.4.0.zip`](dist/bpm_procedural_metals-1.4.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
 4. Select the zip file. Done: "BPM - Procedural Materials" now shows up as enabled.
 
-> **Updating from an older version (1.0 – 1.2)?** Just install the new zip the same
+> **Updating from an older version (1.0 – 1.3)?** Just install the new zip the same
 > way, on top of the old one: it replaces the old version (no need to uninstall first
 > or restart Blender), and your `.blend` files keep their materials and settings.
 
@@ -48,7 +53,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 1. In the 3D view, **click your object** to select it.
 2. Press **N** (with the mouse over the 3D view) to open the sidebar and click the
    **BPM** tab.
-3. Pick a category (Metal, Wood, Plastic, Glass, Leather, Fabric, Organic, Dirt & Dust…),
+3. Pick a category (Metal, Military, Wood, Glass, Lenses, Fabric, Dirt & Dust, Wear…),
    click the big picture to see its materials, pick one, then click
    **Apply to Selected**.
 4. To see the material, switch the viewport to **Material Preview**: press **Z** and
@@ -62,17 +67,26 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 In Edit Mode, *Apply* puts the material only on the **selected faces**.
 
-### Dirt and dust on top of anything
+### Dirt, dust, edge wear and scratches on top of anything
 
-The **Dirt & Dust** category holds overlays: grime, heavy grime, mud splatter, rain
-streaks, oily grime, light / heavy dust, dust with wipe marks, ash and soot, desert
-sand. Picking one shows **Add on Top of Material** instead of *Apply*: the dirt goes
-on top of whatever material the object already has — a BPM material or any other
-material that uses a Principled BSDF (most do).
+Two categories hold overlays, layers that go on top of another material:
 
-The **Dirt & Dust Overlays** panel lists the layers of the active object's material:
+* **Dirt & Dust** – grime, heavy grime, mud splatter, rain streaks, oily grime,
+  light / heavy dust, dust with wipe marks, ash and soot, desert sand.
+* **Wear** – edge wear (paint chipped to grey primer and steel, to bare shiny metal,
+  rusty chips, heavy chips, worn to red primer, aircraft-style zinc chromate and
+  aluminium, paint chipped to wood, edges just rubbed lighter for wood, leather or
+  plastic, polished edges for metal) and scratches (light, heavy, through the paint to
+  the metal, swirl marks, scuffs, scratches all in one direction, fine hairlines).
 
-<img src="docs/screenshot_overlays.png" width="300" alt="The Dirt & Dust Overlays panel">
+Picking one shows **Add on Top of Material** instead of *Apply*: the layer goes on top
+of whatever material the object already has — a BPM material or any other material
+that uses a Principled BSDF (most do). The **Add Overlay** button in the overlays
+panel lists them all too.
+
+The **Overlays** panel lists the layers of the active object's material:
+
+<img src="docs/screenshot_overlays.png" width="300" alt="The Overlays panel">
 
 * the 👁 button hides / shows a layer (compare with and without),
 * the arrows change the order (the top layer covers the ones below),
@@ -81,10 +95,42 @@ The **Dirt & Dust Overlays** panel lists the layers of the active object's mater
   and gaps), *Ground Grime* (rising from the bottom of the object), *Streaks*,
   *Splatter*, *Top Facing* (dust settles on top), *Wipes*, *Wetness*, *Fill* (how much
   the layer hides the relief below)…
+* edge wear has *Amount*, *Edge Width* and *Chips* (all over), what shows through
+  (*Underneath Color*, *Metallic*, *Roughness*, *Primer*) or *Rubbed* for edges that are
+  only worn lighter; scratches have *Amount*, *Fine Scratches*, *Swirls*, *Scuffs*,
+  *Straight* (all one way) and *Reveal* (cut through to the metal or just lighten).
+  Edge wear needs Cycles or a bake to show, like all edge effects.
 
 Overlays are baked into the textures automatically, in both bake modes. Some
 materials (for example *Dirty White Plastic* or *Olive Canvas Tarp*) come with an
 overlay already; it shows up in the panel like any other layer.
+
+### Decals: logos, stencils, signs
+
+<img src="docs/screenshot_decals.png" width="600" alt="A decal on a model and the Decals panel">
+
+1. In the **Decals** panel, click **Open** and pick an image (a PNG with a transparent
+   background works best). PBR maps saved next to it with the same name are used too:
+   `Logo_Normal.png`, `Logo_Roughness.png`, `Logo_Metallic.png`, `Logo_Height.png`
+   (and the image itself may be called `Logo_BaseColor.png`).
+2. Click **Place Decal: Drag a Box** and drag a rectangle over your model in the 3D view.
+   A box is made on the surface under the rectangle, and everything inside the box gets
+   the decal. You can still orbit and zoom while placing; right-click or Esc cancels.
+3. The box is selected: **move** (G), **scale** (S) or **rotate** (R) it, and the decal
+   follows. Surfaces turned away from the box don't get it (*Angle Limit*), so it doesn't
+   smear down the sides.
+4. The panel shows its settings: *Opacity*, *Wear* (chipped away, like an old stencil),
+   *Angle Limit*, *Roughness* and *Metallic* (when it has no maps for them), *Normal
+   Strength*, *DirectX Normal Map*, *Relief*, *Tint*, and its images.
+5. **Auto Texture** bakes decals into the textures like everything else. If you moved a
+   box onto another object, baking puts the decal on it by itself (or click
+   **Update Decal**).
+
+A decal is a layer of the material, listed with the overlays as *Decal: …*: dirt or dust
+added afterwards goes on top of it, and the arrows move it up or down; ✕ there takes it
+off that one material (until you click **Update Decal**). The trash button in the
+Decals panel deletes a decal (deleting its box does too); duplicating a box (Shift+D)
+makes a second decal. The `.blend` file keeps its decals even on a computer without BPM.
 
 ## 3. Turn it into textures
 
@@ -187,6 +233,13 @@ hammertone (green, silver), peeling teal, ship hull grey, hazard stripes, sci-fi
 white, safety orange, sun-faded blue, vintage cream enamel, worn matte black, old
 tractor green, vintage mint, navy machinery, red oxide primer, rusted-through paint.
 
+**Military (22):** plain colors (olive drab, NATO green, desert tan, panzer grey,
+Soviet green, navy haze grey) and camouflage schemes (NATO three-tone, woodland,
+WWII ambush, tiger stripes, desert three-color, digital woodland and desert, urban,
+splinter, naval dazzle, winter whitewash, arctic, ghost grey aircraft, Soviet
+three-tone, battle-worn olive, muddy woodland). Mud, dust, grime, rain streaks, edge
+wear, chips, scratches, primer and rust are built in: every one has its own slider.
+
 **Wood (15):** oak floorboards, varnished walnut, knotty pine, curly maple, cherry,
 polished mahogany, ebony, teak boat deck, shipping pallet, peeling barn red, white
 painted planks, weathered grey wood, driftwood, charred wood (shou sugi ban),
@@ -202,6 +255,12 @@ glass, reeded, hammered, wired safety glass, stained glass window, antique windo
 glass — and the worn and grimy ones: smudged, dusty, dirty window, abandoned window,
 scratched, cracked, sea glass.
 
+**Lenses & visors (17):** reflective, glossy surfaces you can't see through: camera
+lens (purple and green coating), vintage amber lens, blue-coated lens, night vision
+lens, ruby scope lens, iridescent (dichroic) coating, gold visor, mirrored sunglasses,
+blue mirror visor, smoked visor, black glass panel, red sensor eye, red tail light and
+amber reflector (with prisms), Fresnel lens, dusty old lens, cracked lens.
+
 **Leather (12):** brown, black, smooth saddle, oxblood, white, worn vintage, cracked
 old leather, tan suede, red patent, crocodile embossed (green, black), stitched sofa
 leather.
@@ -215,7 +274,7 @@ machinery merge: biomech ribbed hull, xeno tubes, chrome vertebrae, bone armor
 plates, flesh wall, slime hive, obsidian biomech, rusted biomech, sinew cables, alien
 skin, hive resin.
 
-**Dirt & dust overlays (10):** see above.
+**Overlays (26):** 10 dirt and dust, 9 edge wear and 7 scratches — see above.
 
 Everything is built from a handful of adjustable "generators", so every material of
 a family has the full set of sliders. A few examples:
@@ -227,6 +286,16 @@ a family has the full set of sliders. A few examples:
 * **Plastic** – molded stipple texture, leather grain, grip ribs, recycled flecks,
   translucency, scratches, scuffs, stress-whitened edges, fingerprints, sun fading,
   yellowing, grime stuck in the texture.
+* **Military paint** – up to four camouflage colors with their amounts and patch sizes;
+  *Stretch* turns blotches into stripes, *Digital* snaps them to square pixels,
+  *Angular* to straight-edged shards (splinter, dazzle); hard or soft (sprayed)
+  edges; sun fading; winter whitewash that wears off; edge wear and chips down to
+  primer and steel, scratches, rust and rust streaks; mud caked on the lower part,
+  splatter, wet mud, dust, grime in crevices and rain streaks.
+* **Lenses** – lens color, roughness, IOR, the colored reflections of lens coatings
+  (*Coating* buttons: amber, purple, blue, green, magenta), mirror coatings (gold,
+  silver, blue…), fake inner depth, Fresnel lens rings, hexagonal reflector prisms,
+  scratches, fingerprints, dust, haze and cracks.
 * **Glass** – tint, frosting, milkiness, refraction (IOR), the waves and bubbles of
   old glass, reeded and hammered textures, wire mesh, stained glass with lead came,
   scratches, chipped edges, cracks, sea-glass weathering, fingerprints, dust, grime
@@ -306,7 +375,7 @@ Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
   map*. Unreal needs *DirectX* normals.
 * **Changing one object also changes another.** They share the material. Click the
   number button next to the material name in *Adjust Material* (Make Unique).
-* **"Add Dirt or Dust" says the material has no Principled BSDF.** Overlays need a
+* **"Add Overlay" says the material has no Principled BSDF.** Overlays need a
   material built on a Principled BSDF node (the default for new materials). Apply a
   BPM material or a new default material first.
 * **I can't see the weave / leather grain / wood rings.** They have real-world sizes
@@ -314,6 +383,18 @@ Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
   them bigger, or raise the bake resolution.
 * **Dirt doesn't collect in the corners in the viewport.** Crevice and edge effects
   need Cycles (or baking); click **Preview in Cycles** in *Adjust Material*.
+* **The edge wear overlay shows nothing.** Like all edge effects, it needs Cycles or a
+  bake: click **Preview in Cycles**, or just Auto Texture. It shows on corners and
+  bevels, not on smooth spheres.
+* **Lens coating colors are missing in my game engine.** They come from Blender's
+  *thin film* setting, which game engines don't have; the baked material in Blender
+  keeps it. The engine still gets the glossy, dark (or mirrored) lens.
+* **A decal is stretched over the side of my model.** Lower its *Angle Limit*, or make
+  the box thinner (scale it along its depth).
+* **A decal doesn't show on an object I moved its box onto.** Click **Update Decal** in
+  the Decals panel (baking does it by itself).
+* **Camouflage patches are too big or too small.** Change *Camo Scale* in the
+  *Camouflage* section (or *Scale* for everything).
 * **Glass doesn't show what is behind it in Material Preview.** EEVEE needs
   *Render Properties › Raytracing* turned on for that; Cycles (**Preview in Cycles**)
   always shows it.
@@ -326,13 +407,17 @@ Add `--help` after a command for all options (`--quality`, `--maps`, `--16bit`,
 ```
 bpm_procedural_metals/   the add-on (Blender extension)
   generators.py          registry of all generators
-  mat_*.py               one generator per family: metal, paint, wood, plastic,
-                         glass, leather, fabric, organic (sliders + node tree)
-  overlays.py            dirt and dust overlays (layer on any material)
+  mat_*.py               one generator per family: metal, paint, camo (military),
+                         wood, plastic, glass, lens, leather, fabric, organic
+                         (sliders + node tree)
+  overlays.py            dirt, dust, edge wear and scratch overlays (layer on any
+                         material)
+  decals.py              box-projected decals (each one is an overlay with its own
+                         node group)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 149 presets: 139 materials + 10 overlays
+  presets.py             the 204 presets: 178 materials + 26 overlays
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
   ui.py, operators.py    sidebar panels and buttons
@@ -358,7 +443,9 @@ off cleanly and end up in the bake, that baked glass stays see-through (dirt on 
 doesn't), that Auto Texture's UVs are packed without overlaps
 while materials keep reading their old UVs during the bake, that every setting the bake
 changes is restored,
-and that no shader — not even a material with two overlays — comes close to Cycles'
-fixed shader-stack limit.
+that baked lenses keep their coating, that digital camouflage really is made of
+square pixels, that decals land where their box is, follow it, come off when it is
+deleted and get baked, and that no shader — not even a material with four overlays — comes
+close to Cycles' fixed shader-stack limit.
 
 License: GPL-3.0-or-later (like Blender itself).

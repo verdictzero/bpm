@@ -3,27 +3,34 @@
 
 Only values that differ from the generator defaults need to be listed.
 Colors are linear RGB (what Blender color pickers store internally).
-A material preset can bring overlays (dirt, dust) along; overlay presets
-are layered on top of whatever material an object already has.
+A material preset can bring overlays (dirt, dust, wear) along; overlay
+presets are layered on top of whatever material an object already has.
 """
 
 # (id, label, description, short label for the category buttons, number stored in .blend files)
 CATEGORIES = (
     ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals', 'Metal', 1),
     ('PAINT', 'Painted Metal', 'Painted, chipped and weathered metal', 'Painted', 2),
+    ('MILITARY', 'Military', 'Military paint and camouflage with mud, dust and edge wear built in', 'Military', 10),
     ('WOOD', 'Wood', 'Raw, varnished, painted, weathered and charred wood', 'Wood', 3),
     ('PLASTIC', 'Plastic', 'Glossy, matte and textured plastic, new, old or dirty', 'Plastic', 4),
     ('GLASS', 'Glass', 'Clear, tinted, frosted, textured and stained glass, spotless or grimy', 'Glass', 9),
+    ('LENS', 'Lenses & Visors', 'Camera lenses, coated optics, mirrored visors and reflectors: glossy and '
+     'reflective, not see-through', 'Lenses', 11),
     ('LEATHER', 'Leather', 'Smooth, pebbled, suede, patent, croc and worn leather', 'Leather', 5),
     ('FABRIC', 'Fabric & Composites', 'Canvas, denim, nylon, carbon fiber, kevlar...', 'Fabric', 6),
     ('ORGANIC', 'Biomechanical', 'Giger-style organic machinery: ribs, tubes, bone, slime', 'Organic', 7),
     ('OVERLAY', 'Dirt & Dust', 'Layers of dirt or dust that go on top of any material', 'Dirt & Dust', 8),
+    ('WEAR', 'Edge Wear & Scratches', 'Chipped or rubbed edges, scratches and swirl marks that go on top of any '
+     'material', 'Wear', 12),
 )
+OVERLAY_CATEGORIES = ('OVERLAY', 'WEAR')  # presets of these categories go on top of other materials
 
 # generator -> gallery category
 GENERATOR_CATEGORY = {
-    'METAL': 'METAL', 'PAINT': 'PAINT', 'WOOD': 'WOOD', 'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS', 'LEATHER': 'LEATHER',
-    'FABRIC': 'FABRIC', 'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY',
+    'METAL': 'METAL', 'PAINT': 'PAINT', 'CAMO': 'MILITARY', 'WOOD': 'WOOD', 'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS',
+    'LENS': 'LENS', 'LEATHER': 'LEATHER', 'FABRIC': 'FABRIC', 'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY',
+    'DUST': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
 }
 
 PRESETS = []
@@ -64,7 +71,7 @@ def by_category(category):
 
 
 def is_overlay(preset):
-    return preset['category'] == 'OVERLAY'
+    return preset['category'] in OVERLAY_CATEGORIES
 
 
 # Reflectance (F0) colors of real metals, linear RGB.
@@ -295,6 +302,117 @@ _add('paint_rusted_through', 'Rusted-Through Paint', 'PAINT',
      Paint_Color=(0.35, 0.33, 0.30), Wear=0.6, Edge_Wear=1.0, Primer=0.2, Rust=1.0, Rust_Spread=0.8,
      Rust_Streaks=0.6, Fading=0.4, Dirt=0.5)
 
+# -------------------------------------------------------------------- military
+OLIVE_DRAB = (0.085, 0.095, 0.04)
+NATO_GREEN = (0.055, 0.075, 0.04)
+NATO_BROWN = (0.075, 0.045, 0.025)
+NATO_BLACK = (0.012, 0.012, 0.012)
+DARK_YELLOW = (0.44, 0.33, 0.14)  # German "Dunkelgelb"
+OLIVE_GREEN = (0.065, 0.08, 0.035)
+RED_BROWN = (0.10, 0.04, 0.025)
+TAN = (0.45, 0.35, 0.21)
+SAND_DUST = (0.48, 0.38, 0.24)
+SOVIET_GREEN = (0.07, 0.10, 0.035)
+ZINC_CHROMATE = (0.30, 0.34, 0.09)
+
+_add('mil_olive_drab', 'Olive Drab', 'CAMO',
+     'Classic matte olive drab: worn edges, mud low down.',
+     Color_1=OLIVE_DRAB, Edge_Wear=0.5, Chips=0.02, Mud=0.35, Dust=0.15, Scratches=0.25, Rust=0.3)
+_add('mil_nato_green', 'NATO Green', 'CAMO',
+     'Modern flat NATO green, lightly used.',
+     Color_1=NATO_GREEN, Paint_Roughness=0.78, Edge_Wear=0.35, Chips=0.01, Mud=0.25, Dust=0.1, Primer=0.1,
+     Primer_Color=(0.15, 0.15, 0.14))
+_add('mil_desert_tan', 'Desert Tan', 'CAMO',
+     'Sand-colored paint, sun-faded and covered in fine desert dust.',
+     Color_1=TAN, Fading=0.3, Edge_Wear=0.5, Chips=0.02, Mud=0.0, Splatter=0.0, Dust=0.45, Dust_Color=SAND_DUST,
+     Grime=0.25, Rust=0.15)
+_add('mil_panzer_grey', 'Panzer Grey', 'CAMO',
+     'Dark grey with red oxide primer showing through the chips.',
+     Color_1=(0.028, 0.032, 0.035), Edge_Wear=0.65, Chips=0.03, Primer=0.4, Mud=0.4, Dust=0.15, Rust=0.35,
+     Scratches=0.3)
+_add('mil_soviet_green', 'Soviet Green', 'CAMO',
+     'Bright cold-war green, thick paint, muddy tracks.',
+     Color_1=SOVIET_GREEN, Paint_Roughness=0.6, Edge_Wear=0.5, Mud=0.6, Splatter=0.5, Mud_Height=0.35, Dust=0.1)
+_add('mil_navy_grey', 'Navy Haze Grey', 'CAMO',
+     'Warship grey: salty, rust streaks running down.',
+     Color_1=(0.22, 0.24, 0.25), Paint_Roughness=0.55, Edge_Wear=0.5, Chips=0.03, Primer=0.3, Rust=0.6,
+     Rust_Streaks=0.6, Mud=0.0, Splatter=0.0, Dust=0.0, Grime=0.3, Rain_Streaks=0.35)
+_add('mil_nato_3tone', 'NATO Three-Tone', 'CAMO',
+     'Green, brown and black hard-edged camouflage of Cold War NATO vehicles.',
+     Color_1=NATO_GREEN, Color_2=NATO_BROWN, Color_3=NATO_BLACK, Color_2_Amount=0.38, Color_3_Amount=0.17,
+     Color_3_Size=0.9, Edge_Softness=0.03, Ragged_Edges=0.25, Mud=0.3, Dust=0.1)
+_add('mil_woodland', 'Woodland Camo', 'CAMO',
+     'Four-color woodland camouflage: green, brown, black and khaki.',
+     Color_1=(0.15, 0.17, 0.075), Color_2=(0.11, 0.065, 0.035), Color_3=NATO_BLACK, Color_4=(0.36, 0.28, 0.15),
+     Color_2_Amount=0.4, Color_3_Amount=0.15, Color_4_Amount=0.1, Color_3_Size=0.75, Color_4_Size=0.5,
+     Edge_Softness=0.05)
+_add('mil_ambush', 'WWII Ambush Camo', 'CAMO',
+     'Dark yellow with soft sprayed green and red-brown, dotted with yellow.',
+     Color_1=DARK_YELLOW, Color_2=OLIVE_GREEN, Color_3=RED_BROWN, Color_4=DARK_YELLOW, Color_2_Amount=0.32,
+     Color_3_Amount=0.22, Color_4_Amount=0.05, Color_4_Size=0.08, Edge_Softness=0.6, Fading=0.15,
+     Edge_Wear=0.6, Primer=0.35, Rust=0.3, Mud=0.4)
+_add('mil_tiger', 'Tiger Stripes', 'CAMO',
+     'Long sprayed stripes of green and brown over dark yellow.',
+     Color_1=DARK_YELLOW, Color_2=OLIVE_GREEN, Color_3=RED_BROWN, Color_2_Amount=0.3, Color_3_Amount=0.15,
+     Stretch=4.0, Edge_Softness=0.4, Ragged_Edges=0.5, Mud=0.35, Edge_Wear=0.5)
+_add('mil_desert_3color', 'Desert Three-Color', 'CAMO',
+     'Soft-edged desert camouflage in tan, light brown and dark brown.',
+     Color_1=TAN, Color_2=(0.26, 0.17, 0.09), Color_3=(0.10, 0.065, 0.04), Color_2_Amount=0.35,
+     Color_3_Amount=0.15, Edge_Softness=0.5, Dust=0.35, Dust_Color=SAND_DUST, Mud=0.0, Splatter=0.0, Fading=0.2)
+_add('mil_digital_woodland', 'Digital Woodland', 'CAMO',
+     'Pixelated woodland camouflage, like MARPAT.',
+     Color_1=(0.30, 0.26, 0.17), Color_2=(0.09, 0.11, 0.05), Color_3=(0.16, 0.10, 0.055), Color_4=(0.02, 0.02, 0.018),
+     Color_2_Amount=0.35, Color_3_Amount=0.25, Color_4_Amount=0.08, Color_4_Size=0.5, Digital=1.0,
+     Edge_Softness=0.0, Ragged_Edges=0.5, Mud=0.3)
+_add('mil_digital_desert', 'Digital Desert', 'CAMO',
+     'Pixelated desert camouflage in tan, khaki and brown.',
+     Color_1=(0.45, 0.37, 0.24), Color_2=(0.33, 0.27, 0.17), Color_3=(0.25, 0.17, 0.09), Color_4=(0.10, 0.07, 0.045),
+     Color_2_Amount=0.35, Color_3_Amount=0.2, Color_4_Amount=0.06, Color_4_Size=0.5, Digital=1.0,
+     Edge_Softness=0.0, Ragged_Edges=0.5, Dust=0.3, Dust_Color=SAND_DUST, Mud=0.0, Splatter=0.0)
+_add('mil_urban', 'Urban Camo', 'CAMO',
+     'City camouflage in greys, black and white.',
+     Color_1=(0.42, 0.42, 0.41), Color_2=(0.17, 0.17, 0.17), Color_3=(0.05, 0.05, 0.05), Color_4=(0.75, 0.75, 0.74),
+     Color_2_Amount=0.35, Color_3_Amount=0.18, Color_4_Amount=0.1, Edge_Softness=0.03, Mud=0.15,
+     Dust_Color=(0.3, 0.3, 0.29), Grime=0.5)
+_add('mil_splinter', 'Splinter Camo', 'CAMO',
+     'Straight-edged shards of green and brown on tan.',
+     Color_1=(0.22, 0.19, 0.11), Color_2=(0.06, 0.08, 0.04), Color_3=(0.12, 0.07, 0.04), Color_2_Amount=0.35,
+     Color_3_Amount=0.25, Angular=1.0, Stretch=1.6, Stretch_Direction=(1.0, 0.0, 0.0), Ragged_Edges=0.0,
+     Edge_Softness=0.0)
+_add('mil_dazzle', 'Naval Dazzle', 'CAMO',
+     'Bold geometric warship camouflage, salty and rust-streaked.',
+     Color_1=(0.40, 0.42, 0.43), Color_2=(0.02, 0.03, 0.06), Color_3=(0.015, 0.015, 0.015), Color_4=(0.10, 0.11, 0.12),
+     Color_2_Amount=0.35, Color_3_Amount=0.15, Color_4_Amount=0.2, Angular=1.0, Camo_Scale=0.45,
+     Ragged_Edges=0.0, Edge_Softness=0.0, Paint_Roughness=0.55, Rust=0.5, Rust_Streaks=0.5, Mud=0.0,
+     Splatter=0.0, Dust=0.0, Rain_Streaks=0.3)
+_add('mil_winter_whitewash', 'Winter Whitewash', 'CAMO',
+     'Temporary white winter paint brushed over green and washing off.',
+     Color_1=OLIVE_DRAB, Whitewash=1.0, Whitewash_Wear=0.4, Mud=0.45, Wet_Mud=0.5, Edge_Wear=0.5, Dust=0.0)
+_add('mil_arctic', 'Arctic Camo', 'CAMO',
+     'White camouflage with grey and black patches.',
+     Color_1=(0.72, 0.73, 0.72), Color_2=(0.30, 0.31, 0.31), Color_3=(0.03, 0.03, 0.03), Color_2_Amount=0.3,
+     Color_3_Amount=0.12, Edge_Softness=0.05, Mud=0.2, Dust=0.0, Grime=0.3, Primer=0.2,
+     Primer_Color=(0.15, 0.15, 0.14))
+_add('mil_ghost_grey', 'Ghost Grey Aircraft', 'CAMO',
+     'Two soft-edged greys of a modern fighter jet, panel lines grimy.',
+     Color_1=(0.24, 0.26, 0.28), Color_2=(0.12, 0.135, 0.155), Color_2_Amount=0.45, Camo_Scale=0.6,
+     Edge_Softness=0.7, Paint_Roughness=0.55, Color_Variation=0.15, Mud=0.0, Splatter=0.0, Dust=0.0,
+     Grime=0.35, Rain_Streaks=0.2, Edge_Wear=0.25, Chips=0.005, Primer=0.5, Primer_Color=ZINC_CHROMATE,
+     Metal_Color=(0.91, 0.92, 0.92), Metal_Roughness=0.3, Rust=0.0, Scratches=0.1)
+_add('mil_soviet_3tone', 'Soviet Three-Tone', 'CAMO',
+     'Green, sand and dark brown camouflage with hard edges.',
+     Color_1=SOVIET_GREEN, Color_2=(0.34, 0.26, 0.11), Color_3=(0.06, 0.04, 0.025), Color_2_Amount=0.3,
+     Color_3_Amount=0.2, Edge_Softness=0.04, Mud=0.45, Splatter=0.4)
+_add('mil_battle_worn', 'Battle-Worn Olive', 'CAMO',
+     'Olive drab beaten down to primer and rusty steel, caked in mud.',
+     Color_1=OLIVE_DRAB, Edge_Wear=1.0, Chips=0.15, Primer=0.4, Rust=0.7, Rust_Streaks=0.5, Mud=0.65,
+     Splatter=0.6, Mud_Height=0.35, Dust=0.25, Scratches=0.6, Fading=0.4, Grime=0.6)
+_add('mil_muddy_woodland', 'Muddy Woodland', 'CAMO',
+     'Woodland camouflage fresh from the field: wet mud up the sides.',
+     Color_1=(0.15, 0.17, 0.075), Color_2=(0.11, 0.065, 0.035), Color_3=NATO_BLACK, Color_4=(0.36, 0.28, 0.15),
+     Color_2_Amount=0.4, Color_3_Amount=0.15, Color_4_Amount=0.1, Color_3_Size=0.75, Color_4_Size=0.5,
+     Edge_Softness=0.05, Mud=0.9, Wet_Mud=0.6, Mud_Height=0.45, Splatter=0.8, Dust=0.0)
+
 # ------------------------------------------------------------------------ wood
 OAK = (0.50, 0.27, 0.11)
 OAK_RING = (0.26, 0.11, 0.042)
@@ -497,6 +615,64 @@ _add('glass_sea', 'Sea Glass', 'GLASS',
      'Frosted, pitted glass worn smooth by sand and waves.',
      thumb=dict(zoom=0.25, shape='sphere'), Glass_Color=(0.42, 0.78, 0.55), Weathering=1.0,
      Color_Variation=0.25, Bubbles=0.2, Scratches=0.0, Smudges=0.0)
+
+# ----------------------------------------------------------------------- lenses
+LENS_THUMB = dict(shape='dome', zoom=0.03)
+GOLD_VISOR = (1.0, 0.766, 0.336)
+
+_add('lens_camera', 'Camera Lens', 'LENS',
+     'Multi-coated camera lens: deep black with purple and green reflections.',
+     thumb=LENS_THUMB)
+_add('lens_vintage_amber', 'Vintage Amber Lens', 'LENS',
+     'Old single-coated lens with warm amber reflections, a little hazy.',
+     thumb=LENS_THUMB, Coating=250.0, Lens_Color=(0.008, 0.006, 0.004), Haze=0.1, Scratches=0.08)
+_add('lens_blue_coated', 'Blue-Coated Lens', 'LENS',
+     'Optics with a cool blue coating.',
+     thumb=LENS_THUMB, Coating=350.0)
+_add('lens_night_vision', 'Night Vision Lens', 'LENS',
+     'Green-coated lens of night vision goggles or a sniper scope.',
+     thumb=LENS_THUMB, Coating=400.0, Lens_Color=(0.003, 0.010, 0.005))
+_add('lens_ruby', 'Ruby Scope Lens', 'LENS',
+     'Strong red-orange reflections, like a ruby-coated rifle scope.',
+     thumb=LENS_THUMB, Coating=200.0, IOR=2.5, Coating_IOR=1.6, Lens_Color=(0.012, 0.004, 0.003))
+_add('lens_iridescent', 'Iridescent Coating', 'LENS',
+     'Oily rainbow reflections, like a dichroic or holographic coating.',
+     thumb=LENS_THUMB, Coating=450.0, IOR=3.0, Coating_IOR=2.0, Coating_Variation=1.0, Depth=0.0)
+_add('lens_gold_visor', 'Gold Visor', 'LENS',
+     'Gold-coated helmet visor, like an astronaut or pilot helmet.',
+     thumb=LENS_THUMB, Mirror=1.0, Mirror_Color=GOLD_VISOR, Coating=0.0, Roughness=0.03, Depth=0.0)
+_add('lens_mirror_silver', 'Mirrored Sunglasses', 'LENS',
+     'Silver mirror lenses.',
+     thumb=LENS_THUMB, Mirror=0.85, Mirror_Color=(0.70, 0.71, 0.73), Coating=0.0, Depth=0.0)
+_add('lens_mirror_blue', 'Blue Mirror Visor', 'LENS',
+     'Blue mirrored visor or ski goggles.',
+     thumb=LENS_THUMB, Mirror=0.9, Mirror_Color=(0.10, 0.30, 0.85), Coating=0.0, Depth=0.0)
+_add('lens_smoked_visor', 'Smoked Visor', 'LENS',
+     'Dark tinted visor: glossy and black.',
+     thumb=LENS_THUMB, Lens_Color=(0.010, 0.010, 0.012), Coating=0.0, IOR=1.55, Depth=0.0)
+_add('lens_black_glass', 'Black Glass Panel', 'LENS',
+     'Glossy black glass, like a switched-off screen or sensor window, with fingerprints.',
+     thumb=LENS_THUMB, Lens_Color=(0.004, 0.004, 0.005), Coating=120.0, IOR=1.52, Depth=0.0, Smudges=0.35,
+     Roughness=0.01)
+_add('lens_sensor_red', 'Red Sensor Eye', 'LENS',
+     'Deep red robot or security camera eye.',
+     thumb=LENS_THUMB, Lens_Color=(0.25, 0.005, 0.003), Depth=0.6)
+_add('lens_tail_light', 'Red Tail Light', 'LENS',
+     'Red reflector with hexagonal prisms, like a car tail light.',
+     thumb=LENS_THUMB, Lens_Color=(0.30, 0.004, 0.004), Prisms=1.0, Coating=0.0, IOR=1.5, Depth=0.0)
+_add('lens_amber_reflector', 'Amber Reflector', 'LENS',
+     'Orange prism reflector of a turn signal or a bike.',
+     thumb=LENS_THUMB, Lens_Color=(0.50, 0.17, 0.0), Prisms=1.0, Prism_Size=0.004, Coating=0.0, IOR=1.5,
+     Depth=0.0)
+_add('lens_fresnel', 'Fresnel Lens', 'LENS',
+     'Grey lens with concentric Fresnel ridges, like a lighthouse or projector lens.',
+     thumb=LENS_THUMB, Lens_Color=(0.04, 0.045, 0.05), Fresnel_Rings=1.0, Coating=0.0, IOR=1.5, Depth=0.0)
+_add('lens_dusty', 'Dusty Old Lens', 'LENS',
+     'Neglected lens: dust, smudges, scratches and a hazy coating.',
+     thumb=LENS_THUMB, Dust=0.15, Smudges=0.4, Scratches=0.3, Haze=0.2)
+_add('lens_cracked', 'Cracked Lens', 'LENS',
+     'Broken lens with a web of cracks.',
+     thumb=LENS_THUMB, Cracks=0.8, Scratches=0.2, Smudges=0.2)
 
 # --------------------------------------------------------------------- leather
 LEATHER_THUMB = dict(zoom=0.15)
@@ -704,3 +880,60 @@ _add('dirt_oil', 'Oily Grime', 'DIRT',
      'Black, greasy grime, like in an engine bay.',
      thumb=DIRT_THUMB, Wetness=0.8, Dirt_Color=(0.008, 0.008, 0.008), Dirt_Color_2=(0.03, 0.028, 0.025),
      Crevices=1.0, Patches=0.35)
+
+# Edge wear and scratches go on top of any material too.
+EDGE_THUMB = dict(base='paint_car_red')
+SCRATCH_THUMB = dict(base='plastic_piano_black')
+RED_OXIDE_PRIMER = (0.26, 0.055, 0.03)
+
+_add('wear_chipped_paint', 'Chipped Paint Edges', 'WEAR',
+     'Paint chipped off the edges down to grey primer and bare steel.',
+     thumb=EDGE_THUMB, Amount=0.7, Chips=0.02, Primer=0.3)
+_add('wear_bare_metal', 'Edges Worn to Bare Metal', 'WEAR',
+     'Shiny bare metal along every edge, worn smooth by hands and tools.',
+     thumb=EDGE_THUMB, Amount=0.8, Chips=0.0, Chip_Detail=0.3, Underneath_Roughness=0.2)
+_add('wear_rusty_chips', 'Rusty Chipped Edges', 'WEAR',
+     'Chipped edges and spots, rusted where the steel shows.',
+     thumb=EDGE_THUMB, Amount=0.8, Chips=0.05, Rust=0.8, Primer=0.2, Primer_Color=RED_OXIDE_PRIMER)
+_add('wear_heavy_chips', 'Heavily Chipped', 'WEAR',
+     'Big chips all over and on every edge.',
+     thumb=EDGE_THUMB, Amount=1.0, Chips=0.15, Chip_Scale=3.0, Primer=0.4)
+_add('wear_primer', 'Worn to Primer', 'WEAR',
+     'Top coat worn off the edges, showing red oxide primer.',
+     thumb=EDGE_THUMB, Amount=0.7, Underneath_Color=RED_OXIDE_PRIMER, Underneath_Metallic=0.0,
+     Underneath_Roughness=0.7)
+_add('wear_aluminium', 'Chipped to Aluminium', 'WEAR',
+     'Aircraft-style chips: green zinc chromate primer and bright aluminium.',
+     thumb=EDGE_THUMB, Amount=0.6, Chips=0.01, Primer=0.5, Primer_Color=(0.30, 0.34, 0.09),
+     Underneath_Color=(0.91, 0.92, 0.92), Underneath_Roughness=0.35)
+_add('wear_wood', 'Paint Chipped to Wood', 'WEAR',
+     'Painted wood chipped down to the bare wood.',
+     thumb=dict(base='plastic_white_abs'), Amount=0.8, Chips=0.03, Underneath_Color=(0.32, 0.18, 0.07),
+     Underneath_Metallic=0.0, Underneath_Roughness=0.75, Paint_Thickness=0.7)
+_add('wear_rubbed', 'Rubbed Edges', 'WEAR',
+     'Edges rubbed lighter and smoother: for wood, leather and plastic.',
+     thumb=dict(base='wood_walnut'), Rubbed=1.0, Amount=0.7, Chips=0.0, Chip_Detail=0.3)
+_add('wear_polished', 'Polished Edges', 'WEAR',
+     'Edges polished bright: for bare and dark metals.',
+     thumb=dict(base='gunmetal'), Rubbed=1.0, Lighten=0.4, Amount=0.8, Chips=0.0, Chip_Detail=0.2)
+_add('scratch_light', 'Light Scratches', 'SCRATCH',
+     'A few fine scratches.',
+     thumb=SCRATCH_THUMB, Amount=0.3, Fine_Scratches=0.3)
+_add('scratch_heavy', 'Heavy Scratches', 'SCRATCH',
+     'Deep scratches everywhere, some through to the metal.',
+     thumb=SCRATCH_THUMB, Amount=0.9, Fine_Scratches=0.6, Reveal=0.6, Depth=0.7)
+_add('scratch_to_metal', 'Scratched to Metal', 'SCRATCH',
+     'Scratches through the paint showing bare steel.',
+     thumb=dict(base='paint_car_red'), Amount=0.6, Reveal=1.0, Fine_Scratches=0.2)
+_add('scratch_swirls', 'Swirl Marks', 'SCRATCH',
+     'Circular polishing marks that show in reflections: car paint, polished metal.',
+     thumb=dict(base='paint_car_blue', zoom=0.35), Amount=0.1, Fine_Scratches=0.2, Swirls=0.8)
+_add('scratch_scuffs', 'Scuffs', 'SCRATCH',
+     'Dull scuffed patches and scratches: plastic, floors, furniture.',
+     thumb=SCRATCH_THUMB, Amount=0.3, Fine_Scratches=0.5, Scuffs=0.7)
+_add('scratch_sliding', 'Sliding Scratches', 'SCRATCH',
+     'Scratches all in one direction, where something slid across.',
+     thumb=SCRATCH_THUMB, Amount=0.6, Straight=1.0, Fine_Scratches=0.3)
+_add('scratch_hairline', 'Hairline Scratches', 'SCRATCH',
+     'Dense, very fine scratches: screens, glass, lenses, polished metal.',
+     thumb=SCRATCH_THUMB, Amount=0.05, Fine_Scratches=0.9, Lighten=0.3, Depth=0.3)

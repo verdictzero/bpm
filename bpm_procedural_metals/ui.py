@@ -6,6 +6,7 @@ import textwrap
 import bpy
 
 from . import bake as B
+from . import decals as D
 from . import generators as G
 from . import library as L
 from . import overlays as O
@@ -31,7 +32,8 @@ def _draw_socket(layout, node, param):
     if sock.is_linked:
         layout.label(text='%s: (connected in node editor)' % param.name, icon='LINKED')
         return
-    if isinstance(param.ui, tuple) and param.ui[0] == 'ENUM':
+    if isinstance(param.ui, tuple) and param.ui[0] in {'ENUM', 'CHOICES'}:
+        # ENUM: only these values; CHOICES: shortcuts to typical values, plus the slider
         layout.label(text=param.name)
         grid = layout.grid_flow(row_major=True, columns=3, even_columns=True, align=True)
         current = round(sock.default_value)
@@ -39,6 +41,8 @@ def _draw_socket(layout, node, param):
             op = grid.operator('bpm.set_value', text=label, depress=current == round(value))
             op.socket = param.name
             op.value = value
+        if param.ui[0] == 'CHOICES':
+            layout.prop(sock, 'default_value', text=param.name)
         return
     if param.ui == 'AXIS':
         row = layout.row(align=True)
@@ -111,8 +115,8 @@ class BPM_PT_adjust(bpy.types.Panel):
             return
         if node is None:
             _wrap(layout, context, 'The active material is not a BPM material. Pick one in the gallery '
-                                   'above and click "Apply to Selected". Dirt and dust overlays work on '
-                                   'any material.', 'INFO')
+                                   'above and click "Apply to Selected". Overlays (dirt, dust, edge wear, '
+                                   'scratches) work on any material.', 'INFO')
             return
 
         generator = node.node_tree['bpm_generator']
@@ -161,13 +165,14 @@ class BPM_PT_overlays(bpy.types.Panel):
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
     bl_category = CATEGORY
-    bl_label = 'Dirt & Dust Overlays'
+    bl_label = 'Overlays: Dirt, Dust & Wear'
 
     def draw(self, context):
         layout = self.layout
         obj = context.active_object
         if not L.can_have_material(obj):
-            _wrap(layout, context, 'Select an object to add dirt or dust to its material.', 'INFO')
+            _wrap(layout, context, 'Select an object to add dirt, dust, edge wear or scratches to its material.',
+                  'INFO')
             return
         mat = obj.active_material
         if L.is_baked_material(mat):
@@ -175,13 +180,13 @@ class BPM_PT_overlays(bpy.types.Panel):
                                    'procedural material (switch back with "Back to Procedural").', 'INFO')
         row = layout.row()
         row.scale_y = 1.3
-        row.operator_menu_enum('bpm.add_overlay', 'preset', text='Add Dirt or Dust', icon='ADD')
+        row.operator_menu_enum('bpm.add_overlay', 'preset', text='Add Overlay', icon='ADD')
         if mat is None or L.is_baked_material(mat):
             return
         stack = L.overlay_stack(mat)
         if not stack:
-            _wrap(layout, context, 'Layers of dirt or dust stack on top of any material and are '
-                                   'included when you bake.')
+            _wrap(layout, context, 'Layers of dirt, dust, edge wear or scratches stack on top of any material '
+                                   'and are included when you bake.')
             return
         for index in reversed(range(len(stack))):  # top layer first
             self._draw_overlay(context, layout, stack[index], index, len(stack))
@@ -201,11 +206,15 @@ class BPM_PT_overlays(bpy.types.Panel):
         sub.enabled = index > 0
         op = sub.operator('bpm.move_overlay', text='', icon='TRIA_DOWN')
         op.index, op.step = index, -1
-        row.operator('bpm.overlay_seed', text='', icon='FILE_REFRESH').index = index
+        generator = node.node_tree['bpm_generator']
+        if 'Seed' in node.inputs:
+            row.operator('bpm.overlay_seed', text='', icon='FILE_REFRESH').index = index
         row.operator('bpm.remove_overlay', text='', icon='X').index = index
         if hidden:
             return
-        generator = node.node_tree['bpm_generator']
+        box_obj = D.box_of(node.node_tree) if generator == D.GENERATOR else None
+        if box_obj is not None:
+            box.operator('bpm.decal_select', text='Edit in Decals Panel', icon='MOD_UVPROJECT').name = box_obj.name
         params = [p for p in G.params_for(generator) if p.panel != O.BELOW]
         col = box.column(align=True)
         for p in params:
@@ -218,6 +227,74 @@ class BPM_PT_overlays(bpy.types.Panel):
             for p in params:
                 if not p.key:
                     _draw_socket(col, node, p)
+
+
+class BPM_PT_decals(bpy.types.Panel):
+    bl_space_type = 'VIEW_3D'
+    bl_region_type = 'UI'
+    bl_category = CATEGORY
+    bl_label = 'Decals'
+
+    def draw(self, context):
+        layout = self.layout
+        settings = context.scene.bpm
+        layout.template_ID(settings, 'decal_image', open='image.open')
+        col = layout.column()
+        col.scale_y = 1.6
+        col.operator('bpm.place_decal', text='Place Decal: Drag a Box', icon='MOD_UVPROJECT')
+        if settings.decal_image is None:
+            _wrap(layout, context, 'Open an image (a PNG with a transparent background works best). Its normal, '
+                                   'roughness, metallic and height maps are used too when they are saved next '
+                                   'to it (Logo_Normal.png...).', 'INFO')
+        else:
+            _wrap(layout, context, 'Drag a box over your model: everything inside it gets the decal. Then move, '
+                                   'scale or rotate the box (G, S, R). Auto Texture bakes it.')
+        obj = context.active_object
+        if D.is_box(obj):
+            self._draw_decal(context, layout, obj)
+        decals = D.boxes(context.scene)
+        if decals:
+            header, body = layout.panel('bpm_decal_list', default_closed=False)
+            header.label(text='Decals in the Scene (%d)' % len(decals))
+            if body is not None:
+                col = body.column(align=True)
+                for box in decals:
+                    row = col.row(align=True)
+                    row.operator('bpm.decal_select', text=box.name, icon='MOD_UVPROJECT',
+                                 depress=box == obj).name = box.name
+                    row.operator('bpm.decal_remove', text='', icon='X').name = box.name
+
+    @staticmethod
+    def _draw_decal(context, layout, box):
+        st = box.bpm_decal
+        panel = layout.box()
+        panel.prop(box, 'name', text='', icon='MOD_UVPROJECT')
+        col = panel.column(align=True)
+        col.prop(st, 'opacity', slider=True)
+        col.prop(st, 'wear', slider=True)
+        col.prop(st, 'angle_limit')
+        if st.roughness_map is None:
+            col.prop(st, 'roughness', slider=True)
+        if st.metallic_map is None:
+            col.prop(st, 'metallic', slider=True)
+        if st.normal_map is not None:
+            col.prop(st, 'normal_strength')
+            col.prop(st, 'directx')
+        if st.height_map is not None:
+            col.prop(st, 'relief', slider=True)
+        panel.prop(st, 'tint')
+        header, body = panel.panel('bpm_decal_maps', default_closed=True)
+        header.label(text='Images')
+        if body is not None:
+            for prop in ('color_map', 'normal_map', 'roughness_map', 'metallic_map', 'height_map'):
+                body.label(text=st.bl_rna.properties[prop].name)
+                body.template_ID(st, prop, open='image.open')
+            body.operator('bpm.decal_find_maps', icon='VIEWZOOM')
+        row = panel.row(align=True)
+        row.operator('bpm.decal_refresh', icon='FILE_REFRESH').name = box.name
+        row.operator('bpm.decal_remove', text='', icon='TRASH').name = box.name
+        _wrap(panel, context, 'Moved the box onto other objects? "Update Decal" puts it on them too (baking '
+                              'does it by itself).')
 
 
 class BPM_OT_load_preset_menu(bpy.types.Operator):
@@ -370,8 +447,10 @@ class BPM_PT_help(bpy.types.Panel):
             '1. Select your object (left-click it).',
             '2. Pick a material in the gallery and click "Apply to Selected".',
             '3. Change the look with the sliders in "Adjust Material".',
-            'Want it dirty or dusty? Use "Add Dirt or Dust": the layers go on top of any material, '
-            'even ones that are not from BPM.',
+            'Want it dirty, dusty, chipped or scratched? Use "Add Overlay": the layers go on top of any '
+            'material, even ones that are not from BPM.',
+            'Logos, stencils, signs: open an image in "Decals", click "Place Decal" and drag a box over the '
+            'model. Move the box to move the decal.',
             '4. Click "Auto Texture" in "Bake Textures": it makes new UVs, bakes image textures, saves '
             'them and puts them on the object, all in one go. Pick Active, Selected or Scene first. '
             'The textures are saved next to your .blend file (or in BPM_Textures in your home folder if '
@@ -384,7 +463,8 @@ class BPM_PT_help(bpy.types.Panel):
             _wrap(layout, context, text)
 
 
-CLASSES = (BPM_OT_load_preset_menu, BPM_PT_library, BPM_PT_adjust, BPM_PT_overlays, BPM_PT_bake, BPM_PT_help)
+CLASSES = (BPM_OT_load_preset_menu, BPM_PT_library, BPM_PT_adjust, BPM_PT_overlays, BPM_PT_decals, BPM_PT_bake,
+           BPM_PT_help)
 
 
 def register():

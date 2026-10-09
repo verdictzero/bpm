@@ -109,6 +109,12 @@ class BPM_Settings(bpy.types.PropertyGroup):
         name='Tile Size', default=1.0, min=0.01, soft_max=10.0, subtype='DISTANCE', unit='LENGTH',
         description='How much real-world surface one seamless tile shows')
 
+    # --- decals
+    decal_image: PointerProperty(
+        type=bpy.types.Image, name='Decal Image',
+        description='Image for the next decal. Its normal, roughness, metallic and height maps are found '
+                    'automatically when they are saved next to it with the same name (Logo_Normal.png...)')
+
     # --- results
     last_folder: StringProperty(default='')
     last_report: StringProperty(default='')
