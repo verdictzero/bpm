@@ -2,10 +2,10 @@
 """BPM - Procedural Materials.
 
 A library of procedural materials (bare and painted metal, military paint and
-camouflage, concrete, wood, plastic, glass, lenses, leather, fabric and composites,
-biomechanical surfaces) with simple sliders, overlays (dirt, dust, edge wear,
-scratches) that layer on top of any material, box-projected decals, and
-one-click "Auto Texture": new UVs, baking to image textures and applying them.
+camouflage, concrete, terrain and lava, gradients, wood, plastic, glass, lenses,
+leather, fabric and composites, biomechanical surfaces) with simple sliders and
+your own saved presets, overlays (dirt, dust, edge wear, scratches) that layer on
+top of any material, box-projected decals, and one-click "Auto Texture": new UVs, baking to image textures and applying them.
 
 Find it in: 3D Viewport > Sidebar (press N) > BPM tab.
 """
@@ -24,8 +24,9 @@ bl_info = {
 }
 
 _SUBMODULES = ('nodebuilder', 'features', 'gencommon', 'mat_metal', 'mat_paint', 'mat_camo', 'mat_concrete', 'mat_wood',
-               'mat_plastic', 'mat_glass', 'mat_lens', 'mat_leather', 'mat_fabric', 'mat_organic', 'overlays',
-               'generators', 'presets', 'library', 'decals', 'bake', 'meshmaps', 'props', 'previews', 'operators', 'ui')
+               'mat_plastic', 'mat_glass', 'mat_lens', 'mat_leather', 'mat_fabric', 'mat_organic', 'mat_terrain',
+               'mat_gradient', 'overlays', 'generators', 'presets', 'user_presets', 'library', 'decals', 'bake',
+               'meshmaps', 'props', 'previews', 'operators', 'ui')
 
 if "bpy" in locals():  # support "Reload Scripts"
     import importlib
@@ -38,10 +39,11 @@ import bpy  # noqa: E402,F401
 from . import nodebuilder, features, gencommon  # noqa: E402,F401
 from . import mat_metal, mat_paint, mat_camo, mat_concrete, mat_wood, mat_plastic  # noqa: E402,F401
 from . import mat_glass, mat_lens, mat_leather, mat_fabric, mat_organic  # noqa: E402,F401
+from . import mat_terrain, mat_gradient  # noqa: E402,F401
 from . import overlays, generators, presets, library, decals, bake, meshmaps  # noqa: E402,F401
-from . import props, previews, operators, ui  # noqa: E402
+from . import user_presets, props, previews, operators, ui  # noqa: E402
 
-_MODULES = (decals, props, previews, operators, ui)
+_MODULES = (decals, user_presets, props, previews, operators, ui)
 
 
 def register():

@@ -66,6 +66,9 @@ class BPM_Settings(bpy.types.PropertyGroup):
         name='Transmission', default=True,
         description='Glass only: white = see-through, black = opaque (also saved inverted as an Opacity '
                     'map for game engines). Skipped for materials that let no light through')
+    map_emission: BoolProperty(
+        name='Emission', default=True,
+        description='Glowing parts (lava): the glow color. Skipped for materials that do not glow')
     map_normal: BoolProperty(name='Normal', default=True, description='Surface detail (normal map)')
     map_height: BoolProperty(name='Height', default=True, description='Height / displacement map (16-bit)')
     map_ao: BoolProperty(name='Ambient Occlusion', default=True,

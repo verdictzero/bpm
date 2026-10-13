@@ -64,6 +64,14 @@ COMMON_OUTPUTS = [
     ('Height', 'FLOAT'),
 ]
 
+# Generators with real displacement: the Displacement output (meters) drives the material's
+# Displacement node (library.py).  It is 0 until 'Real Displacement' is turned up.
+DISPLACE_OUTPUTS = [('Displacement', 'FLOAT')]
+DISPLACE_PARAM = fac('Real Displacement', 0.0, 'Displacement',
+                     'Moves the surface itself by the height (craters get real depth and silhouettes). '
+                     'Needs a finely divided mesh: use "Displace Geometry" in the BPM panel')
+EMISSION_OUTPUTS = [('Emission', 'COLOR'), ('Emission Strength', 'FLOAT')]
+
 # Bump distances in meters at Scale = 1 (divided by Scale so the look stays constant).
 MACRO_BUMP = 0.012
 MICRO_BUMP = 0.0015
@@ -90,7 +98,7 @@ def dirt_mask(b, S, amount, cav, edge, offset, extra=0.0, spots=0.5):
 
 
 def finish(b, gout, inputs, color, metallic, rough, h_macro, h_micro, extra=None, distance=MACRO_BUMP,
-           cover=None):
+           cover=None, displace=None):
     """Shared tail: normals from height, clamp and connect the group outputs.
 
     `distance` is the relief depth (meters at Scale 1) of the full 0..1 height
@@ -98,11 +106,19 @@ def finish(b, gout, inputs, color, metallic, rough, h_macro, h_micro, extra=None
     `cover` is an optional (mask, level) of a soft layer on top, like mud: it
     hides the relief below where `mask` is 1 and lies at `level` in the Height
     output.  It is not part of the bump, which keeps Cycles' shader stack small.
+    `displace` (0..1, generators with a Displacement output) is the part of the
+    big relief (h_macro) that moves the surface itself (real displacement); it
+    leaves the bump, so the slopes aren't shaded twice.  Height stays complete.
     """
     # One bump node for everything: two chained ones make Cycles' shader stack overflow.
     height = b.clamp01(b.madd(h_micro, MICRO_BUMP / distance, h_macro))
-    normal = b.bump(height, strength=inputs['Bump Strength'], distance=bump_distance(b, inputs['Scale'], distance),
-                    label='Bump')
+    world = bump_distance(b, inputs['Scale'], distance)
+    bumped = height
+    if displace is not None:
+        relief = b.sub(b.clamp01(h_macro), 0.5)
+        bumped = b.sub(height, b.mul(relief, b.clamp01(displace)))
+        b.feed(gout.inputs['Displacement'], b.mul(b.mul(relief, displace), world))
+    normal = b.bump(bumped, strength=inputs['Bump Strength'], distance=world, label='Bump')
     if cover is not None:
         mask, level = cover
         normal = b.vmath('NORMALIZE', b.mix_vector(mask, normal, b.geometry().outputs['Normal']))

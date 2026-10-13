@@ -27,7 +27,7 @@ from . import presets as P
 MAP_NAMES = {
     'basecolor': 'BASE_COLOR', 'base_color': 'BASE_COLOR', 'color': 'BASE_COLOR',
     'metallic': 'METALLIC', 'roughness': 'ROUGHNESS', 'normal': 'NORMAL',
-    'height': 'HEIGHT', 'ao': 'AO', 'transmission': 'TRANSMISSION',
+    'height': 'HEIGHT', 'ao': 'AO', 'transmission': 'TRANSMISSION', 'emission': 'EMISSION',
 }
 
 
@@ -42,9 +42,9 @@ def _parser():
         p.add_argument('--size', type=int, default=2048, help='Texture size in pixels (default 2048)')
         p.add_argument('--quality', choices=['fast', 'good', 'best'], default='good')
         p.add_argument('--out', default='//BPM_Textures', help='Output folder (default: //BPM_Textures)')
-        p.add_argument('--maps', default='basecolor,metallic,roughness,transmission,normal,height,ao',
-                       help='Comma separated: basecolor,metallic,roughness,transmission,normal,height,ao '
-                            '(transmission is only written for glass)')
+        p.add_argument('--maps', default='basecolor,metallic,roughness,transmission,emission,normal,height,ao',
+                       help='Comma separated: basecolor,metallic,roughness,transmission,emission,normal,height,ao '
+                            '(transmission is only written for glass, emission for glowing materials)')
         p.add_argument('--directx', action='store_true', help='DirectX normal maps (Unreal Engine)')
         p.add_argument('--16bit', dest='use_16bit', action='store_true', help='16-bit PNG files')
         p.add_argument('--orm', action='store_true', help='Also save packed AO/Roughness/Metallic')

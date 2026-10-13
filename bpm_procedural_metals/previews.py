@@ -13,18 +13,38 @@ def thumbnails_dir():
     return os.path.join(os.path.dirname(os.path.abspath(__file__)), 'thumbnails')
 
 
+def _thumbnail_path(preset_id):
+    path = os.path.join(thumbnails_dir(), preset_id + '.png')
+    if not os.path.exists(path):
+        from . import user_presets
+        if preset_id.startswith(user_presets.PREFIX):
+            return user_presets.thumbnail_path(preset_id)
+    return path
+
+
+_reload = set()  # thumbnails that changed on disk
+
+
 def icon_id(preset_id):
     if _collection is None:
         return 0
     if preset_id not in _collection:
-        path = os.path.join(thumbnails_dir(), preset_id + '.png')
+        path = _thumbnail_path(preset_id)
         if not os.path.exists(path):
             return 0
         try:
-            _collection.load(preset_id, path, 'IMAGE')
+            _collection.load(preset_id, path, 'IMAGE', force_reload=preset_id in _reload)
         except (KeyError, RuntimeError):
             return 0
+        _reload.discard(preset_id)
     return _collection[preset_id].icon_id
+
+
+def forget(preset_id):
+    """A thumbnail was saved or deleted: load it again next time."""
+    if _collection is not None and preset_id in _collection:
+        del _collection[preset_id]
+    _reload.add(preset_id)
 
 
 def gallery_items(self, context):
@@ -33,7 +53,7 @@ def gallery_items(self, context):
         category = context.scene.bpm.category
     items = []
     for number, preset in enumerate(P.PRESETS):
-        if category in {'ALL', preset['category']}:
+        if P.in_category(preset, category):
             items.append((preset['id'], preset['name'], preset['desc'], icon_id(preset['id']), number))
     if not items:
         items = [('NONE', 'No materials', '', 0, 999)]

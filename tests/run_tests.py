@@ -31,6 +31,7 @@ from bpm_procedural_metals import meshmaps as M  # noqa: E402
 from bpm_procedural_metals import presets as P  # noqa: E402
 
 TMP = tempfile.mkdtemp(prefix='bpm_tests_')
+os.environ['BPM_PRESET_DIR'] = os.path.join(TMP, 'my_presets')  # never touch the real user presets
 TESTS = []
 
 
@@ -145,7 +146,7 @@ def presets_are_valid():
         assert P.is_overlay(preset) == G.is_overlay(preset['generator']), preset['id']
     assert len(P.PRESETS) >= 120, 'expected a big library'
     for cat, *_rest in P.CATEGORIES:
-        assert P.by_category(cat), cat
+        assert cat == P.USER_CATEGORY or P.by_category(cat), cat
     for gen in G.GENERATORS:
         assert G.GENERATORS[gen]['custom'] or any(p['generator'] == gen for p in P.PRESETS), \
             'no preset uses ' + gen
@@ -1567,6 +1568,207 @@ def command_line_maps():
     assert res.returncode == 0 and 'Mesh maps ready for 1 object' in text, text[-3000:]
     bpy.ops.wm.open_mainfile(filepath=blend)
     assert M.status(bpy.data.objects['Crate']) == 'OK'
+
+
+@test
+def terrain_displacement():
+    """Terrain moves the surface only with Real Displacement up; Displace Geometry subdivides."""
+    fresh_scene()
+    obj = add_cube()
+    mat = L.create_material('terrain_lunar_surface')
+    obj.data.materials.append(mat)
+    tree = mat.node_tree
+    disp = tree.nodes.get(L.DISPLACEMENT_NODE)
+    assert disp is not None and disp.space == 'WORLD'
+    assert L.output_node(tree).inputs['Displacement'].links[0].from_node == disp
+    node = L.displaces(mat)
+    assert node is not None and node.inputs['Real Displacement'].default_value == 0.0
+    assert L.displaces(L.create_material('paint_industrial_yellow')) is None
+    # the operator: on (auto levels from the face count), off again
+    obj.select_set(True)
+    bpy.context.view_layer.objects.active = obj
+    assert bpy.ops.bpm.displace_geometry(enable=True) == {'FINISHED'}
+    mod = obj.modifiers.get(L.DISPLACE_MODIFIER)
+    assert mod is not None and mod.subdivision_type == 'SIMPLE'
+    assert 6 * 4 ** mod.levels >= 20_000 and mod.render_levels >= mod.levels, (mod.levels, mod.render_levels)
+    assert node.inputs['Real Displacement'].default_value == 1.0
+    assert L.has_displace_geometry(obj)
+    node.inputs['Real Displacement'].default_value = 0.4  # a user value is kept when turned on again
+    L.set_displace_geometry([obj], mat, True, levels=3)
+    assert mod.levels == 3 and abs(node.inputs['Real Displacement'].default_value - 0.4) < 1e-6
+    assert bpy.ops.bpm.displace_geometry(enable=False) == {'FINISHED'}
+    assert not L.has_displace_geometry(obj) and node.inputs['Real Displacement'].default_value == 0.0
+    assert L.subdivision_levels(1, 400_000) == 8 and L.subdivision_levels(10 ** 7, 400_000) == 1
+
+
+@test
+def lava_glows_and_bakes_emission():
+    """Lava's glow reaches the Principled BSDF, the emission map and the baked material."""
+    fresh_scene()
+    obj = add_cube()
+    mat = L.create_material('lava_lake')
+    obj.data.materials.append(mat)
+    bsdf = L.find_principled(mat.node_tree)
+    assert bsdf.inputs['Emission Color'].is_linked and bsdf.inputs['Emission Strength'].is_linked
+    node = L.displaces(mat)
+    node.inputs['Real Displacement'].default_value = 0.7
+    other = add_cube('Painted', location=(5, 0, 0))
+    other.data.materials.append(L.create_material('paint_industrial_yellow'))
+    job = B.ObjectBakeJob(bpy.context, [obj, other], settings(resolution=64))
+    B.run_to_end(job)
+    names = sorted(os.path.basename(p) for p in job.written)
+    assert 'Cube_Emission.png' in names, names
+    assert 'Painted_Emission.png' not in names, 'nothing glows: no emission map'
+    glow = read_png(os.path.join(job.output_dir, 'Cube_Emission.png'))[..., :3]
+    assert glow[..., 0].max() > 0.3 and glow[..., 0].mean() > glow[..., 2].mean(), 'lava glows orange'
+    height = read_png(os.path.join(job.output_dir, 'Cube_Height.png'))[..., 0]
+    assert height.std() > 0.005, 'flat height map'
+    # the procedural material is unchanged (displacement back on)
+    assert abs(node.inputs['Real Displacement'].default_value - 0.7) < 1e-6, node.inputs['Real Displacement'].default_value
+    assert L.output_node(mat.node_tree).inputs['Displacement'].is_linked
+    baked = obj.active_material
+    assert L.is_baked_material(baked)
+    bsdf = L.find_principled(baked.node_tree)
+    assert bsdf.inputs['Emission Color'].is_linked, 'the baked material glows from its map'
+    strength = L.preset_values(P.get('lava_lake'))['Emission Strength']
+    assert abs(bsdf.inputs['Emission Strength'].default_value - strength) < 1e-5, 'glow strength kept'
+    assert not L.find_principled(other.active_material.node_tree).inputs['Emission Color'].is_linked
+
+
+@test
+def terrain_tiles_are_seamless():
+    fresh_scene()
+    mats = [L.create_material(pid) for pid in ('terrain_fresh_craters', 'terrain_asteroid_stony', 'lava_crusting')]
+    L.displaces(mats[0]).inputs['Real Displacement'].default_value = 1.0
+    job = B.TileBakeJob(bpy.context, mats, settings(
+        resolution=128, maps={'BASE_COLOR', 'NORMAL', 'HEIGHT', 'EMISSION'}))
+    B.run_to_end(job)
+    names = sorted(os.path.basename(p) for p in job.written)
+    assert len(names) == 3 * 3 + 1, names  # only the lava glows
+    assert any(n.endswith('Emission.png') and 'Lava' in n for n in names), names
+    for path in job.written:
+        a = read_png(path)[..., :3].astype(np.float64)
+        assert seam_ok(a), 'visible seam in ' + os.path.basename(path)
+        assert a.std() > 0.003, 'flat texture: ' + os.path.basename(path)
+    crater_h = read_png([p for p in job.written if 'Fresh' in p and p.endswith('Height.png')][0])[..., 0]
+    assert crater_h.max() - crater_h.min() > 0.1, 'craters must show in the height map'
+
+
+@test
+def gradient_shapes():
+    """Linear runs straight from one side to the other, radial is bright in the middle, angular sweeps
+    through the colors, Steps gives flat bands."""
+    fresh_scene()
+    mats = [L.create_material(pid) for pid in ('grad_black_white', 'grad_spotlight', 'grad_color_wheel')]
+    banded = L.create_material('grad_black_white', 'Banded')
+    L.apply_values(L.find_bpm_node(banded), {'Steps': 4.0})
+    job = B.TileBakeJob(bpy.context, mats + [banded], settings(resolution=64, maps={'BASE_COLOR'}))
+    B.run_to_end(job)
+    assert len(job.written) == 4, job.written
+    imgs = {os.path.basename(p).split('_BaseColor')[0]: read_png(p)[..., :3].astype(np.float64)
+            for p in job.written}
+    linear = imgs['Black_to_White'].mean(axis=2)
+    rows = linear.mean(axis=1)
+    assert np.all(np.diff(rows) > 0) or np.all(np.diff(rows) < 0), 'a linear gradient runs one way'
+    assert rows.max() - rows.min() > 0.8, (rows.min(), rows.max())
+    assert linear.std(axis=1).max() < 0.02, 'a vertical gradient is the same across'
+    spot = imgs['Spotlight'].mean(axis=2)
+    assert spot[28:36, 28:36].mean() - spot[:6, :6].mean() > 0.5, 'radial: bright center, dark corners'
+    wheel = imgs['Color_Wheel']
+    quads = [wheel[16, 16], wheel[16, 48], wheel[48, 48], wheel[48, 16]]
+    for i in range(4):
+        assert np.abs(quads[i] - quads[(i + 1) % 4]).max() > 0.2, 'angular: colors change around the center'
+    levels = np.unique(np.round(imgs['Banded'].mean(axis=(1, 2)), 2))
+    assert len(levels) == 4, levels
+
+
+@test
+def gradient_glow_only_when_on():
+    """A gradient bakes an emission map only when it glows; cooled lava (Heat 0) doesn't either."""
+    fresh_scene()
+    plain = add_cube('Plain')
+    plain.data.materials.append(L.create_material('grad_sunset'))
+    neon = add_cube('Neon', location=(5, 0, 0))
+    neon.data.materials.append(L.create_material('grad_neon_tube'))
+    cold = add_cube('Cold', location=(10, 0, 0))
+    lava = L.create_material('lava_lake')
+    L.apply_values(L.find_bpm_node(lava), {'Heat': 0.0})
+    cold.data.materials.append(lava)
+    view = L.find_bpm_node(plain.active_material).inputs['View Axis']
+    assert tuple(view.default_value) == (0.0, -1.0, 0.0), 'projected from the front by default'
+    job = B.ObjectBakeJob(bpy.context, [plain, neon, cold], settings(resolution=32))
+    B.run_to_end(job)
+    names = sorted(os.path.basename(p) for p in job.written)
+    assert 'Neon_Emission.png' in names, names
+    assert 'Plain_Emission.png' not in names and 'Cold_Emission.png' not in names, names
+
+
+@test
+def user_presets_save_load_delete():
+    """Saved presets keep every slider and overlay, survive a restart, replace by name, and delete."""
+    import json
+    from bpm_procedural_metals import user_presets as U, previews
+    fresh_scene()
+    assert not U.user_presets()
+    obj = add_cube()
+    mat = L.create_material('grad_sunset', 'Mine')
+    obj.data.materials.append(mat)
+    node = L.find_bpm_node(mat)
+    L.apply_values(node, {'Type': 2.0, 'Color 1': (1.0, 0.0, 0.0), 'View Axis': (0.0, 0.0, 1.0)})
+    L.add_overlay(mat, 'DUST', {'Amount': 0.7})
+    preset = U.save(mat, 'My Sunset', 'Red sunset')
+    assert preset['id'] == 'user_my_sunset' and preset['user'] and preset['category'] == P.USER_CATEGORY
+    with open(U.file_path(), encoding='utf-8') as f:
+        assert json.load(f)['presets'][0]['name'] == 'My Sunset'
+    assert preset in P.by_category(P.USER_CATEGORY) and preset in P.by_category('GRADIENT')
+    assert preset not in P.by_category('METAL')
+    bpy.context.scene.bpm.category = P.USER_CATEGORY
+    assert [i[0] for i in previews.gallery_items(None, bpy.context)] == ['user_my_sunset']
+    bpy.context.scene.bpm.category = 'ALL'
+
+    copy = L.create_material('user_my_sunset')
+    values = L.read_values(L.find_bpm_node(copy))
+    assert values['Type'] == 2.0 and abs(values['Color 1'][0] - 1.0) < 1e-6 and values['Color 1'][1] < 1e-6
+    assert abs(values['View Axis'][2] - 1.0) < 1e-6
+    stack = L.overlay_stack(copy)
+    assert len(stack) == 1 and abs(stack[0].inputs['Amount'].default_value - 0.7) < 1e-6
+    # Reset goes back to your preset without doubling its overlays
+    node.inputs['Type'].default_value = 0.0
+    bpy.ops.bpm.reset_material()
+    assert node.inputs['Type'].default_value == 2.0
+    assert len(L.overlay_stack(mat)) == 1, 'the saved overlay is not added twice'
+    # the same name replaces the preset
+    node.inputs['Type'].default_value = 4.0
+    U.save(mat, 'my sunset')
+    assert len(U.user_presets()) == 1 and P.get('user_my_sunset')['values']['Type'] == 4.0
+    # still there after a restart; broken entries are skipped
+    with open(U.file_path(), encoding='utf-8') as f:
+        data = json.load(f)
+    data['presets'].append({'id': 'user_gone', 'name': 'Gone', 'generator': 'NO_SUCH_THING', 'values': {}})
+    data['presets'][0]['values']['Not A Slider'] = 1.0
+    with open(U.file_path(), 'w', encoding='utf-8') as f:
+        json.dump(data, f)
+    addon.unregister()
+    assert not U.user_presets()
+    addon.register()
+    assert [p['id'] for p in U.user_presets()] == ['user_my_sunset']
+    assert 'Not A Slider' not in P.get('user_my_sunset')['values']
+    # the buttons
+    assert bpy.ops.bpm.save_preset(name='Button Preset', include_overlays=False) == {'FINISHED'}
+    saved = P.get('user_button_preset')
+    assert saved['overlays'] == [] and saved['generator'] == 'GRADIENT'
+    try:
+        bpy.ops.bpm.delete_preset(preset='grad_sunset')
+        refused = False
+    except RuntimeError:
+        refused = True
+    assert refused and P.find('grad_sunset') is not None, 'library presets cannot be deleted'
+    assert bpy.ops.bpm.delete_preset(preset='user_button_preset') == {'FINISHED'}
+    assert U.delete('user_my_sunset')
+    assert not U.user_presets() and P.find('user_my_sunset') is None
+    with open(U.file_path(), encoding='utf-8') as f:
+        assert [e['id'] for e in json.load(f)['presets']] == ['user_gone']
+    assert L.find_bpm_node(copy) is not None, 'materials made from a deleted preset stay'
 
 
 STACK_SCRIPT = r'''

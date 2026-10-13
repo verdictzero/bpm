@@ -45,6 +45,17 @@ def _draw_socket(layout, node, param):
         if param.ui[0] == 'CHOICES':
             layout.prop(sock, 'default_value', text=param.name)
         return
+    if isinstance(param.ui, tuple) and param.ui[0] == 'VIEW':
+        # named views (Front, Top...) plus any direction
+        row = layout.row(align=True)
+        row.label(text=param.name)
+        current = tuple(round(v, 3) for v in sock.default_value)
+        for label, value in param.ui[1]:
+            op = row.operator('bpm.set_vector', text=label, depress=current == tuple(value))
+            op.socket = param.name
+            op.value = value
+        layout.row().prop(sock, 'default_value', text='')
+        return
     if param.ui == 'AXIS':
         row = layout.row(align=True)
         row.label(text=param.name)
@@ -80,6 +91,13 @@ class BPM_PT_library(bpy.types.Panel):
         row.operator('bpm.gallery_step', text='', icon='TRIA_RIGHT').step = 1
 
         preset = P.find(wm.bpm_gallery) if wm.bpm_gallery not in {'', 'NONE'} else None
+        if settings.category == P.USER_CATEGORY:
+            if preset is None:
+                _wrap(layout, context, 'No presets of your own yet. Adjust a material the way you like it, '
+                                       'then click "Save Preset" in Adjust Material.', 'INFO')
+            row = layout.row(align=True)
+            row.operator('bpm.open_presets_folder', icon='FILE_FOLDER')
+            row.operator('bpm.reload_presets', text='', icon='FILE_REFRESH')
         if preset is not None:
             box = layout.box()
             overlay = P.is_overlay(preset)
@@ -87,6 +105,10 @@ class BPM_PT_library(bpy.types.Panel):
             _wrap(box, context, preset['desc'])
             if overlay:
                 _wrap(box, context, 'Goes on top of the material the object already has.', 'INFO')
+            if preset.get('user'):
+                row = box.row(align=True)
+                row.label(text='Your own preset', icon='USER')
+                row.operator('bpm.delete_preset', text='', icon='TRASH').preset = preset['id']
             col = layout.column(align=True)
             col.scale_y = 1.6
             if overlay:
@@ -95,6 +117,20 @@ class BPM_PT_library(bpy.types.Panel):
                 label = 'Apply to Selected Faces' if context.mode == 'EDIT_MESH' else 'Apply to Selected'
                 col.operator('bpm.apply_preset', text=label, icon='CHECKMARK').preset = preset['id']
             layout.prop(settings, 'fit_to_object')
+
+
+def _draw_displace(layout, context, obj):
+    row = layout.row(align=True)
+    if L.has_displace_geometry(obj):
+        row.operator('bpm.displace_geometry', text='Remove Displacement', icon='X').enable = False
+        mod = obj.modifiers[L.DISPLACE_MODIFIER]
+        row = layout.row(align=True)
+        row.prop(mod, 'levels', text='Viewport')
+        row.prop(mod, 'render_levels', text='Render')
+    else:
+        row.operator('bpm.displace_geometry', icon='MOD_DISPLACE').enable = True
+        _wrap(layout, context, 'Bump only fakes the depth. "Displace Geometry" divides the mesh finely '
+                               'and moves it: real craters, real silhouettes.', 'INFO')
 
 
 class BPM_PT_adjust(bpy.types.Panel):
@@ -130,6 +166,7 @@ class BPM_PT_adjust(bpy.types.Panel):
             row.operator('bpm.make_unique', text=str(users), icon='DUPLICATE')
         row = layout.row(align=True)
         row.operator_menu_enum('bpm.load_preset_menu', 'preset', text='Load Preset', icon='PRESET')
+        row.operator('bpm.save_preset', text='Save Preset', icon='FILE_TICK')
         row.operator('bpm.reset_material', text='', icon='LOOP_BACK')
         row.operator('bpm.randomize_seed', text='', icon='FILE_REFRESH')
 
@@ -151,6 +188,8 @@ class BPM_PT_adjust(bpy.types.Panel):
                 for p in params:
                     if p.panel == name:
                         _draw_socket(col, node, p)
+                if name == 'Displacement':
+                    _draw_displace(body, context, obj)
 
         box = layout.box()
         _wrap(box, context, 'Cycles shows exactly what the bake will produce.', 'LIGHT')

@@ -158,6 +158,18 @@ def make_shape(shape='cube'):
         obj.data.transform(Matrix.Diagonal((1.0, 1.0, 0.45, 1.0)))  # in the mesh: zoom scales the object
         for poly in obj.data.polygons:
             poly.use_smooth = True
+    elif shape == 'panel':  # a rounded slab whose front (-Y) faces the camera: radial gradients
+        bpy.ops.mesh.primitive_cube_add(size=1.0)
+        obj = bpy.context.active_object
+        obj.data.transform(_diagonal((2.3, 0.16, 2.3)))  # in the mesh: zoom scales the object
+        bev = obj.modifiers.new('Bevel', 'BEVEL')
+        bev.width = 0.05
+        bev.segments = 4
+        bev.limit_method = 'NONE'
+        bev.harden_normals = True
+        for poly in obj.data.polygons:
+            poly.use_smooth = True
+        obj.rotation_euler = (math.radians(-29), 0.0, math.radians(45))
     elif shape == 'steps':
         obj = make_steps()
     elif shape == 'cylinder':
@@ -173,6 +185,11 @@ def make_shape(shape='cube'):
         raise ValueError(shape)
     obj.name = 'Preview'
     return obj
+
+
+def _diagonal(scale):
+    from mathutils import Matrix
+    return Matrix.Diagonal((*scale, 1.0))
 
 
 def make_steps():

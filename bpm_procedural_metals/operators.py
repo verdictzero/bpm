@@ -6,13 +6,14 @@ import random
 import traceback
 
 import bpy
-from bpy.props import EnumProperty, FloatProperty, FloatVectorProperty, IntProperty, StringProperty
+from bpy.props import BoolProperty, EnumProperty, FloatProperty, FloatVectorProperty, IntProperty, StringProperty
 
 from . import bake as B
 from . import decals as D
 from . import library as L
 from . import meshmaps as M
 from . import presets as P
+from . import user_presets as U
 from .nodebuilder import set_socket_value
 
 
@@ -214,6 +215,102 @@ class BPM_OT_set_value(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BPM_OT_save_preset(bpy.types.Operator):
+    """Save this material's settings (and its overlays) as your own preset, shown under 'My Presets'"""
+    bl_idname = 'bpm.save_preset'
+    bl_label = 'Save as Preset'
+    bl_options = {'REGISTER'}
+
+    name: StringProperty(name='Name', description='Name of your preset (an existing name is replaced)')
+    description: StringProperty(name='Description', description='A short note shown in the gallery')
+    include_overlays: BoolProperty(name='Include Overlays', default=True,
+                                   description='Save the dirt, dust, wear and scratch overlays too')
+
+    @classmethod
+    def poll(cls, context):
+        return L.active_bpm_material(context)[2] is not None
+
+    def invoke(self, context, event):
+        obj, mat, node = L.active_bpm_material(context)
+        preset = P.find(mat.get('bpm_preset', '')) if mat.get('bpm_preset') else None
+        self.name = preset['name'] if preset is not None and preset.get('user') else mat.name
+        if preset is not None and preset.get('user'):
+            self.description = preset['desc']
+        return context.window_manager.invoke_props_dialog(self)
+
+    def draw(self, context):
+        layout = self.layout
+        layout.prop(self, 'name')
+        layout.prop(self, 'description')
+        layout.prop(self, 'include_overlays')
+        if self.name.strip() and U.find_by_name(self.name) is not None:
+            layout.label(text='Replaces your preset of the same name.', icon='INFO')
+
+    def execute(self, context):
+        obj, mat, node = L.active_bpm_material(context)
+        if node is None:
+            return {'CANCELLED'}
+        try:
+            preset = U.save(mat, self.name, self.description, self.include_overlays)
+        except (OSError, ValueError) as error:
+            self.report({'ERROR'}, 'Could not save the preset: %s' % error)
+            return {'CANCELLED'}
+        U.save_thumbnail(mat, preset['id'])
+        wm = context.window_manager
+        try:
+            wm.bpm_gallery = preset['id']
+        except TypeError:  # the gallery shows another category
+            pass
+        self.report({'INFO'}, 'Saved "%s" to My Presets.' % preset['name'])
+        return {'FINISHED'}
+
+
+class BPM_OT_delete_preset(bpy.types.Operator):
+    """Delete one of your own presets (materials already using it are not changed)"""
+    bl_idname = 'bpm.delete_preset'
+    bl_label = 'Delete Preset'
+    bl_options = {'REGISTER'}
+
+    preset: StringProperty()
+
+    def invoke(self, context, event):
+        return context.window_manager.invoke_confirm(self, event)
+
+    def execute(self, context):
+        preset = P.find(self.preset)
+        if preset is None or not preset.get('user'):
+            self.report({'ERROR'}, 'Only your own presets can be deleted.')
+            return {'CANCELLED'}
+        try:
+            U.delete(preset['id'])
+        except OSError as error:
+            self.report({'ERROR'}, 'Could not delete the preset: %s' % error)
+            return {'CANCELLED'}
+        self.report({'INFO'}, 'Deleted "%s".' % preset['name'])
+        return {'FINISHED'}
+
+
+class BPM_OT_open_presets_folder(bpy.types.Operator):
+    """Open the folder where your presets are saved (copy it to share them or move them to another computer)"""
+    bl_idname = 'bpm.open_presets_folder'
+    bl_label = 'Open Presets Folder'
+
+    def execute(self, context):
+        bpy.ops.wm.path_open(filepath=U.folder())
+        return {'FINISHED'}
+
+
+class BPM_OT_reload_presets(bpy.types.Operator):
+    """Read your presets again (after copying preset files into the folder)"""
+    bl_idname = 'bpm.reload_presets'
+    bl_label = 'Reload My Presets'
+
+    def execute(self, context):
+        U.load()
+        self.report({'INFO'}, '%d presets of your own.' % len(U.user_presets()))
+        return {'FINISHED'}
+
+
 class BPM_OT_make_unique(bpy.types.Operator):
     """Give the active object its own copy of this material, so changes don't affect other objects"""
     bl_idname = 'bpm.make_unique'
@@ -227,6 +324,35 @@ class BPM_OT_make_unique(bpy.types.Operator):
         copy = mat.copy()
         obj.material_slots[obj.active_material_index].material = copy
         self.report({'INFO'}, 'This object now has its own material "%s".' % copy.name)
+        return {'FINISHED'}
+
+
+class BPM_OT_displace_geometry(bpy.types.Operator):
+    """Move the surface itself by the material's height: craters and lava get real depth and
+    silhouettes. Adds a Subdivision modifier (Simple: the shape stays the same) for the fine mesh"""
+    bl_idname = 'bpm.displace_geometry'
+    bl_label = 'Displace Geometry'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    enable: BoolProperty(name='On', default=True)
+    levels: IntProperty(name='Subdivisions', default=0, min=0, max=8,
+                        description='How finely to divide the mesh (0 = automatic, from the face count)')
+
+    @classmethod
+    def poll(cls, context):
+        obj, mat, node = L.active_bpm_material(context)
+        return L.displaces(mat) is not None
+
+    def execute(self, context):
+        obj, mat, node = L.active_bpm_material(context)
+        users = [o for o in _selected_material_objects(context)
+                 if any(slot.material == mat for slot in o.material_slots)] or [obj]
+        changed = L.set_displace_geometry(users, mat, self.enable, self.levels)
+        if self.enable:
+            self.report({'INFO'}, 'Real displacement on for %d object(s). Raise "Real Displacement" for '
+                                  'deeper relief; it shows in Rendered view.' % len(changed))
+        else:
+            self.report({'INFO'}, 'Real displacement off.')
         return {'FINISHED'}
 
 
@@ -884,7 +1010,12 @@ CLASSES = (
     BPM_OT_fit_scale,
     BPM_OT_set_vector,
     BPM_OT_set_value,
+    BPM_OT_save_preset,
+    BPM_OT_delete_preset,
+    BPM_OT_open_presets_folder,
+    BPM_OT_reload_presets,
     BPM_OT_make_unique,
+    BPM_OT_displace_geometry,
     BPM_OT_preview_cycles,
     BPM_OT_preview_material,
     BPM_OT_add_overlay,

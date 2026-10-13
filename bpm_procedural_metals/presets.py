@@ -7,6 +7,8 @@ A material preset can bring overlays (dirt, dust, wear) along; overlay
 presets are layered on top of whatever material an object already has.
 """
 
+import math
+
 # (id, label, description, short label for the category buttons, number stored in .blend files)
 CATEGORIES = (
     ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals', 'Metal', 1),
@@ -14,6 +16,10 @@ CATEGORIES = (
     ('MILITARY', 'Military', 'Military paint and camouflage with mud, dust and edge wear built in', 'Military', 10),
     ('CONCRETE', 'Concrete', 'Cast, board-formed, polished, slab and block concrete, from fresh to ruined',
      'Concrete', 13),
+    ('TERRAIN', 'Terrain & Lava', 'Cratered ground, lunar and asteroid surfaces, molten, crusting and cooled lava',
+     'Terrain', 14),
+    ('GRADIENT', 'Gradients', 'Linear, radial, angular, diamond, spiral and more: color ramps projected from any '
+     'side, on the object, in world space, on UVs or on the screen', 'Gradients', 15),
     ('WOOD', 'Wood', 'Raw, varnished, painted, weathered and charred wood', 'Wood', 3),
     ('PLASTIC', 'Plastic', 'Glossy, matte and textured plastic, new, old or dirty', 'Plastic', 4),
     ('GLASS', 'Glass', 'Clear, tinted, frosted, textured and stained glass, spotless or grimy', 'Glass', 9),
@@ -25,12 +31,15 @@ CATEGORIES = (
     ('OVERLAY', 'Dirt & Dust', 'Layers of dirt or dust that go on top of any material', 'Dirt & Dust', 8),
     ('WEAR', 'Edge Wear & Scratches', 'Chipped or rubbed edges, scratches and swirl marks that go on top of any '
      'material', 'Wear', 12),
+    ('USER', 'My Presets', 'Materials you saved yourself (Adjust Material > Save Preset)', 'Mine', 16),
 )
+USER_CATEGORY = 'USER'
 OVERLAY_CATEGORIES = ('OVERLAY', 'WEAR')  # presets of these categories go on top of other materials
 
 # generator -> gallery category
 GENERATOR_CATEGORY = {
-    'METAL': 'METAL', 'PAINT': 'PAINT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'WOOD': 'WOOD',
+    'METAL': 'METAL', 'PAINT': 'PAINT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'TERRAIN': 'TERRAIN',
+    'LAVA': 'TERRAIN', 'GRADIENT': 'GRADIENT', 'WOOD': 'WOOD',
     'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS', 'LENS': 'LENS', 'LEATHER': 'LEATHER', 'FABRIC': 'FABRIC',
     'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
 }
@@ -68,8 +77,15 @@ def find(name_or_id):
     return None
 
 
+def in_category(preset, category):
+    """Your own presets show under 'My Presets' and under the category of their material."""
+    if category in {'ALL', preset['category']}:
+        return True
+    return bool(preset.get('user')) and GENERATOR_CATEGORY.get(preset['generator']) == category
+
+
 def by_category(category):
-    return [p for p in PRESETS if category in {'ALL', p['category']}]
+    return [p for p in PRESETS if in_category(p, category)]
 
 
 def is_overlay(preset):
@@ -511,6 +527,284 @@ _add('concrete_bridge', 'Bridge Pier', 'CONCRETE',
      thumb=CONCRETE_THUMB, Form_Panels=0.6, Rust_Stains=0.6, Water_Stains=0.7, Moss=0.3, Efflorescence=0.3,
      Spalling=0.2, Rebar=0.8)
 
+
+TERRAIN_THUMB = dict(shape='sphere', zoom=3.0)  # a moon-sized look: many craters
+GROUND_THUMB = dict(shape='sphere')  # close-up ground
+LAVA_THUMB = GROUND_THUMB
+
+_add('terrain_lunar_highlands', 'Lunar Highlands', 'TERRAIN',
+     'Bright, heavily cratered lunar highlands: craters on craters, worn down by age.',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.21, 0.205, 0.20), Craters=0.95, Small_Craters=1.0, Crater_Age=0.6,
+     Hills=0.6, Ejecta=0.4, Rays=0.1, Boulders=0.15)
+_add('terrain_lunar_mare', 'Lunar Mare', 'TERRAIN',
+     'Dark, smooth lava plains of the lunar seas with fewer, smaller craters.',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.075, 0.073, 0.07), Craters=0.4, Small_Craters=0.8, Hills=0.1,
+     Crater_Age=0.5, Ejecta=0.7, Rays=0.0, Boulders=0.1)
+_add('terrain_lunar_surface', 'Lunar Surface', 'TERRAIN',
+     'The Moon seen from orbit: bright cratered highlands and dark seas.',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.20, 0.195, 0.19), Dark_Patches=0.4, Craters=0.75, Small_Craters=0.9,
+     Crater_Age=0.5, Ejecta=0.6, Rays=0.3)
+_add('terrain_fresh_craters', 'Fresh Crater Field', 'TERRAIN',
+     'Young, sharp impact craters with bright ejecta, rays and central peaks.',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.15, 0.147, 0.143), Craters=0.7, Crater_Age=0.0, Ejecta=0.9, Rays=0.8,
+     Central_Peaks=0.8, Rim_Height=1.3, Boulders=0.3)
+_add('terrain_regolith', 'Lunar Regolith (Close-Up)', 'TERRAIN',
+     'Dusty ground seen up close: footprint-sized craters, pebbles and rocks.',
+     thumb=GROUND_THUMB, Ground_Color=(0.17, 0.165, 0.16), Crater_Size=0.12, Craters=0.8, Small_Craters=1.0,
+     Crater_Age=0.7, Hills=0.15, Hill_Size=1.0, Regolith=1.0, Boulders=0.5, Boulder_Size=0.04, Ejecta=0.3, Rays=0.0)
+_add('terrain_asteroid_carbon', 'Carbonaceous Asteroid', 'TERRAIN',
+     'Coal-dark C-type asteroid: battered by craters and strewn with boulders.',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.032, 0.031, 0.030), Rock_Color=(0.045, 0.043, 0.04), Craters=1.0,
+     Small_Craters=1.0, Crater_Age=0.5, Hills=0.8, Hill_Size=2.0, Boulders=0.6, Boulder_Size=0.12, Ejecta=0.2,
+     Rays=0.0, Color_Variation=0.25)
+_add('terrain_asteroid_stony', 'Stony Asteroid', 'TERRAIN',
+     'Brownish gray S-type asteroid: rubble, boulders and bare rock.',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.19, 0.16, 0.125), Rock_Color=(0.15, 0.13, 0.10), Craters=0.9,
+     Crater_Age=0.6, Hills=0.8, Hill_Size=2.0, Boulders=0.5, Boulder_Size=0.15, Bedrock=0.3, Ejecta=0.3, Rays=0.0)
+_add('terrain_asteroid_metal', 'Metallic Asteroid', 'TERRAIN',
+     'M-type asteroid of nickel-iron: shiny metal showing through the dust.',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.12, 0.115, 0.11), Rock_Color=(0.10, 0.095, 0.09), Metal_Flecks=0.7,
+     Craters=0.8, Crater_Age=0.4, Hills=0.6, Hill_Size=2.0, Boulders=0.3, Boulder_Size=0.1, Rays=0.0, Ejecta=0.2,
+     Roughness=0.8)
+_add('terrain_mars', 'Martian Ground', 'TERRAIN',
+     'Rusty red dust and rocks with old, softened craters.',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.30, 0.12, 0.05), Rock_Color=(0.16, 0.075, 0.04),
+     Patch_Color=(0.14, 0.065, 0.035), Dark_Patches=0.25, Craters=0.35, Crater_Age=0.85, Hills=0.5, Boulders=0.5,
+     Boulder_Size=0.1, Bedrock=0.15, Ejecta=0.1, Rays=0.0)
+_add('terrain_battlefield', 'Shell-Cratered Battlefield', 'TERRAIN',
+     'Muddy ground torn up by shell craters: scorched, with water in the bottoms.',
+     thumb=GROUND_THUMB, Ground_Color=(0.075, 0.058, 0.04), Rock_Color=(0.09, 0.08, 0.07), Crater_Size=1.2,
+     Craters=0.85, Small_Craters=0.5, Crater_Age=0.15, Rim_Height=1.6, Central_Peaks=0.0, Ejecta=0.0, Rays=0.0,
+     Scorch=0.5, Puddles=0.5, Wetness=0.4, Roughness=0.85, Regolith=0.4, Boulders=0.15, Color_Variation=0.5)
+_add('terrain_desert_rock', 'Rocky Desert', 'TERRAIN',
+     'Sandy ground with stones and cracked bedrock, no craters.',
+     thumb=GROUND_THUMB, Ground_Color=(0.38, 0.26, 0.15), Rock_Color=(0.26, 0.17, 0.10), Craters=0.0,
+     Hills=0.6, Boulders=0.5, Boulder_Size=0.06, Bedrock=0.4, Regolith=0.7)
+_add('terrain_volcanic_ash', 'Volcanic Ash Plain', 'TERRAIN',
+     'Black ash and cinders with scattered volcanic bombs.',
+     thumb=GROUND_THUMB, Ground_Color=(0.05, 0.048, 0.046), Rock_Color=(0.03, 0.028, 0.027), Craters=0.15,
+     Crater_Age=0.7, Rays=0.0, Ejecta=0.0, Hills=0.5, Boulders=0.35, Boulder_Size=0.1, Regolith=0.9)
+_add('terrain_icy_moon', 'Icy Moon', 'TERRAIN',
+     'Bright cracked ice crust with craters (Europa, Enceladus).',
+     thumb=TERRAIN_THUMB, Ground_Color=(0.62, 0.62, 0.62), Rock_Color=(0.42, 0.36, 0.30), Patch_Color=(0.45, 0.38, 0.30),
+     Dark_Patches=0.2, Craters=0.4, Crater_Age=0.3, Bedrock=0.7, Roughness=0.55, Boulders=0.05, Ejecta=0.2, Rays=0.4)
+
+_add('lava_molten', 'Molten Lava', 'LAVA',
+     'Bright, flowing molten lava with a few floating crust pieces.',
+     thumb=LAVA_THUMB, Heat=1.0, Crust=0.25, Turbulence=0.7)
+_add('lava_lake', 'Lava Lake', 'LAVA',
+     'Churning lava lake: dark crust plates drifting on glowing melt.',
+     thumb=LAVA_THUMB, Heat=1.0, Crust=0.55, Plate_Size=0.8, Crack_Width=0.4)
+_add('lava_crusting', 'Cooling Lava Crust', 'LAVA',
+     'Crust closing over the lava, glowing through wide cracks.',
+     thumb=LAVA_THUMB, Heat=0.85, Crust=0.85, Crack_Width=0.35, Vesicles=0.3)
+_add('lava_glowing_cracks', 'Glowing Cracks', 'LAVA',
+     'Cooled black rock with dull red heat in the cracks.',
+     thumb=LAVA_THUMB, Heat=0.6, Crust=1.0, Crack_Width=0.2, Temperature=1150.0, Vesicles=0.4)
+_add('lava_magma', 'Magma', 'LAVA',
+     'Very hot, yellow-orange magma: almost no crust.',
+     thumb=LAVA_THUMB, Heat=1.0, Crust=0.05, Temperature=1650.0, Turbulence=0.9, Heat_Variation=0.4,
+     Emission_Strength=1.8)
+_add('lava_magma_churning', 'Churning Magma', 'LAVA',
+     'Boiling magma with torn, glowing crust: volcano interiors and vents.',
+     thumb=LAVA_THUMB, Heat=1.0, Crust=0.3, Temperature=1550.0, Turbulence=1.0, Heat_Variation=0.7,
+     Plate_Size=0.3, Crack_Width=0.6, Emission_Strength=2.0)
+_add('lava_pahoehoe_hot', 'Pahoehoe Flow (Hot)', 'LAVA',
+     'Smooth, ropy pahoehoe lava, still glowing between the folds.',
+     thumb=LAVA_THUMB, Heat=0.55, Crust=0.85, Ropes=1.0, Glassy=0.5, Plate_Size=1.2, Crack_Width=0.25)
+_add('lava_pahoehoe', 'Pahoehoe (Cooled)', 'LAVA',
+     'Cold ropy pahoehoe: smooth, glassy black-silver folds.',
+     thumb=LAVA_THUMB, Heat=0.0, Crust=1.0, Ropes=1.0, Glassy=0.6, Crack_Width=0.05, Plate_Size=1.2,
+     Crust_Color=(0.045, 0.043, 0.042))
+_add('lava_aa_hot', 'Aa Flow (Advancing)', 'LAVA',
+     'Rough aa lava rubble rolling forward, glowing underneath.',
+     thumb=LAVA_THUMB, Heat=0.6, Crust=0.9, Clinker=1.0, Crack_Width=0.4, Crust_Roughness=0.95)
+_add('lava_aa', 'Aa Lava (Cooled)', 'LAVA',
+     'Cold, jagged clinker of aa lava: very rough, rusty brown-black.',
+     thumb=LAVA_THUMB, Heat=0.0, Crust=1.0, Clinker=1.0, Crust_Roughness=0.95, Crack_Width=0.1,
+     Crust_Color=(0.05, 0.038, 0.032))
+_add('lava_basalt', 'Cooled Basalt', 'LAVA',
+     'Dark gray basalt full of gas bubble holes.',
+     thumb=LAVA_THUMB, Heat=0.0, Crust=1.0, Vesicles=0.7, Crack_Width=0.05, Crust_Color=(0.06, 0.058, 0.056))
+_add('lava_obsidian', 'Obsidian', 'LAVA',
+     'Glossy black volcanic glass.',
+     thumb=LAVA_THUMB, Heat=0.0, Crust=1.0, Glassy=1.0, Vesicles=0.0, Crack_Width=0.02,
+     Crust_Color=(0.008, 0.008, 0.01), Crust_Roughness=0.3)
+_add('lava_sulfur', 'Sulfur Vent Rock', 'LAVA',
+     'Volcanic rock with yellow sulfur crusts and a little heat left.',
+     thumb=LAVA_THUMB, Heat=0.25, Crust=1.0, Sulfur=0.4, Temperature=1050.0, Crack_Width=0.15, Vesicles=0.4)
+_add('lava_ash_field', 'Ash-Covered Lava Field', 'LAVA',
+     'Old lava flow dusted with gray volcanic ash.',
+     thumb=LAVA_THUMB, Heat=0.0, Crust=1.0, Ash=0.6, Clinker=0.4, Crack_Width=0.08)
+# ------------------------------------------------------------------- gradients
+def _hex(code):
+    """sRGB hex color ('#ff8800') -> linear RGB."""
+    code = code.lstrip('#')
+
+    def lin(c):
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+    return tuple(round(lin(int(code[i:i + 2], 16) / 255.0), 5) for i in (0, 2, 4))
+
+
+# gradient choices (see mat_gradient.py)
+LINEAR, MIRRORED, RADIAL, SPHERICAL, ANGULAR, DIAMOND, SQUARE, CUBE, SPIRAL, SLOPE, FACING = range(11)
+BOUNDS, OBJECT, WORLD, UV, SCREEN = range(5)
+CLAMP, REPEAT, PING_PONG = range(3)
+SMOOTH, CONSTANT = 1.0, 2.0
+TOP = (0.0, 0.0, 1.0)
+SIDE = (1.0, 0.0, 0.0)
+GRADIENT_THUMB = dict(shape='sphere')
+PANEL_THUMB = dict(shape='panel')  # a flat slab facing the camera: gradients around a center
+H = 0.0  # Angle: left to right
+V = math.radians(90.0)  # Angle: bottom to top
+D45 = math.radians(45.0)
+
+
+def _grad(pid, name, desc, colors, positions=None, thumb=None, **values):
+    """A gradient preset: `colors` are sRGB hex codes, `positions` (optional) where they sit."""
+    stops = {'Color_Stops': float(len(colors))}
+    for i, code in enumerate(colors):
+        stops['Color_%d' % (i + 1)] = _hex(code)
+    if positions:
+        stops['Spacing'] = 1.0
+        for i, pos in enumerate(positions):
+            stops['Position_%d' % (i + 1)] = pos
+    stops.update({k: float(v) if isinstance(v, int) else v for k, v in values.items()})
+    if thumb is None:
+        centered = values.get('Type') in (RADIAL, ANGULAR, DIAMOND, SQUARE, SPIRAL)
+        thumb = PANEL_THUMB if centered and values.get('Projection', BOUNDS) == BOUNDS else GRADIENT_THUMB
+    _add(pid, name, 'GRADIENT', desc, thumb=thumb, **stops)
+
+
+# -- linear
+_grad('grad_black_white', 'Black to White', 'Plain black to white, bottom to top: a mask or a start for your own.',
+      ['#000000', '#ffffff'])
+_grad('grad_sunset', 'Sunset Sky', 'Warm horizon glow up to a deep violet sky.',
+      ['#ffd27a', '#f28a3c', '#c2427a', '#5b2a86', '#1d1442'], Bias=0.25, Roughness=0.6)
+_grad('grad_daylight_sky', 'Daylight Sky', 'Hazy pale horizon up to a clear deep blue.',
+      ['#eef4f8', '#a9cdea', '#5b9bd5', '#2a64ad'], Bias=0.3, Roughness=0.6)
+_grad('grad_night_sky', 'Night Sky', 'Faint purple glow at the horizon fading into black night.',
+      ['#3f2f63', '#141a3c', '#04060d'], Bias=-0.3)
+_grad('grad_ocean_depth', 'Ocean Depths', 'Dark deep water up to bright turquoise shallows.',
+      ['#011c33', '#014f86', '#2a6f97', '#61a5c2', '#a9d6e5'], Roughness=0.2)
+_grad('grad_fire', 'Fire', 'Glowing flames: black smoke, deep red, orange and a white-hot base.',
+      ['#fff3b0', '#ffa200', '#d43d00', '#5c0a00', '#000000'], Noise=0.35, Noise_Size=0.4, Glow=1.0,
+      Emission_Strength=2.0)
+_grad('grad_rainbow', 'Rainbow', 'The full spectrum, left to right.',
+      ['#ff0000', '#ffee00', '#00d040', '#0050ff', '#8b00ff'], Angle=H)
+_grad('grad_thermal', 'Thermal Camera', 'Heat-camera colors: black, purple, red, yellow, white.',
+      ['#000000', '#5a189a', '#e01e37', '#ffba08', '#ffffff'])
+_grad('grad_viridis', 'Viridis', 'The classic perceptual data colormap: purple, teal, yellow.',
+      ['#440154', '#3b528b', '#21918c', '#5ec962', '#fde725'], Angle=H)
+_grad('grad_magma', 'Magma', 'Black through purple and pink to pale yellow.',
+      ['#000004', '#3b0f70', '#8c2981', '#de4968', '#fcfdbf'], Angle=H)
+_grad('grad_turbo', 'Turbo (Jet)', 'Rainbow-like heatmap: deep blue, cyan, green, orange, dark red.',
+      ['#30123b', '#4686fb', '#1ae4b6', '#faba39', '#7a0403'], Angle=H)
+_grad('grad_teal_orange', 'Teal & Orange', 'Cinematic duotone, corner to corner.',
+      ['#0b6e75', '#f2a541'], Angle=D45, Size=1.4)
+_grad('grad_cyan_magenta', 'Cyan to Magenta', 'Bright synthwave duotone, corner to corner.',
+      ['#00d4ff', '#ff2fd0'], Angle=D45, Size=1.4, Roughness=0.25)
+_grad('grad_pastel', 'Pastel Dream', 'Soft pink, lavender and baby blue.',
+      ['#ffd1dc', '#e0c3fc', '#c2e9fb'], Interpolation=SMOOTH)
+_grad('grad_mint_peach', 'Mint & Peach', 'Fresh mint fading into warm peach.',
+      ['#b8f2e6', '#ffa69e'], Angle=D45, Size=1.4)
+_grad('grad_ombre_fabric', 'Hand-Dyed Ombre', 'Uneven, hand-dyed indigo fade with a wobbly edge.',
+      ['#f2efe6', '#7d9cc4', '#1f3b70'], Noise=0.5, Noise_Size=0.25, Roughness=0.9, Roughness_End=0.9)
+_grad('grad_retro_sunset', 'Retro Stepped Sunset', '80s poster sunset in flat bands.',
+      ['#ffe66d', '#ff9f43', '#ff4f79', '#9b3fb5', '#2d1e5e'], Steps=8)
+_grad('grad_stripes_hazard', 'Diagonal Stripes', 'Hard-edged yellow and black hazard stripes.',
+      ['#111111', '#ffcc00'], positions=(0.0, 0.5), Interpolation=CONSTANT, Angle=D45, Repeat=8,
+      Repeat_Mode=REPEAT, Roughness=0.4)
+_grad('grad_soft_bands', 'Soft Bands', 'Gentle, wavy bands of soft color.',
+      ['#a8dadc', '#f1faee'], Repeat=6, Repeat_Mode=PING_PONG, Interpolation=SMOOTH, Noise=0.15)
+_grad('grad_neon_tube', 'Neon Tube', 'A glowing neon strip: white-hot core, pink glow fading out.',
+      ['#ffffff', '#ff1aa8', '#12000a'], Type=MIRRORED, Size=0.35, Glow=1.0, Emission_Strength=4.0,
+      Bias=-0.2)
+_grad('grad_horizon_band', 'Horizon Glow', 'A bright band in the middle fading out above and below.',
+      ['#ffffff', '#7fb3ff', '#08306b'], Type=MIRRORED, Bias=-0.2)
+# -- metals
+_grad('grad_heat_tint', 'Heat-Tinted Titanium', 'Burnt exhaust colors: straw, bronze, purple, blue.',
+      ['#c9b47a', '#b07a3c', '#6a3d8f', '#2e5fbf', '#5fb7d6'], Angle=H, Metallic=1.0, Metallic_End=1.0,
+      Roughness=0.25, Roughness_End=0.25, Noise=0.2)
+_grad('grad_chrome_gold', 'Chrome to Gold', 'Polished metal turning from chrome into gold.',
+      ['#e6e6e6', '#ffd27a'], Metallic=1.0, Metallic_End=1.0, Roughness=0.12, Roughness_End=0.12)
+_grad('grad_copper_fade', 'Copper to Bronze', 'Warm metal shading from bright copper to dark bronze.',
+      ['#fab49b', '#7a4a26'], Metallic=1.0, Metallic_End=1.0, Roughness=0.25, Roughness_End=0.4)
+_grad('grad_paint_to_metal', 'Paint Fading to Metal', 'Matte red paint turning into bare polished steel.',
+      ['#9b1b1b', '#c4c6c8'], positions=(0.4, 0.6), Interpolation=SMOOTH, Metallic=0.0, Metallic_End=1.0,
+      Roughness=0.6, Roughness_End=0.15)
+_grad('grad_conic_chrome', 'Conic Chrome', 'Spun-metal highlights sweeping around the center.',
+      ['#4a4a4a', '#f0f0f0'], Type=ANGULAR, Repeat=4, Repeat_Mode=PING_PONG, Interpolation=SMOOTH,
+      Metallic=1.0, Metallic_End=1.0, Roughness=0.15, Roughness_End=0.15)
+# -- radial and spherical
+_grad('grad_spotlight', 'Spotlight', 'Bright white center fading to black.',
+      ['#ffffff', '#000000'], Type=RADIAL, Interpolation=SMOOTH)
+_grad('grad_vignette', 'Vignette', 'Soft darkening toward the edges.',
+      ['#bfbfbf', '#bfbfbf', '#141414'], positions=(0.0, 0.45, 1.0), Type=RADIAL, Size=1.3,
+      Interpolation=SMOOTH)
+_grad('grad_sun_orb', 'Glowing Orb', 'A glowing ball: white-hot core, orange and red outside.',
+      ['#fff6d5', '#ffb347', '#ff5e13', '#3a0b00'], Type=RADIAL, Glow=1.0, Emission_Strength=3.0)
+_grad('grad_target', 'Target Rings', 'Hard red and white rings, like a target.',
+      ['#d62828', '#f5f5f5'], positions=(0.0, 0.5), Type=RADIAL, Interpolation=CONSTANT, Repeat=5,
+      Repeat_Mode=REPEAT)
+_grad('grad_ripples', 'Ripples', 'Soft rings spreading out like ripples on water, with relief.',
+      ['#0b3c5d', '#5fa8d3'], Type=RADIAL, Repeat=8, Repeat_Mode=PING_PONG, Interpolation=SMOOTH,
+      Relief=0.6, Roughness=0.1, Roughness_End=0.1)
+_grad('grad_neon_ring', 'Neon Ring', 'A glowing ring of light.',
+      ['#000000', '#ffd166', '#000000'], positions=(0.45, 0.7, 0.95), Type=RADIAL, Glow=1.0,
+      Emission_Strength=3.0, Interpolation=SMOOTH)
+_grad('grad_ellipse', 'Soft Ellipse', 'An oval glow, wider than tall.',
+      ['#f6bd60', '#84a59d'], Type=RADIAL, Aspect=0.5, Interpolation=SMOOTH)
+_grad('grad_bubble', 'Soap Bubble', 'Shimmering bubble colors in rings (Spherical).',
+      ['#ffd6ff', '#c8b6ff', '#b8f2e6', '#ffd6a5'], Type=SPHERICAL, Size=1.75, Repeat=3, Repeat_Mode=PING_PONG, thumb=dict(shape='cube'),
+      Roughness=0.05, Roughness_End=0.05)
+# -- angular and spirals
+_grad('grad_color_wheel', 'Color Wheel', 'All hues sweeping around the center.',
+      ['#ff0000', '#ffd000', '#00e070', '#2050ff', '#ff0000'], Type=ANGULAR, Angle=H)
+_grad('grad_sunburst', 'Sunburst', 'Alternating rays shining out from the center.',
+      ['#ffcf3f', '#ff9f1c'], positions=(0.0, 0.5), Type=ANGULAR, Interpolation=CONSTANT, Repeat=16,
+      Repeat_Mode=REPEAT)
+_grad('grad_radar', 'Radar Sweep', 'A green radar beam sweeping around with a fading trail.',
+      ['#000000', '#00ff66'], Type=ANGULAR, Bias=0.6, Glow=1.0, Emission_Strength=2.0)
+_grad('grad_candy_spiral', 'Candy Spiral', 'Red and white swirl, like a lollipop.',
+      ['#f5f5f5', '#e63946'], positions=(0.0, 0.5), Type=SPIRAL, Interpolation=CONSTANT, Repeat=3,
+      Repeat_Mode=REPEAT, Size=0.5, Roughness=0.15, Roughness_End=0.15)
+_grad('grad_hypno', 'Hypnotic Spiral', 'Soft black and white spiral.',
+      ['#000000', '#ffffff'], Type=SPIRAL, Repeat=2, Repeat_Mode=PING_PONG, Size=0.4, Interpolation=SMOOTH)
+# -- diamond, square and cube
+_grad('grad_diamond', 'Diamond', 'Diamond-shaped glow from the center out.',
+      ['#f84aa7', '#a74482', '#693668', '#1b1b3a'], Type=DIAMOND)
+_grad('grad_pyramid', 'Pyramid Panel', 'A raised four-sided pyramid in relief.',
+      ['#9a9a9a', '#5c5c5c'], Type=SQUARE, Reverse=1, Relief=1.0, Roughness=0.5, Roughness_End=0.5)
+_grad('grad_tunnel', 'Retro Tunnel', 'Glowing neon squares running into the distance.',
+      ['#0d0221', '#ff2a6d'], Type=SQUARE, Repeat=8, Repeat_Mode=PING_PONG, Bias=0.5, Glow=0.6,
+      Emission_Strength=2.0)
+_grad('grad_box_falloff', 'Box Falloff', 'Bright in the middle, darker toward every face of the object.',
+      ['#ffffff', '#202020'], Type=CUBE, Interpolation=SMOOTH)
+# -- by surface direction and view
+_grad('grad_snow_top', 'Snow on Top', 'White snow on the upward faces, rock on the sides.',
+      ['#5a4a3a', '#5a4a3a', '#f4f6f8'], positions=(0.0, 0.78, 0.86), Type=SLOPE, Projection=WORLD,
+      View_Axis=TOP, Roughness=0.8, Roughness_End=0.5)
+_grad('grad_moss_top', 'Moss on Top', 'Green moss growing on the tops, bare stone underneath.',
+      ['#3d3a36', '#4c5a2a', '#5f7d24'], positions=(0.5, 0.7, 0.9), Type=SLOPE, Projection=WORLD,
+      View_Axis=TOP, Noise=0.4, Noise_Size=0.1, Roughness=0.7, Roughness_End=0.9)
+_grad('grad_rim_glow', 'Rim Glow', 'Glowing edges where the surface turns away from the camera.',
+      ['#000000', '#00c8ff'], Type=FACING, Bias=0.5, Glow=1.0, Emission_Strength=3.0)
+_grad('grad_chameleon', 'Color-Shift Paint', 'Chameleon car paint: the color shifts with the viewing angle.',
+      ['#3a0ca3', '#4cc9f0', '#f72585'], Type=FACING, Metallic=0.7, Metallic_End=0.7, Roughness=0.2,
+      Roughness_End=0.2)
+_grad('grad_holographic', 'Holographic Foil', 'Rainbow foil that changes with the viewing angle.',
+      ['#ff9ff3', '#feca57', '#48dbfb', '#1dd1a1', '#ff6b6b'], Type=FACING, Repeat=2,
+      Repeat_Mode=PING_PONG, Metallic=1.0, Metallic_End=1.0, Roughness=0.12, Roughness_End=0.12)
+# -- other projections
+_grad('grad_studio_backdrop', 'Studio Backdrop', 'Light-gray studio sweep from the bottom of the frame to dark gray '
+      'at the top (Screen projection: follows the camera).',
+      ['#c8c8c8', '#3a3a3a'], Projection=SCREEN, Roughness=0.8, Roughness_End=0.8)
+_grad('grad_uv_ramp', 'UV Ramp', 'Black to white along the UV map (V): for masks and texture painting.',
+      ['#000000', '#ffffff'], Projection=UV)
+_grad('grad_height_fade', 'Height Fade (World)', 'Dark at ground level (Z = 0) to pale 3 m up: in world '
+      'space, so it stays put when objects move.',
+      ['#2f2f2f', '#c8d2dc'], Projection=WORLD, Center=(0.0, 0.0, 1.5), Size=1.5)
 # ------------------------------------------------------------------------ wood
 OAK = (0.50, 0.27, 0.11)
 OAK_RING = (0.26, 0.11, 0.042)

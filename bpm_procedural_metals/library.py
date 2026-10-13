@@ -233,6 +233,7 @@ def build_material(mat, generator, values, tile=False):
         if bsdf_name in bsdf.inputs:
             set_socket_value(bsdf.inputs[bsdf_name], value)
     apply_values(group, values)
+    _wire_displacement(mat, group, out)
     mat[MATERIAL_TAG] = generator
     _set_viewport_display(mat, values, generator)
     if spec['glass']:
@@ -241,6 +242,94 @@ def build_material(mat, generator, values, tile=False):
         add_overlay_state(mat, state, tile)
     tree.nodes.active = group
     return group
+
+
+DISPLACEMENT_NODE = 'BPM Displacement'
+
+
+def _wire_displacement(mat, group, out):
+    """Generators with a Displacement output move the surface itself (true displacement in
+    Cycles and EEVEE).  The output is 0 until 'Real Displacement' is turned up."""
+    method = 'BUMP'
+    if 'Displacement' in group.outputs:
+        tree = mat.node_tree
+        disp = tree.nodes.new('ShaderNodeDisplacement')
+        disp.name = disp.label = DISPLACEMENT_NODE
+        disp.space = 'WORLD'  # the output is in meters
+        disp.location = (out.location.x - 200, out.location.y - 300)
+        disp.inputs['Midlevel'].default_value = 0.0
+        disp.inputs['Scale'].default_value = 1.0
+        tree.links.new(group.outputs['Displacement'], disp.inputs['Height'])
+        tree.links.new(disp.outputs['Displacement'], out.inputs['Displacement'])
+        method = 'DISPLACEMENT'  # the bump of the Principled BSDF still adds the fine detail
+    set_displacement_method(mat, method)
+
+
+def set_displacement_method(mat, method):
+    if hasattr(mat, 'displacement_method'):
+        mat.displacement_method = method
+    elif hasattr(getattr(mat, 'cycles', None), 'displacement_method'):
+        mat.cycles.displacement_method = method
+
+
+def displaces(mat):
+    """The BPM node of `mat` if it can move the surface (has a Real Displacement slider)."""
+    node = find_bpm_node(mat) if mat is not None else None
+    if node is not None and 'Real Displacement' in node.inputs:
+        return node
+    return None
+
+
+DISPLACE_MODIFIER = 'BPM Displacement'
+DISPLACE_FACES = (100_000, 400_000)  # faces to aim for (viewport, render)
+
+
+def subdivision_levels(faces, target):
+    """Simple-subdivision levels (each one makes 4x the faces) that bring `faces` near `target`."""
+    import math
+    if faces <= 0:
+        return 1
+    return max(1, min(8, round(math.log(max(target / faces, 1.0), 4))))
+
+
+def has_displace_geometry(obj):
+    return obj is not None and obj.modifiers.get(DISPLACE_MODIFIER) is not None
+
+
+def set_displace_geometry(objects, mat, on, levels=0):
+    """Turn real displacement of `mat` on or off on `objects`.
+
+    On: adds a Simple Subdivision modifier (finely divided mesh, shape unchanged) and
+    sets 'Real Displacement' to 1 if it was 0.  `levels` 0 = pick from the face count.
+    Off: removes the modifier and sets 'Real Displacement' to 0.
+    """
+    node = displaces(mat)
+    changed = []
+    for obj in objects:
+        if obj.type != 'MESH':
+            continue
+        mod = obj.modifiers.get(DISPLACE_MODIFIER)
+        if not on:
+            if mod is not None:
+                obj.modifiers.remove(mod)
+                changed.append(obj)
+            continue
+        if mod is None:
+            mod = obj.modifiers.new(DISPLACE_MODIFIER, 'SUBSURF')
+            mod.subdivision_type = 'SIMPLE'
+        faces = len(obj.data.polygons)
+        mod.levels = levels or subdivision_levels(faces, DISPLACE_FACES[0])
+        mod.render_levels = levels or subdivision_levels(faces, DISPLACE_FACES[1])
+        changed.append(obj)
+    if node is not None and not node.inputs['Real Displacement'].is_linked:
+        sock = node.inputs['Real Displacement']
+        if not on:
+            sock.default_value = 0.0
+        elif sock.default_value == 0.0:
+            sock.default_value = 1.0
+    if node is not None:
+        set_displacement_method(mat, 'DISPLACEMENT')
+    return changed
 
 
 def create_material(preset_id, name=None):

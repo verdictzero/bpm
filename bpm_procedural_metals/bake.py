@@ -33,14 +33,15 @@ MAPS = {
     'METALLIC': ('Metallic', 'Metallic', 'EMIT', 'Metallic', False),
     'ROUGHNESS': ('Roughness', 'Roughness', 'EMIT', 'Roughness', False),
     'TRANSMISSION': ('Transmission', 'Transmission', 'EMIT', 'Transmission Weight', False),
+    'EMISSION': ('Emission', 'Emission', 'EMIT', 'Emission Color', True),
     'NORMAL': ('Normal', 'Normal', 'NORMAL', 'Normal', False),
     'HEIGHT': ('Height', 'Height', 'EMIT', None, False),
     'AO': ('Ambient Occlusion', 'AO', 'AO', None, False),
 }
-MAP_ORDER = ('BASE_COLOR', 'METALLIC', 'ROUGHNESS', 'TRANSMISSION', 'NORMAL', 'HEIGHT', 'AO')
+MAP_ORDER = ('BASE_COLOR', 'METALLIC', 'ROUGHNESS', 'TRANSMISSION', 'EMISSION', 'NORMAL', 'HEIGHT', 'AO')
 # Principled BSDF settings that cannot be baked into a texture: baked materials copy them
-KEPT_INPUTS = ('IOR', 'Thin Film Thickness', 'Thin Film IOR')
-KEPT_DEFAULTS = {'IOR': 1.5, 'Thin Film Thickness': 0.0, 'Thin Film IOR': 1.33}
+KEPT_INPUTS = ('IOR', 'Thin Film Thickness', 'Thin Film IOR', 'Emission Strength')
+KEPT_DEFAULTS = {'IOR': 1.5, 'Thin Film Thickness': 0.0, 'Thin Film IOR': 1.33, 'Emission Strength': 0.0}
 
 QUALITY_SAMPLES = {
     # quality: (color/data samples, ambient occlusion samples)
@@ -416,6 +417,17 @@ class MaterialRig:
         self.orig_surface = surface.from_socket if surface else None
         self.bpm = L.find_bpm_node(mat)
         self.bsdf = find_principled(self.tree, self.out)
+        # real displacement is off while baking: the maps (normal included) hold all of the relief
+        self.displacement = None
+        disp_in = self.out.inputs.get('Displacement')
+        if disp_in is not None and disp_in.is_linked:
+            self.displacement = disp_in.links[0].from_socket
+            self.tree.links.remove(disp_in.links[0])
+        self.real_displacement = None
+        moving = L.displaces(mat)
+        if moving is not None and not moving.inputs['Real Displacement'].is_linked:
+            self.real_displacement = (moving, moving.inputs['Real Displacement'].default_value)
+            moving.inputs['Real Displacement'].default_value = 0.0
         self.target = nodes.new('ShaderNodeTexImage')
         self.target.name = self.target.label = 'BPM Bake Target'
         self.target.location = (self.out.location.x, self.out.location.y - 400)
@@ -441,12 +453,28 @@ class MaterialRig:
                 if col is not None:
                     return col.links[0].from_socket if col.is_linked else tuple(col.default_value)
             return tuple(self.mat.diffuse_color)
-        return {'METALLIC': 0.0, 'ROUGHNESS': 0.5, 'TRANSMISSION': 0.0}.get(key)
+        return {'METALLIC': 0.0, 'ROUGHNESS': 0.5, 'TRANSMISSION': 0.0, 'EMISSION': (0.0, 0.0, 0.0)}.get(key)
 
     def transmissive(self):
         """True if any part of the material lets light through (glass)."""
         value = self.source('TRANSMISSION')
         return is_socket(value) or (value is not None and float(value) > 0.0)
+
+    def emissive(self):
+        """True if any part of the material glows (lava)."""
+        if self.bsdf is None:
+            return False
+        if self.bpm is not None:  # the material's own sliders say it doesn't glow
+            spec = G.GENERATORS.get(self.bpm.node_tree.get('bpm_generator'), {})
+            for name in (spec.get('glow'), 'Emission Strength'):
+                sock = self.bpm.inputs.get(name) if name else None
+                if sock is not None and not sock.is_linked and float(sock.default_value) <= 0.0:
+                    return False
+        strength = self.bsdf.inputs.get('Emission Strength')
+        if strength is None or (not strength.is_linked and float(strength.default_value) <= 0.0):
+            return False
+        value = self.source('EMISSION')
+        return is_socket(value) or (value is not None and max(tuple(value)[:3]) > 0.0)
 
     def kept(self):
         """BSDF settings that are copied into the baked material instead of baked (see KEPT_INPUTS).
@@ -524,6 +552,11 @@ class MaterialRig:
         self.clear_pass()
         nodes = self.tree.nodes
         nodes.remove(self.target)
+        if self.displacement is not None:
+            self.tree.links.new(self.displacement, self.out.inputs['Displacement'])
+        if self.real_displacement is not None:
+            node, value = self.real_displacement
+            node.inputs['Real Displacement'].default_value = value
         if self.temp_out is not None:
             nodes.remove(self.temp_out)
         if self.orig_active is not None and self.orig_active.name in nodes:
@@ -750,6 +783,9 @@ def build_baked_material(name, images, uv_name, directx=False, tag_value=True, k
     if 'TRANSMISSION' in images:
         links.new(tex('TRANSMISSION', y).outputs['Color'], bsdf.inputs['Transmission Weight'])
         L.setup_glass(mat)
+        y -= 300
+    if 'EMISSION' in images:
+        links.new(tex('EMISSION', y).outputs['Color'], bsdf.inputs['Emission Color'])
         y -= 300
     if 'NORMAL' in images:
         node = tex('NORMAL', y)
@@ -1110,6 +1146,8 @@ class ObjectBakeJob(Job):
             glass = [r for r in rigs if r.transmissive()]
             if 'TRANSMISSION' in keys and not glass:
                 keys.remove('TRANSMISSION')  # opaque: no light goes through anywhere
+            if 'EMISSION' in keys and not any(r.emissive() for r in rigs):
+                keys.remove('EMISSION')  # nothing glows
             kept = merge_kept(glass + [r for r in rigs if r not in glass])
             if 'HEIGHT' in keys and all(r.source('HEIGHT') is None for r in rigs):
                 keys.remove('HEIGHT')
@@ -1337,6 +1375,8 @@ class TileBakeJob(Job):
         kept = merge_kept([rig])
         if not glass and 'TRANSMISSION' in keys:
             keys.remove('TRANSMISSION')  # opaque: no light goes through anywhere
+        if not rig.emissive() and 'EMISSION' in keys:
+            keys.remove('EMISSION')  # nothing glows
         # The normal map is computed from the height map (exact and seamless),
         # so height is always baked, even when it is not saved.
         baked = [k for k in keys if k != 'NORMAL']
