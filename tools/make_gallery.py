@@ -50,7 +50,9 @@ def sheet(presets, path, cols=6, cell=200, label_h=34):
 def main():
     os.makedirs(DOCS, exist_ok=True)
     for cat, *_ in P.CATEGORIES:
-        sheet(P.by_category(cat), os.path.join(DOCS, 'gallery_%s.png' % cat.lower()))
+        presets = P.by_category(cat)
+        if presets:  # 'My Presets' is empty here
+            sheet(presets, os.path.join(DOCS, 'gallery_%s.png' % cat.lower()))
 
 
 main()

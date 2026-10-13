@@ -1,8 +1,10 @@
 # BPM – Procedural Materials for Blender
 
-200 ready-made materials for Blender — **bare metal, painted metal, military paint and
-camouflage, concrete, wood, plastic, glass, lenses and visors, leather, fabric & composites (carbon
-fiber, kevlar, ballistic nylon…), and H.R. Giger-style biomechanical surfaces** — plus 26
+278 ready-made materials for Blender — **bare metal, painted metal, military paint and
+camouflage, concrete, terrain (cratered moons, asteroids, Mars) and glowing lava and magma,
+51 gradients (linear, radial, angular, spiral… projected from any side), wood, plastic, glass,
+lenses and visors, leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and
+H.R. Giger-style biomechanical surfaces** — plus 26
 **overlays (dirt, dust, edge wear and scratches)** that you can stack on top of *any*
 material, and **decals**: put any image (with its normal, roughness, metallic and height
 maps if it has them) on your model by dragging a box over it. Every material has plain sliders you can tweak, and
@@ -12,12 +14,15 @@ unwraps the UVs, packs them, bakes, saves the files and puts the textures on the
 object — for one object, the selected ones or the whole scene.
 
 You don't need to know anything about nodes, UVs or procedural materials. Click a
-material, click **Apply**, move some sliders, click **Auto Texture**.
+material, click **Apply**, move some sliders, click **Auto Texture**. Liked what you made?
+**Save Preset** keeps it in the library, with its own thumbnail.
 
 ![Bare metal materials](docs/gallery_metal.png)
 ![Painted metal materials](docs/gallery_paint.png)
 ![Military paint and camouflage](docs/gallery_military.png)
 ![Concrete](docs/gallery_concrete.png)
+![Terrain and lava](docs/gallery_terrain.png)
+![Gradients](docs/gallery_gradient.png)
 ![Wood materials](docs/gallery_wood.png)
 ![Plastic materials](docs/gallery_plastic.png)
 ![Glass materials](docs/gallery_glass.png)
@@ -35,13 +40,13 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.6.0.zip`](dist/bpm_procedural_metals-1.6.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.7.0.zip`](dist/bpm_procedural_metals-1.7.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
 4. Select the zip file. Done: "BPM - Procedural Materials" now shows up as enabled.
 
-> **Updating from an older version (1.0 – 1.4)?** Just install the new zip the same
+> **Updating from an older version (1.0 – 1.6)?** Just install the new zip the same
 > way, on top of the old one: it replaces the old version (no need to uninstall first
 > or restart Blender), and your `.blend` files keep their materials and settings.
 
@@ -54,7 +59,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 1. In the 3D view, **click your object** to select it.
 2. Press **N** (with the mouse over the 3D view) to open the sidebar and click the
    **BPM** tab.
-3. Pick a category (Metal, Military, Wood, Glass, Lenses, Fabric, Dirt & Dust, Wear…),
+3. Pick a category (Metal, Military, Terrain, Gradients, Wood, Glass, Lenses, Fabric, Dirt & Dust, Wear…),
    click the big picture to see its materials, pick one, then click
    **Apply to Selected**.
 4. To see the material, switch the viewport to **Material Preview**: press **Z** and
@@ -67,6 +72,25 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
    * The ↶ button resets everything to the original preset.
 
 In Edit Mode, *Apply* puts the material only on the **selected faces**.
+
+### Save your own presets
+
+Set up a material the way you like it (sliders, colors and the overlays on top of it),
+then click **Save Preset** in *Adjust Material*, type a name (and a description if you
+like) and click OK. It shows up in the library under **My Presets** and in the category of
+its material (a saved gradient is listed with the gradients too), with a thumbnail of
+how it looks. Apply it like any other preset; **Load Preset** and ↶ (reset) work with
+it too.
+
+* Saving under a name you already used **replaces** that preset (handy to update it).
+* *Include Overlays* (on by default) saves the dirt, dust and wear layers with it.
+  Decals stay with the model, and hidden layers are left out.
+* To delete one, pick it in the library and click the 🗑 button next to *Your own preset*.
+  Materials you made from it stay as they are.
+* Your presets are kept in a file outside the add-on, so updating or reinstalling BPM
+  keeps them. **Open Presets Folder** (in *My Presets*) shows it: copy
+  `user_presets.json` and the `.png` thumbnails to another computer to take them along,
+  then click the reload button.
 
 ### Dirt, dust, edge wear and scratches on top of anything
 
@@ -144,6 +168,60 @@ Shape First*, on by default), so the baked textures get the precise version.
 The maps live in a UV map called `BPM_Maps` and an image called `BPM Mesh Maps` packed
 into the `.blend` file. Leave them be; **Remove Mesh Maps** removes both. Exports and
 bakes always use your own UV maps, never `BPM_Maps`.
+
+### Terrain: craters with real depth
+
+The **Terrain & Lava** category makes ground you can fly over: moons, asteroids, Mars,
+battlefields, deserts, and lava from molten to cold basalt. Craters come in two sizes
+(*Craters* and *Small Craters*) with *Crater Depth*, *Rim Height*, *Central Peaks*,
+*Ejecta* (the blanket of thrown-out rock), bright *Rays* and *Crater Age* (fresh and
+sharp, or worn soft); then *Hills*, *Boulders*, *Bedrock*, *Regolith* (powdery soil),
+*Dark Patches* (lunar seas), *Metal Flecks*, *Scorch*, *Puddles* and *Wetness*.
+
+Lava has *Heat* (0 = cold rock), *Temperature* (the color of the glow, from dull red to
+yellow-white), *Emission Strength*, *Crust* with *Plate Size* and glowing *Crack Width*,
+*Flow Direction* and *Stretch*, *Ropes* (pahoehoe), *Clinker* (rubbly aa), *Vesicles*
+(gas bubbles), *Glassy* (obsidian), *Sulfur* and *Ash*. Lava really lights up the scene
+in Cycles, and the glow is baked into an `_Emission.png` map.
+
+By default, craters are drawn with bump (shading only), which is fast and fine from
+above. For craters that really dent the surface (and show on the outline of a planet):
+
+1. Open the **Displacement** section of *Adjust Material* and click **Displace
+   Geometry**. It adds a *BPM Displacement* modifier (a Simple Subdivision, so the shape
+   stays the same) that divides the mesh finely enough, and turns *Real Displacement* up.
+2. *Real Displacement* sets how much of the relief moves the surface (0 = bump only,
+   1 = full depth). It works in Cycles and EEVEE.
+3. **Remove Displacement** takes the modifier off again.
+
+Use a mesh with enough faces to start with (a subdivided plane for ground, a UV sphere
+or an Ico Sphere for a moon): the modifier picks its level from the face count. Baking
+gives a 16-bit `_Height.png` with all the relief, ready for a game engine's displacement
+or parallax, whether or not *Real Displacement* is on.
+
+### Gradients: from any side, in any shape
+
+Pick a gradient, then shape it in *Adjust Material*:
+
+* **Type** – *Linear*, *Mirrored* (from the middle out to both sides), *Radial*
+  (circles), *Spherical* (balls in 3D), *Angular* (sweeps around like a clock hand),
+  *Diamond*, *Square*, *Cube* (boxes in 3D), *Spiral*, *Slope* (tops vs. sides: snow or
+  moss on top) and *Facing* (how much the surface faces the camera: rim glow,
+  color-shift paint).
+* **Projection** – what it is laid onto: *Bounds* (across the object's box, so it fits
+  any object), *Object* or *World* (in meters: world space stays put when the object
+  moves), *UV* (across the UV map) or *Screen* (across the camera view).
+* **View Axis** – the side the gradient is projected from: **Front**, **Top**, **Side**,
+  or type any direction. *Angle* turns it within that view (0° = left to right,
+  90° = bottom to top); *Center*, *Size* and *Aspect* place it and stretch it.
+* **Colors** – 2 to 5 *Color Stops*, *Interpolation* (Linear, Smooth or Constant for
+  hard bands), *Spacing* (Even, or Custom with a *Position* per color) and *Color
+  Mixing* (*Perceptual* blends evenly to the eye, like design apps; *Linear Light* is
+  Blender's Color Ramp, where bright colors take more room).
+* **Shape** – *Shift*, *Bias*, *Repeat* with *Repeat Mode* (Clamp, Repeat, Ping-Pong)
+  for bands, rings and rays, *Steps* for flat bands, *Noise* for a hand-made wobble.
+* **Surface** – *Metallic* and *Roughness* at both ends (paint fading to metal), *Relief*
+  and *Glow* (neon tubes, skies, light panels; baked into `_Emission.png`).
 
 ### Decals: logos, stencils, signs
 
@@ -232,6 +310,7 @@ Files (for an object called `Crate`):
 | `Crate_AO.png` | Soft shadows in crevices | Linear / non-color |
 | `Crate_Transmission.png` *(glass only)* | White = see-through, black = opaque (dirt, lead, wire) | Linear / non-color |
 | `Crate_Opacity.png` *(glass only)* | The same, inverted, for an engine's alpha / opacity | Linear / non-color |
+| `Crate_Emission.png` *(lava, glowing gradients)* | Glow color (black = no glow); use it as the emissive map, with the *Emission Strength* of the material | sRGB |
 | `Crate_ORM.png` *(option)* | R = AO, G = Roughness, B = Metallic | Linear / non-color |
 | `Crate_MetallicSmoothness.png` *(option)* | Unity: RGB = Metallic, A = Smoothness | Linear / non-color |
 
@@ -316,6 +395,23 @@ leather.
 carbon fiber (twill, plain, dry), kevlar (aramid fabric and resin composite),
 ballistic nylon (black, coyote), ripstop nylon, burlap, grey wool twill, red satin.
 
+**Terrain & lava (27):** lunar highlands, lunar mare, lunar surface, fresh crater
+field, lunar regolith close-up, carbonaceous, stony and metallic asteroids, Martian
+ground, shell-cratered battlefield, rocky desert, volcanic ash plain, icy moon — and
+lava: molten lava, lava lake, cooling lava crust, glowing cracks, magma, churning magma,
+pahoehoe (hot and cooled), aa lava (advancing and cooled), cooled basalt, obsidian,
+sulfur vent rock, ash-covered lava field.
+
+**Gradients (51):** black to white, sunset, daylight and night skies, ocean depths,
+fire, rainbow, thermal camera, viridis, magma, turbo, teal & orange, cyan to magenta,
+pastel dream, mint & peach, hand-dyed ombre, retro stepped sunset, diagonal stripes,
+soft bands, neon tube, horizon glow, heat-tinted titanium, chrome to gold, copper to
+bronze, paint fading to metal, conic chrome, spotlight, vignette, glowing orb, target
+rings, ripples, neon ring, soft ellipse, soap bubble, color wheel, sunburst, radar
+sweep, candy and hypnotic spirals, diamond, pyramid panel, retro tunnel, box falloff,
+snow and moss on top, rim glow, color-shift paint, holographic foil, studio backdrop,
+UV ramp, height fade (world).
+
 **Biomechanical (11):** H.R. Giger-style surfaces where bone, sinew, tubing and
 machinery merge: biomech ribbed hull, xeno tubes, chrome vertebrae, bone armor
 plates, flesh wall, slime hive, obsidian biomech, rusted biomech, sinew cables, alien
@@ -358,6 +454,12 @@ a family has the full set of sliders. A few examples:
 * **Fabric** – real thread-by-thread weaves (plain, twill, denim, basket, satin),
   ripstop grid, twisted or straight fibers, fuzz, resin coating with directional fiber
   shine for carbon fiber and kevlar, fading, pilling, stains.
+* **Terrain** – two sizes of craters with depth, rims, central peaks, ejecta, rays and
+  age, hills, boulders, bedrock, regolith, dark patches, metal flecks, scorch marks,
+  puddles; real displacement (see *Terrain* above).
+* **Lava** – heat and glow color by temperature, crust plates with glowing cracks, flow
+  direction and stretch, pahoehoe ropes, aa clinker, gas bubbles, glassy obsidian,
+  sulfur and ash; real displacement.
 * **Biomechanical** – ribs (vertebrae, ribbed hoses) grouped into segments, bundles of
   tubes, bony plates, folds, veins, pores, organic distortion, wetness, slime and an
   oily rainbow sheen.
@@ -457,6 +559,15 @@ blender -b model.blend -P bpm_cli.py -- maps --objects all --save
   the Decals panel (baking does it by itself).
 * **Camouflage patches are too big or too small.** Change *Camo Scale* in the
   *Camouflage* section (or *Scale* for everything).
+* **Craters look flat from the side.** Bump only shades the surface. Click **Displace
+  Geometry** in the *Displacement* section (see *Terrain* above).
+* **Displacement looks blocky or jagged.** The mesh needs more faces: subdivide it
+  (or start from a denser mesh), then click Displace Geometry again.
+* **Lava or a glowing gradient looks washed out.** Very bright glow turns white in the
+  default *AgX* view; lower *Emission Strength*, or *Heat* for lava.
+* **My saved presets are gone after reinstalling.** They live outside the add-on and
+  stay; click the reload button in *My Presets*. If you moved the files, put them back
+  in the folder **Open Presets Folder** shows.
 * **Glass doesn't show what is behind it in Material Preview.** EEVEE needs
   *Render Properties › Raytracing* turned on for that; Cycles (**Preview in Cycles**)
   always shows it.
@@ -470,8 +581,8 @@ blender -b model.blend -P bpm_cli.py -- maps --objects all --save
 bpm_procedural_metals/   the add-on (Blender extension)
   generators.py          registry of all generators
   mat_*.py               one generator per family: metal, paint, camo (military),
-                         concrete, wood, plastic, glass, lens, leather, fabric, organic
-                         (sliders + node tree)
+                         concrete, terrain (terrain + lava), gradient, wood, plastic,
+                         glass, lens, leather, fabric, organic (sliders + node tree)
   overlays.py            dirt, dust, edge wear and scratch overlays (layer on any
                          material)
   decals.py              box-projected decals (each one is an overlay with its own
@@ -479,7 +590,8 @@ bpm_procedural_metals/   the add-on (Blender extension)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 226 presets: 200 materials + 26 overlays
+  presets.py             the 304 presets: 278 materials + 26 overlays
+  user_presets.py        your own saved presets (a JSON file outside the add-on)
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
   ui.py, operators.py    sidebar panels and buttons
@@ -505,7 +617,8 @@ off cleanly and end up in the bake, that baked glass stays see-through (dirt on 
 doesn't), that Auto Texture's UVs are packed without overlaps
 while materials keep reading their old UVs during the bake, that every setting the bake
 changes is restored,
-that baked lenses keep their coating, that digital camouflage really is made of
+that baked lenses keep their coating, that gradients run the right way and only glow when
+asked to, that saved presets come back (with their overlays) after a restart, that digital camouflage really is made of
 square pixels, that decals land where their box is, follow it, come off when it is
 deleted and get baked, and that no shader — not even a material with four overlays — comes
 close to Cycles' fixed shader-stack limit.

@@ -1,9 +1,9 @@
 schema_version = "1.0.0"
 
 id = "bpm_procedural_metals"
-version = "1.6.0"
+version = "1.7.0"
 name = "BPM - Procedural Materials"
-tagline = "Metal, camo, concrete, glass, decals, wear, 1-click auto texture"
+tagline = "Metal, lava, terrain, gradients, concrete, decals, auto texture"
 maintainer = "verdictzero"
 type = "add-on"
 website = "https://github.com/verdictzero/bpm"
@@ -15,4 +15,4 @@ blender_version_min = "4.2.0"
 license = ["SPDX:GPL-3.0-or-later"]
 
 [permissions]
-files = "Save baked textures to a folder of your choice"
+files = "Save baked textures and your own presets to disk"

@@ -1650,8 +1650,11 @@ def terrain_tiles_are_seamless():
         a = read_png(path)[..., :3].astype(np.float64)
         assert seam_ok(a), 'visible seam in ' + os.path.basename(path)
         assert a.std() > 0.003, 'flat texture: ' + os.path.basename(path)
-    crater_h = read_png([p for p in job.written if 'Fresh' in p and p.endswith('Height.png')][0])[..., 0]
-    assert crater_h.max() - crater_h.min() > 0.1, 'craters must show in the height map'
+    # a bigger tile, so that several big craters land in it whatever the random layout
+    job = B.TileBakeJob(bpy.context, mats[:1], settings(resolution=128, tile_size=4.0, maps={'HEIGHT'}))
+    B.run_to_end(job)
+    crater_h = read_png(job.written[0])[..., 0]
+    assert crater_h.max() - crater_h.min() > 0.1, ('craters must show in the height map', crater_h.min(), crater_h.max())
 
 
 @test
