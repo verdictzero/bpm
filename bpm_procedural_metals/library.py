@@ -75,6 +75,12 @@ def upgrade_groups(mat):
     return count
 
 
+def is_outdated(mat):
+    """True if a material uses BPM node groups of an older version (they miss newer sliders)."""
+    return mat is not None and mat.node_tree is not None and any(
+        node.bl_idname == 'ShaderNodeGroup' and is_outdated_group(node.node_tree) for node in mat.node_tree.nodes)
+
+
 def is_bpm_group(tree):
     return tree is not None and tree.get('bpm_generator') in G.GENERATORS
 
@@ -357,6 +363,7 @@ def load_preset_into(mat, preset_id, keep_pattern=True):
     """
     preset = P.get(preset_id)
     values = preset_values(preset)
+    upgrade_groups(mat)  # a material from an older version would miss the preset's newer sliders
     node = find_bpm_node(mat)
     if keep_pattern and node is not None:
         for key in ('Scale', 'Seed'):

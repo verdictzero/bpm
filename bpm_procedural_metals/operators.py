@@ -150,6 +150,21 @@ class BPM_OT_reset_material(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BPM_OT_update_material(bpy.types.Operator):
+    """Rebuild the material with this version of BPM: adds the newer sliders, keeps all settings"""
+    bl_idname = 'bpm.update_material'
+    bl_label = 'Update Material'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        obj, mat, node = L.active_bpm_material(context)
+        if mat is None:
+            return {'CANCELLED'}
+        count = L.upgrade_groups(mat)
+        self.report({'INFO'}, 'Updated %d node%s of "%s".' % (count, '' if count == 1 else 's', mat.name))
+        return {'FINISHED'}
+
+
 class BPM_OT_randomize_seed(bpy.types.Operator):
     """Pick a new random variation of the pattern"""
     bl_idname = 'bpm.randomize_seed'
@@ -1006,6 +1021,7 @@ CLASSES = (
     BPM_OT_gallery_step,
     BPM_OT_load_preset,
     BPM_OT_reset_material,
+    BPM_OT_update_material,
     BPM_OT_randomize_seed,
     BPM_OT_fit_scale,
     BPM_OT_set_vector,

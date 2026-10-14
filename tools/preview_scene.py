@@ -172,6 +172,8 @@ def make_shape(shape='cube'):
         obj.rotation_euler = (math.radians(-29), 0.0, math.radians(45))
     elif shape == 'steps':
         obj = make_steps()
+    elif shape == 'tube':  # a bent glass tube facing the camera: neon (UV U runs along the tube)
+        obj = make_tube()
     elif shape == 'cylinder':
         bpy.ops.mesh.primitive_cylinder_add(radius=0.9, depth=1.7, vertices=64)
         obj = bpy.context.active_object
@@ -179,6 +181,11 @@ def make_shape(shape='cube'):
         bev.width = 0.03
         bev.segments = 3
         bev.harden_normals = True
+        for poly in obj.data.polygons:
+            poly.use_smooth = True
+    elif shape == 'rod':  # a straight tube along its local Z, lying diagonally (fluorescent tubes)
+        bpy.ops.mesh.primitive_cylinder_add(radius=0.16, depth=2.6, vertices=48, rotation=(0.0, math.radians(70), math.radians(35)))
+        obj = bpy.context.active_object
         for poly in obj.data.polygons:
             poly.use_smooth = True
     else:
@@ -215,6 +222,46 @@ def make_steps():
     bpy.context.scene.collection.objects.link(obj)
     bpy.context.view_layer.objects.active = obj
     obj.rotation_euler = (0.0, 0.0, 0.6)
+    return obj
+
+
+def make_tube(radius=0.11, samples=240, sides=24):
+    """A neon-sign squiggle: a tube along a wave in the XZ plane, turned to face the camera.
+    UV U runs from 0 to 1 along the tube, V around it; the ends are closed."""
+    import bmesh
+    from mathutils import Vector
+    path = []
+    for i in range(samples + 1):
+        t = i / samples
+        path.append(Vector((-1.15 + 2.3 * t, 0.0, 0.55 * math.sin(math.tau * 1.25 * t) - 0.1 + 0.2 * t)))
+    bm = bmesh.new()
+    uv = bm.loops.layers.uv.new('UVMap')
+    rings = []
+    side = Vector((0.0, 1.0, 0.0))
+    for i, p in enumerate(path):
+        tangent = (path[min(i + 1, samples)] - path[max(i - 1, 0)]).normalized()
+        normal = side.cross(tangent).normalized()
+        rings.append([bm.verts.new(p + radius * (math.cos(a) * normal + math.sin(a) * side))
+                      for a in (math.tau * k / sides for k in range(sides))])
+    for i in range(samples):
+        for k in range(sides):
+            k2 = (k + 1) % sides
+            face = bm.faces.new((rings[i][k], rings[i + 1][k], rings[i + 1][k2], rings[i][k2]))
+            face.smooth = True
+            for loop, (u, v) in zip(face.loops, ((i, k), (i + 1, k), (i + 1, k + 1), (i, k + 1))):
+                loop[uv].uv = (u / samples, v / sides)
+    for ring, u in ((rings[0], 0.0), (rings[-1], 1.0)):
+        cap = bm.faces.new(ring if u else list(reversed(ring)))
+        for loop in cap.loops:
+            loop[uv].uv = (u, 0.5)
+    bmesh.ops.recalc_face_normals(bm, faces=bm.faces)
+    mesh = bpy.data.meshes.new('Tube')
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new('Preview', mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    bpy.context.view_layer.objects.active = obj
+    obj.rotation_euler = (math.radians(-20), 0.0, math.radians(45))
     return obj
 
 

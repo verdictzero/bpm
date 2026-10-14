@@ -13,6 +13,8 @@ import math
 CATEGORIES = (
     ('METAL', 'Bare Metal', 'Polished, brushed, aged and rusty metals', 'Metal', 1),
     ('PAINT', 'Painted Metal', 'Painted, chipped and weathered metal', 'Painted', 2),
+    ('ENAMEL', 'Porcelain Enamel', 'Glassy enamel on steel: 1950s appliances, stoves, bathtubs, enamelware and '
+     'signs, from showroom new to chipped, crazed and rusty', 'Enamel', 17),
     ('MILITARY', 'Military', 'Military paint and camouflage with mud, dust and edge wear built in', 'Military', 10),
     ('CONCRETE', 'Concrete', 'Cast, board-formed, polished, slab and block concrete, from fresh to ruined',
      'Concrete', 13),
@@ -20,8 +22,11 @@ CATEGORIES = (
      'Terrain', 14),
     ('GRADIENT', 'Gradients', 'Linear, radial, angular, diamond, spiral and more: color ramps projected from any '
      'side, on the object, in world space, on UVs or on the screen', 'Gradients', 15),
+    ('LIGHT', 'Lights & Neon', 'Glowing neon tubes, fluorescent tubes, light panels, LEDs and screens, clean '
+     'or dusty, grimy, bug-filled and burnt out', 'Lights', 18),
     ('WOOD', 'Wood', 'Raw, varnished, painted, weathered and charred wood', 'Wood', 3),
-    ('PLASTIC', 'Plastic', 'Glossy, matte and textured plastic, new, old or dirty', 'Plastic', 4),
+    ('PLASTIC', 'Plastic', 'Glossy, matte, textured, marbled and glitter plastic, new, old, dirty, cracked, '
+     'burnt or trashed', 'Plastic', 4),
     ('GLASS', 'Glass', 'Clear, tinted, frosted, textured and stained glass, spotless or grimy', 'Glass', 9),
     ('LENS', 'Lenses & Visors', 'Camera lenses, coated optics, mirrored visors and reflectors: glossy and '
      'reflective, not see-through', 'Lenses', 11),
@@ -38,7 +43,7 @@ OVERLAY_CATEGORIES = ('OVERLAY', 'WEAR')  # presets of these categories go on to
 
 # generator -> gallery category
 GENERATOR_CATEGORY = {
-    'METAL': 'METAL', 'PAINT': 'PAINT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'TERRAIN': 'TERRAIN',
+    'METAL': 'METAL', 'PAINT': 'PAINT', 'ENAMEL': 'ENAMEL', 'LIGHT': 'LIGHT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'TERRAIN': 'TERRAIN',
     'LAVA': 'TERRAIN', 'GRADIENT': 'GRADIENT', 'WOOD': 'WOOD',
     'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS', 'LENS': 'LENS', 'LEATHER': 'LEATHER', 'FABRIC': 'FABRIC',
     'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
@@ -319,6 +324,117 @@ _add('paint_rusted_through', 'Rusted-Through Paint', 'PAINT',
      'Grey paint that has mostly lost the fight against rust.',
      Paint_Color=(0.35, 0.33, 0.30), Wear=0.6, Edge_Wear=1.0, Primer=0.2, Rust=1.0, Rust_Spread=0.8,
      Rust_Streaks=0.6, Fading=0.4, Dirt=0.5)
+
+# ------------------------------------------------------------------ porcelain enamel
+ENAMEL_THUMB = dict(zoom=0.6)
+WARE_THUMB = dict(shape='cylinder', zoom=0.4)  # pots, mugs and bowls
+SIGN_THUMB = dict(shape='panel', zoom=0.6)
+CLEAN = dict(Chips=0.0, Edge_Chips=0.0, Dirt=0.0, Scratches=0.03)  # showroom new
+
+
+def _fridge(pid, name, color, desc, **values):
+    vals = dict(CLEAN, Enamel_Color=color, Roughness=0.05, Depth=0.9, Waviness=0.35, Orange_Peel=0.25)
+    vals.update(values)
+    _add(pid, name, 'ENAMEL', desc, thumb=ENAMEL_THUMB, **vals)
+
+
+_fridge('enamel_fridge_turquoise', 'Turquoise Fridge', (0.10, 0.52, 0.47),
+        'The glossy turquoise of a 1950s refrigerator, fresh from the showroom.')
+_fridge('enamel_fridge_seafoam', 'Seafoam Green Fridge', (0.42, 0.66, 0.50),
+        'Pale mint-green 1950s kitchen appliance enamel.')
+_fridge('enamel_fridge_pink', 'Pastel Pink Fridge', (0.80, 0.42, 0.46),
+        'The famous pink of a 1950s kitchen.')
+_fridge('enamel_fridge_yellow', 'Canary Yellow Fridge', (0.88, 0.70, 0.16),
+        'Cheerful pastel yellow appliance enamel.')
+_fridge('enamel_fridge_cream', 'Butter Cream Fridge', (0.78, 0.70, 0.48),
+        'Warm cream enamel of a rounded vintage fridge.')
+_fridge('enamel_fridge_white', 'Appliance White', (0.82, 0.82, 0.78),
+        'Clean, glossy white kitchen appliance enamel.')
+_fridge('enamel_fridge_red', 'Cherry Red Fridge', (0.55, 0.018, 0.020),
+        'Glossy candy red, like a retro diner fridge or cooler.', Depth=1.0)
+_fridge('enamel_fridge_coppertone', 'Coppertone', (0.30, 0.12, 0.045),
+        'Brown-bronze 1960s appliance color.', Color_Variation=0.12)
+_fridge('enamel_fridge_harvest_gold', 'Harvest Gold', (0.56, 0.34, 0.045),
+        'The mustard gold of 1970s kitchen appliances.')
+_fridge('enamel_fridge_avocado', 'Avocado Green', (0.20, 0.22, 0.035),
+        'The olive green of 1970s kitchen appliances.')
+_fridge('enamel_fridge_worn', 'Worn Turquoise Fridge', (0.10, 0.52, 0.47),
+        'Decades of use: yellowed, chipped on the corners, grimy around the handle.',
+        Edge_Chips=0.45, Chips=0.01, Yellowing=0.3, Scratches=0.25, Dulling=0.3, Dirt=0.35, Rust=0.7,
+        Rust_Stains=0.2, Grease=0.15)
+_fridge('enamel_fridge_barn_find', 'Barn-Find Fridge', (0.42, 0.66, 0.50),
+        'Left in a barn for forty years: chalky, rust-stained, chipped and filthy.',
+        Roughness=0.25, Depth=0.4, Edge_Chips=0.8, Chips=0.06, Chip_Scale=5.0, Chalking=0.6, Yellowing=0.4,
+        Rust=1.0, Rust_Stains=0.7, Scratches=0.4, Dulling=0.6, Dirt=0.7, Crazing=0.2)
+
+_add('enamel_stove_white', 'Greasy Stove Top', 'ENAMEL',
+     'White enamel range: grey pot marks, burnt-on grease and a few chips.',
+     thumb=ENAMEL_THUMB, Enamel_Color=(0.80, 0.79, 0.75), Grease=0.6, Scratches=0.55, Dulling=0.4,
+     Edge_Chips=0.35, Chips=0.015, Dirt=0.4, Rust=0.8)
+_add('enamel_stove_black', 'Black Enameled Grate', 'ENAMEL',
+     'Satin black enamel on cast iron, like a stove grate or burner cap.',
+     thumb=ENAMEL_THUMB, Enamel_Color=(0.012, 0.012, 0.013), Roughness=0.3, Depth=0.4, Orange_Peel=0.5,
+     Waviness=0.6, Scratches=0.4, Edge_Chips=0.3, Grease=0.4, Dirt=0.3)
+_add('enamel_tub', 'Cast Iron Bathtub', 'ENAMEL',
+     'Old white bathtub enamel with rust stains running from the chips.',
+     thumb=dict(shape='sphere'), Enamel_Color=(0.80, 0.80, 0.76), Waviness=0.5, Chips=0.02, Edge_Chips=0.4,
+     Rust=1.0, Rust_Stains=0.7, Dulling=0.45, Yellowing=0.15, Dirt=0.25)
+_add('enamel_tub_clawfoot', 'Antique Clawfoot Tub', 'ENAMEL',
+     'A century-old tub: crazed all over, yellowed, dull and stained.',
+     thumb=dict(shape='sphere'), Enamel_Color=(0.78, 0.76, 0.68), Roughness=0.12, Crazing=0.8, Craze_Scale=12.0,
+     Yellowing=0.45, Dulling=0.6, Chips=0.015, Edge_Chips=0.4, Rust_Stains=0.4, Dirt=0.45)
+_add('enamel_sink', 'Vintage Farmhouse Sink', 'ENAMEL',
+     'White enamel sink, scratched grey by pots, a little chipped and crazed.',
+     thumb=ENAMEL_THUMB, Enamel_Color=(0.81, 0.80, 0.76), Scratches=0.6, Dulling=0.5, Crazing=0.3,
+     Edge_Chips=0.4, Rust_Stains=0.25, Dirt=0.3)
+
+_add('enamel_ware_blue_granite', 'Blue Graniteware', 'ENAMEL',
+     'Speckled blue camping enamelware with a dark rim.',
+     thumb=WARE_THUMB, Enamel_Color=(0.03, 0.08, 0.30), Speckles=0.55, Speckle_Scale=90.0, Rim=1.0,
+     Rim_Color=(0.006, 0.010, 0.035), Edge_Chips=0.4, Chips=0.01, Scratches=0.2, Dirt=0.1)
+_add('enamel_ware_black_granite', 'Black Graniteware', 'ENAMEL',
+     'Black enamel speckled with white, like an old roasting pan.',
+     thumb=WARE_THUMB, Enamel_Color=(0.015, 0.015, 0.018), Speckles=0.5, Speckle_Scale=110.0,
+     Edge_Chips=0.35, Scratches=0.25, Grease=0.2, Dirt=0.2)
+_add('enamel_mug_white', 'White Enamel Mug', 'ENAMEL',
+     'Classic white enamel mug with a navy-blue rim.',
+     thumb=WARE_THUMB, Enamel_Color=(0.82, 0.82, 0.79), Rim=1.0, Rim_Color=(0.008, 0.015, 0.06),
+     Rim_Width=0.004, Edge_Chips=0.15, Scratches=0.08)
+_add('enamel_mug_chipped', 'Chipped Camping Mug', 'ENAMEL',
+     'A well-traveled camping mug: chipped to rusty steel, stained and scratched.',
+     thumb=WARE_THUMB, Enamel_Color=(0.03, 0.17, 0.08), Speckles=0.35, Rim=1.0, Rim_Color=(0.01, 0.01, 0.01),
+     Chips=0.05, Chip_Scale=6.0, Edge_Chips=0.8, Rust=1.0, Rust_Stains=0.4, Scratches=0.4, Dulling=0.4,
+     Dirt=0.4)
+_add('enamel_ware_agate_red', 'Red Agateware', 'ENAMEL',
+     'Swirled red and white marbled enamel.',
+     thumb=WARE_THUMB, Enamel_Color=(0.50, 0.030, 0.025), Marbling=0.6, Marble_Color=(0.80, 0.78, 0.74),
+     Marble_Scale=4.0, Edge_Chips=0.25, Scratches=0.1)
+_add('enamel_ware_agate_blue', 'Blue Swirl Enamelware', 'ENAMEL',
+     'Cloudy blue and white swirled enamel, like an antique coffee pot.',
+     thumb=WARE_THUMB, Enamel_Color=(0.70, 0.72, 0.76), Marbling=0.6, Marble_Color=(0.03, 0.08, 0.28),
+     Marble_Scale=3.0, Edge_Chips=0.4, Chips=0.02, Crazing=0.2, Yellowing=0.15, Dirt=0.25)
+_add('enamel_cast_iron_orange', 'Enameled Cast Iron', 'ENAMEL',
+     'Flame-orange enameled cast iron cookware, glossy and thick.',
+     thumb=WARE_THUMB, Enamel_Color=(0.72, 0.13, 0.008), Depth=1.0, Waviness=0.6, Color_Variation=0.15,
+     Edge_Chips=0.1, Scratches=0.1, Ground_Coat_Color=(0.02, 0.018, 0.016))
+
+_add('enamel_sign_red', 'Red Enamel Sign', 'ENAMEL',
+     'Glossy red porcelain enamel sign with a white rim and chipped edges.',
+     thumb=SIGN_THUMB, Enamel_Color=(0.52, 0.020, 0.018), Rim=1.0, Rim_Color=(0.80, 0.80, 0.76),
+     Rim_Width=0.01, Edge_Chips=0.4, Chips=0.01, Rust_Stains=0.2)
+_add('enamel_sign_weathered', 'Weathered Enamel Sign', 'ENAMEL',
+     'An old gas-station sign: chalky, shot through with chips and rust streaks.',
+     thumb=SIGN_THUMB, Enamel_Color=(0.04, 0.10, 0.40), Rim=1.0, Rim_Color=(0.80, 0.78, 0.70), Rim_Width=0.01,
+     Chalking=0.55, Chips=0.08, Chip_Scale=5.0, Edge_Chips=0.9, Rust=1.0, Rust_Stains=0.8, Dirt=0.5,
+     Dulling=0.4)
+_add('enamel_sign_street', 'Cobalt Street Sign', 'ENAMEL',
+     'Deep cobalt blue enamel street sign, a little crazed.',
+     thumb=SIGN_THUMB, Enamel_Color=(0.010, 0.04, 0.22), Rim=1.0, Rim_Color=(0.82, 0.82, 0.80),
+     Rim_Width=0.008, Crazing=0.3, Edge_Chips=0.3, Rust_Stains=0.15, Dirt=0.2)
+_add('enamel_crazed_antique', 'Crazed Antique Enamel', 'ENAMEL',
+     'Cream enamel with a fine dirty craze network all over.',
+     thumb=dict(zoom=0.3), Enamel_Color=(0.72, 0.64, 0.45), Crazing=1.0, Craze_Scale=25.0, Yellowing=0.4,
+     Dulling=0.4, Dirt=0.5, Edge_Chips=0.3)
 
 # -------------------------------------------------------------------- military
 OLIVE_DRAB = (0.085, 0.095, 0.04)
@@ -805,6 +921,120 @@ _grad('grad_uv_ramp', 'UV Ramp', 'Black to white along the UV map (V): for masks
 _grad('grad_height_fade', 'Height Fade (World)', 'Dark at ground level (Z = 0) to pale 3 m up: in world '
       'space, so it stays put when objects move.',
       ['#2f2f2f', '#c8d2dc'], Projection=WORLD, Center=(0.0, 0.0, 1.5), Size=1.5)
+# ---------------------------------------------------------------------- lights
+NEON_THUMB = dict(shape='tube', world=0.25, view='Standard')
+TUBE_THUMB = dict(shape='rod', world=0.3, view='Standard')  # straight fluorescent tube, ends along Z
+LIGHT_PANEL_THUMB = dict(shape='panel', zoom=0.5, world=0.3, view='Standard')
+NEON_RED = (1.0, 0.10, 0.02)
+NEON_PINK = (1.0, 0.02, 0.35)
+NEON_BLUE = (0.02, 0.25, 1.0)
+NEON_GREEN = (0.10, 1.0, 0.05)
+COOL_WHITE = (0.85, 0.92, 1.0)
+WARM_WHITE = (1.0, 0.72, 0.42)
+
+
+def _neon(pid, name, color, desc, **values):
+    vals = dict(Type=0, Light_Color=color, Surface_Color=(0.7, 0.7, 0.68), Roughness=0.1, Ends_Along=0)
+    vals.update(values)
+    _add(pid, name, 'LIGHT', desc, thumb=NEON_THUMB, **vals)
+
+
+_neon('light_neon_red', 'Red Neon', NEON_RED, 'A clean, glowing red neon tube.')
+_neon('light_neon_pink', 'Dirty Pink Neon', NEON_PINK,
+      'Hot pink neon with grime and dust on the glass.', Dust=0.35, Grime=0.3, Smudges=0.3,
+      End_Blackening=0.4)
+_neon('light_neon_blue', 'Dusty Blue Neon', NEON_BLUE,
+      'Blue neon under a thick coat of dust, with blackened tube ends.', Dust=0.7, End_Blackening=0.8,
+      End_Length=0.12, Unevenness=0.3)
+_neon('light_neon_green_dead', 'Failing Green Neon', NEON_GREEN,
+      'Green neon with sections that have gone dark.', Dead_Sections=0.5, End_Blackening=0.6,
+      Unevenness=0.5, Grime=0.2)
+_neon('light_neon_diner', 'Old Diner Neon', (1.0, 0.25, 0.03),
+      'Orange diner sign neon: decades of kitchen grease, dust and fly specks.', Grime=0.6, Dust=0.4,
+      Bugs=0.3, End_Blackening=0.7, Unevenness=0.35, Yellowing=0.2)
+_neon('light_neon_abandoned', 'Abandoned Neon', NEON_PINK,
+      'A neon tube in a derelict building: filthy, cracked, half dead and full of dead bugs.',
+      Emission_Strength=0.8, Dust=0.8, Grime=0.7, Bugs=0.6, Cracks=0.5, Dead_Sections=0.6,
+      End_Blackening=1.0, End_Length=0.15, Unevenness=0.6)
+_neon('light_neon_argon', 'Argon Purple Neon', (0.45, 0.10, 1.0),
+      'Violet-blue argon tube, slightly uneven.', Unevenness=0.3, End_Blackening=0.3)
+_neon('light_neon_white', 'White Neon', (1.0, 0.92, 0.85), 'Soft white neon tube.', Emission_Strength=0.8)
+_neon('light_neon_off', 'Unlit Neon Tube', NEON_RED,
+      'A switched-off neon tube: the tinted glass and its sooty ends.', Power=0.0, Dust=0.3,
+      End_Blackening=0.7, Surface_Color=(0.6, 0.6, 0.58))
+
+_add('light_fluorescent', 'Fluorescent Tube', 'LIGHT',
+     'A clean, cool-white fluorescent tube.',
+     thumb=TUBE_THUMB, Type=1, Light_Color=COOL_WHITE, Emission_Strength=1.5, Surface_Color=(0.8, 0.8, 0.8),
+     Roughness=0.4, Ends_Along=3, End_Blackening=0.2, End_Length=0.06)
+_add('light_fluorescent_old', 'Blackened Fluorescent Tube', 'LIGHT',
+     'An old, flickering-looking tube: black ends, dusty top, uneven glow.',
+     thumb=TUBE_THUMB, Type=1, Light_Color=(0.9, 0.95, 0.85), Emission_Strength=1.2,
+     Surface_Color=(0.75, 0.75, 0.72), Roughness=0.45, Ends_Along=3, End_Blackening=1.0, End_Length=0.12,
+     Unevenness=0.5, Dust=0.5, Bugs=0.15)
+_add('light_panel_bugs', 'Bug-Filled Light Cover', 'LIGHT',
+     'A ceiling light diffuser full of dead insects and dust, the lamps showing through.',
+     thumb=LIGHT_PANEL_THUMB, Type=1, Light_Color=WARM_WHITE, Emission_Strength=1.5, Hot_Spots=0.6,
+     Grid_Size=0.4, Surface_Color=(0.78, 0.76, 0.70), Roughness=0.6, Bugs=0.8, Dust=0.4, Yellowing=0.3)
+_add('light_panel_office', 'Yellowed Office Panel', 'LIGHT',
+     'A tired office ceiling panel: yellowed diffuser, uneven glow, grimy.',
+     thumb=LIGHT_PANEL_THUMB, Type=1, Light_Color=COOL_WHITE, Emission_Strength=1.5, Hot_Spots=0.4,
+     Grid_Size=0.3, Surface_Color=(0.78, 0.77, 0.72), Roughness=0.7, Yellowing=0.7, Grime=0.3,
+     Unevenness=0.4, Dust=0.2)
+_add('light_panel_hospital', 'Failing Hospital Panel', 'LIGHT',
+     'Cold, greenish panel light with dead patches and cracks.',
+     thumb=LIGHT_PANEL_THUMB, Type=1, Light_Color=(0.75, 1.0, 0.85), Emission_Strength=1.3, Hot_Spots=0.3,
+     Grid_Size=0.35, Surface_Color=(0.75, 0.78, 0.75), Roughness=0.6, Dead_Sections=0.4, Cracks=0.4,
+     Unevenness=0.6, Dust=0.3, Smudges=0.3)
+_add('light_lightbox', 'Grimy Lightbox Sign', 'LIGHT',
+     'A backlit sign face, stained with grime and dirty rain.',
+     thumb=LIGHT_PANEL_THUMB, Type=1, Light_Color=(1.0, 0.85, 0.55), Emission_Strength=1.5, Hot_Spots=0.5,
+     Grid_Size=0.25, Surface_Color=(0.8, 0.78, 0.7), Roughness=0.3, Grime=0.6, Dirt=0.4, Bugs=0.3,
+     Cracks=0.2, overlays=[overlay('DIRT', Amount=0.5, Streaks=0.8)])
+_add('light_exit_sign', 'Emergency Exit Light', 'LIGHT',
+     'A green emergency light: dusty, with fly specks.',
+     thumb=LIGHT_PANEL_THUMB, Type=1, Light_Color=(0.05, 1.0, 0.15), Emission_Strength=1.5,
+     Surface_Color=(0.6, 0.75, 0.6), Roughness=0.3, Dust=0.4, Bugs=0.3, Grime=0.2)
+
+_add('light_led_matrix', 'LED Matrix', 'LIGHT',
+     'A grid of glowing amber LEDs, like a scoreboard or bus sign.',
+     thumb=LIGHT_PANEL_THUMB, Type=2, Light_Color=(1.0, 0.45, 0.02), Emission_Strength=3.0, Grid_Size=0.03,
+     Fill=0.6, Surface_Color=(0.02, 0.02, 0.02), Roughness=0.4, Unevenness=0.3)
+_add('light_led_dirty', 'Dirty LED Sign', 'LIGHT',
+     'An outdoor LED sign: dead pixels, grime and dust.',
+     thumb=LIGHT_PANEL_THUMB, Type=2, Light_Color=(1.0, 0.05, 0.02), Emission_Strength=3.0, Grid_Size=0.03,
+     Fill=0.55, Surface_Color=(0.02, 0.02, 0.02), Roughness=0.5, Dead_Sections=0.4, Grime=0.5, Dust=0.4,
+     Bugs=0.2, Unevenness=0.5)
+_add('light_led_strip', 'Warm LED Strip', 'LIGHT',
+     'Rows of warm glowing lines, like LED strips behind a cover.',
+     thumb=LIGHT_PANEL_THUMB, Type=4, Light_Color=WARM_WHITE, Emission_Strength=2.0, Grid_Size=0.08,
+     Fill=0.35, Surface_Color=(0.08, 0.08, 0.08), Roughness=0.3, Unevenness=0.2)
+_add('light_scifi_strips', 'Sci-Fi Glow Strips', 'LIGHT',
+     'Cyan glowing strips in a dark panel, a bit dusty.',
+     thumb=LIGHT_PANEL_THUMB, Type=4, Light_Color=(0.05, 0.6, 1.0), Emission_Strength=2.5, Grid_Size=0.12,
+     Fill=0.18, Surface_Color=(0.05, 0.055, 0.06), Roughness=0.35, Dust=0.25, Smudges=0.3)
+_add('light_scifi_grimy', 'Grimy Sci-Fi Panel', 'LIGHT',
+     'Failing orange warning strips on a filthy industrial panel.',
+     thumb=LIGHT_PANEL_THUMB, Type=4, Light_Color=(1.0, 0.30, 0.02), Emission_Strength=2.5, Grid_Size=0.1,
+     Fill=0.25, Surface_Color=(0.06, 0.06, 0.06), Roughness=0.5, Dead_Sections=0.4, Grime=0.7, Dust=0.5,
+     Dirt=0.6, Unevenness=0.5)
+
+_add('light_screen_crt', 'Green CRT Screen', 'LIGHT',
+     'A glowing green monochrome monitor with scanlines.',
+     thumb=LIGHT_PANEL_THUMB, Type=3, Light_Color=(0.15, 1.0, 0.2), Emission_Strength=4.5,
+     Grid_Size=0.02, Scanlines=0.8, Surface_Color=(0.05, 0.07, 0.06), Roughness=0.08, Unevenness=0.3,
+     Dust=0.2)
+_add('light_screen_grimy', 'Grimy Old Monitor', 'LIGHT',
+     'A dusty, finger-smudged color screen with dead pixels.',
+     thumb=LIGHT_PANEL_THUMB, Type=3, Light_Color=(0.9, 0.85, 1.0), Emission_Strength=4.5, Grid_Size=0.015,
+     Scanlines=0.4, Surface_Color=(0.03, 0.03, 0.035), Roughness=0.1, Dust=0.5, Smudges=0.6,
+     Dead_Sections=0.2, Unevenness=0.3)
+_add('light_screen_cracked', 'Cracked Screen', 'LIGHT',
+     'A smashed LCD with dark cracks and dead patches.',
+     thumb=LIGHT_PANEL_THUMB, Type=3, Light_Color=(0.7, 0.85, 1.0), Emission_Strength=4.5, Grid_Size=0.012,
+     Surface_Color=(0.02, 0.02, 0.025), Roughness=0.05, Cracks=0.9, Crack_Scale=3.0, Dead_Sections=0.15,
+     Smudges=0.4)
+
 # ------------------------------------------------------------------------ wood
 OAK = (0.50, 0.27, 0.11)
 OAK_RING = (0.26, 0.11, 0.042)
@@ -937,6 +1167,74 @@ _add('plastic_garden_chair', 'Weathered Garden Chair', 'PLASTIC',
      'White outdoor plastic, sun-faded with dirty rain streaks.',
      thumb=DIRTY_THUMB, Plastic_Color=(0.7, 0.7, 0.68), Fading=0.4, Roughness=0.45, Dirt=0.5, Grime=0.6,
      Scuffs=0.3, overlays=[overlay('DIRT', Amount=0.6, Streaks=0.8, Patches=0.3)])
+
+_add('plastic_bakelite_brown', 'Brown Bakelite', 'PLASTIC',
+     'Glossy, swirled brown bakelite, like an old radio or telephone.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.10, 0.035, 0.010), Marbling=0.55, Marble_Color=(0.025, 0.008, 0.003),
+     Marble_Scale=4.0, Roughness=0.12, Scratches=0.15, Scuffs=0.1, Dirt=0.1)
+_add('plastic_bakelite_red', 'Marbled Red Catalin', 'PLASTIC',
+     'Cherry-red marbled vintage plastic, like old radio cases and dice.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.45, 0.025, 0.015), Marbling=0.5, Marble_Color=(0.65, 0.30, 0.10),
+     Marble_Scale=3.0, Roughness=0.1, Subsurface=0.3, Yellowing=0.2, Scratches=0.1)
+_add('plastic_swirled', 'Swirled Recycled Plastic', 'PLASTIC',
+     'Chunky multi-colored swirls of melted-down plastic.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.03, 0.10, 0.30), Marbling=0.5, Marble_Color=(0.60, 0.50, 0.04),
+     Marble_Scale=2.0, Speckles=0.4, Speckle_Color=(0.6, 0.06, 0.04), Roughness=0.4, Stipple=0.2)
+_add('plastic_glitter', 'Glitter Plastic', 'PLASTIC',
+     'Sparkly purple plastic full of metal flakes, under a glossy coat.',
+     thumb=dict(shape='sphere', zoom=0.4), Plastic_Color=(0.12, 0.02, 0.25), Glitter=0.6,
+     Glitter_Color=(0.8, 0.6, 1.0), Roughness=0.15, Clear_Coat=1.0, Scratches=0.05)
+_add('plastic_pearl', 'Pearl White Plastic', 'PLASTIC',
+     'Pearly white plastic with a fine silver shimmer.',
+     thumb=dict(shape='sphere', zoom=0.4), Plastic_Color=(0.75, 0.73, 0.70), Glitter=0.5, Glitter_Scale=500.0,
+     Glitter_Color=(0.85, 0.82, 0.78), Roughness=0.2, Clear_Coat=0.6, Subsurface=0.2)
+_add('plastic_cracked', 'Cracked Old Plastic', 'PLASTIC',
+     'Brittle yellowed plastic, split with whitened stress cracks.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.62, 0.58, 0.48), Yellowing=0.6, Cracks=0.7, Roughness=0.4,
+     Scuffs=0.4, Scratches=0.3, Dirt=0.4, Grime=0.3)
+_add('plastic_sun_rotted', 'Sun-Rotted Plastic', 'PLASTIC',
+     'Outdoor plastic destroyed by UV: chalky, crumbling and cracked all over.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.55, 0.06, 0.03), Fading=0.85, Cracks=0.9, Crack_Scale=7.0,
+     Roughness=0.6, Scuffs=0.4, Dirt=0.5, Grime=0.5, Edge_Whitening=0.6,
+     overlays=[overlay('DIRT', Amount=0.5, Streaks=0.6)])
+_add('plastic_burnt', 'Burnt Plastic', 'PLASTIC',
+     'White plastic with melted, blistered and charred burn marks.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.72, 0.72, 0.70), Burns=0.55, Roughness=0.3, Scuffs=0.2, Dirt=0.2)
+_add('plastic_scorched', 'Scorched Black Plastic', 'PLASTIC',
+     'Black plastic housing scorched by an electrical fire.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.02, 0.02, 0.021), Stipple=0.6, Burns=0.7, Burn_Scale=2.0,
+     Roughness=0.5, Dirt=0.5, Grime=0.5, overlays=[overlay('DUST', Amount=0.3)])
+_add('plastic_cutting_board', 'Gouged Cutting Board', 'PLASTIC',
+     'White HDPE cutting board: covered in knife cuts with grime in them, a bit stained.',
+     thumb=dict(shape='panel', zoom=0.5), Plastic_Color=(0.78, 0.78, 0.75), Roughness=0.55, Gouges=0.8,
+     Scratches=0.7, Scratch_Scale=4.0, Stains=0.25, Stain_Color=(0.75, 0.45, 0.30), Grime=0.4, Scuffs=0.3)
+_add('plastic_food_container', 'Stained Food Container', 'PLASTIC',
+     'Translucent white tub stained orange by tomato sauce.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.70, 0.70, 0.66), Subsurface=0.6, Roughness=0.35,
+     Stains=0.75, Stain_Color=(0.85, 0.40, 0.12), Scratches=0.4, Scuffs=0.4)
+_add('plastic_sticker_residue', 'Sticker Residue', 'PLASTIC',
+     'Black plastic where labels and tape were scraped off: torn paper and dirty glue.',
+     thumb=PLASTIC_THUMB, Plastic_Color=(0.02, 0.02, 0.02), Roughness=0.4, Stipple=0.4, Residue=0.6,
+     Scratches=0.3, Dirt=0.2)
+_add('plastic_trashed', 'Trashed Plastic', 'PLASTIC',
+     'Beaten to death: cracked, gouged, burnt, stained, faded and caked in grime.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.03, 0.10, 0.32), Cracks=0.6, Gouges=0.5, Burns=0.35, Stains=0.5,
+     Residue=0.35, Scuffs=0.7, Scratches=0.6, Fading=0.4, Dirt=0.7, Grime=0.7, Edge_Whitening=0.6,
+     overlays=[overlay('DIRT', Amount=0.6, Streaks=0.4)])
+_add('plastic_playground', 'Abandoned Playground Slide', 'PLASTIC',
+     'Faded red playground plastic: sun-bleached, cracked, scratched and rain-streaked.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.50, 0.05, 0.03), Fading=0.65, Cracks=0.4, Crack_Scale=3.0,
+     Scratches=0.6, Scuffs=0.6, Residue=0.15, Dirt=0.6, Grime=0.6,
+     overlays=[overlay('DIRT', Amount=0.6, Streaks=0.8, Patches=0.3)])
+_add('plastic_oily_shop', 'Oily Shop Plastic', 'PLASTIC',
+     'Garage plastic soaked with oil stains and black greasy grime.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.55, 0.30, 0.02), Stipple=0.4, Roughness=0.3, Stains=0.7,
+     Stain_Color=(0.10, 0.08, 0.05), Scratches=0.4, Scuffs=0.5, Dirt=0.7, Grime=0.8,
+     Dirt_Color=(0.02, 0.018, 0.015))
+_add('plastic_smoker', 'Smoker-Yellowed Plastic', 'PLASTIC',
+     'Off-white plastic turned brown-yellow by years of tobacco smoke, with tide-line stains.',
+     thumb=DIRTY_THUMB, Plastic_Color=(0.70, 0.68, 0.62), Yellowing=0.9, Stains=0.4,
+     Stain_Color=(0.65, 0.42, 0.12), Roughness=0.4, Grime=0.5, Dirt=0.5, Burns=0.12, Burn_Scale=10.0)
 
 # ----------------------------------------------------------------------- glass
 GLASS_THUMB = dict(zoom=0.25)

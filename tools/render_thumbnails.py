@@ -43,7 +43,10 @@ def main():
         start = time.time()
         thumb = preset.get('thumb') or {}
         scene, obj = preview_scene.setup(size=args.size, samples=args.samples,
-                                         shape=thumb.get('shape', args.shape), zoom=thumb.get('zoom', 1.0))
+                                         shape=thumb.get('shape', args.shape), zoom=thumb.get('zoom', 1.0),
+                                         strength=thumb.get('world', 1.0))
+        if 'view' in thumb:  # e.g. 'Standard': glowing colors without AgX's desaturation
+            scene.view_settings.view_transform = thumb['view']
         if P.is_overlay(preset):
             mat = L.create_material(thumb.get('base', 'plastic_white_abs'))
             L.add_overlay(mat, preset['generator'], L.preset_values(preset))

@@ -544,3 +544,15 @@ def rust_layer(b, space, scale, color_a, color_b, offset):
     rough = b.madd(rz, 0.05, 0.82)
     height = b.madd(rz, 0.12, b.madd(speck, 0.2, 0.5))
     return col, rough, height
+
+
+def crack_distance(b, space, scale, offset, warp=0.45, label='Cracks'):
+    """Distance (pattern units / scale) to a network of cracks between Voronoi cells.  In object
+    mode the cells are bent a little, so the cracks don't look like straight polygon edges."""
+    if space.tile:
+        return space.voronoi(scale, offset, feature='DISTANCE_TO_EDGE', label=label).outputs['Distance']
+    bend = space.noise(3.0, offset + 1, detail=2.0, roughness=0.5, label=label + ' Warp').node.outputs['Color']
+    wr, wg, wb = b.separate_color(bend)
+    bent = b.vadd(space.P, b.vscale(b.combine(b.sub(wr, 0.5), b.sub(wg, 0.5), b.sub(wb, 0.5)),
+                                    b.div(warp, scale)))
+    return space.voronoi(scale, offset, feature='DISTANCE_TO_EDGE', base=bent, label=label).outputs['Distance']

@@ -1,8 +1,11 @@
 # BPM – Procedural Materials for Blender
 
-278 ready-made materials for Blender — **bare metal, painted metal, military paint and
+346 ready-made materials for Blender — **bare metal, painted metal, porcelain enamel
+(1950s fridges, stoves, bathtubs, graniteware, enamel signs), military paint and
 camouflage, concrete, terrain (cratered moons, asteroids, Mars) and glowing lava and magma,
-51 gradients (linear, radial, angular, spiral… projected from any side), wood, plastic, glass,
+51 gradients (linear, radial, angular, spiral… projected from any side), glowing lights
+(neon, fluorescent tubes, light panels, LEDs, screens — clean, dusty, bug-filled or burnt
+out), wood, plastic (from showroom new to cracked, burnt and trashed), glass,
 lenses and visors, leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and
 H.R. Giger-style biomechanical surfaces** — plus 26
 **overlays (dirt, dust, edge wear and scratches)** that you can stack on top of *any*
@@ -19,10 +22,12 @@ material, click **Apply**, move some sliders, click **Auto Texture**. Liked what
 
 ![Bare metal materials](docs/gallery_metal.png)
 ![Painted metal materials](docs/gallery_paint.png)
+![Porcelain enamel](docs/gallery_enamel.png)
 ![Military paint and camouflage](docs/gallery_military.png)
 ![Concrete](docs/gallery_concrete.png)
 ![Terrain and lava](docs/gallery_terrain.png)
 ![Gradients](docs/gallery_gradient.png)
+![Lights and neon](docs/gallery_light.png)
 ![Wood materials](docs/gallery_wood.png)
 ![Plastic materials](docs/gallery_plastic.png)
 ![Glass materials](docs/gallery_glass.png)
@@ -40,13 +45,13 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.7.0.zip`](dist/bpm_procedural_metals-1.7.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.8.0.zip`](dist/bpm_procedural_metals-1.8.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
 4. Select the zip file. Done: "BPM - Procedural Materials" now shows up as enabled.
 
-> **Updating from an older version (1.0 – 1.6)?** Just install the new zip the same
+> **Updating from an older version (1.0 – 1.7)?** Just install the new zip the same
 > way, on top of the old one: it replaces the old version (no need to uninstall first
 > or restart Blender), and your `.blend` files keep their materials and settings.
 
@@ -59,7 +64,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 1. In the 3D view, **click your object** to select it.
 2. Press **N** (with the mouse over the 3D view) to open the sidebar and click the
    **BPM** tab.
-3. Pick a category (Metal, Military, Terrain, Gradients, Wood, Glass, Lenses, Fabric, Dirt & Dust, Wear…),
+3. Pick a category (Metal, Enamel, Military, Terrain, Gradients, Lights, Wood, Plastic, Glass, Fabric, Dirt & Dust, Wear…),
    click the big picture to see its materials, pick one, then click
    **Apply to Selected**.
 4. To see the material, switch the viewport to **Material Preview**: press **Z** and
@@ -223,6 +228,42 @@ Pick a gradient, then shape it in *Adjust Material*:
 * **Surface** – *Metallic* and *Roughness* at both ends (paint fading to metal), *Relief*
   and *Glow* (neon tubes, skies, light panels; baked into `_Emission.png`).
 
+### Porcelain enamel: 1950s appliances, tubs and enamelware
+
+Porcelain (or vitreous) enamel is glass fused onto steel: stoves, cast iron bathtubs,
+sinks, enamel pots and mugs, and enamel signs. The glossy 1950s refrigerators were
+mostly baked *synthetic* enamel on steel rather than true porcelain, but they look the
+same up close, so they are here too (turquoise, seafoam, pink, canary yellow, the 70s
+coppertone, harvest gold and avocado…). Enamel doesn't wear like paint — it chips:
+
+* **Enamel** – *Enamel Color*, *Roughness*, *Depth* (the glassy clear glaze on top),
+  *Waviness* of pressed steel and *Orange Peel*.
+* **Decoration** – *Speckles* (graniteware), *Marbling* (agateware swirls) and a colored
+  *Rim* on edges like enamel mugs.
+* **Wear** – *Chips* all over and *Edge Chips* on edges and corners, which break through to
+  the dark blue-black *Ground Coat* and to bare steel; *Thin Edges*, *Crazing* (hairline
+  cracks full of dirt), pot *Scratches* and *Dulling* from scouring.
+* **Steel Underneath** – *Rust* in the chips and *Rust Stains* running down the enamel.
+* **Aging** – *Yellowing*, *Chalking* (sun-bleached signs), kitchen *Grease* and *Dirt*.
+
+### Lights & neon: dirty glowing things
+
+Pick a *Type* — **Neon Tube**, **Panel** (with optional *Hot Spots* of the lamps
+behind), **LED Dots**, **Screen** (red, green and blue pixels, *Scanlines* for an old CRT)
+or **Strips** — then set its *Light Color* and *Emission Strength*. *Power* switches it
+off: 0 shows the unlit tube or panel. Then make it old:
+
+* **Faults** – *Unevenness*, *Dead Sections* (or dead pixels), *End Blackening* of old
+  neon and fluorescent tubes (*Ends Along* says where the ends are: along the UV map for
+  neon bent from a curve, or along X, Y or Z for straight tubes), *Yellowing* and
+  *Cracks*.
+* **Dirt** – *Dust*, brown *Grime* that tints the light, dead *Bugs* and fly specks,
+  *Smudges* and dirt in crevices. All of it blocks the glow, so a dirty light is dimmer
+  and blotchy where the dirt is.
+
+The glow is baked into `_Emission.png`. For a halo around the tubes, add a *Glare*
+(Bloom) node in the compositor, or turn on bloom in your game engine.
+
 ### Decals: logos, stencils, signs
 
 <img src="docs/screenshot_decals.png" width="600" alt="A decal on a model and the Decals panel">
@@ -353,6 +394,14 @@ hammertone (green, silver), peeling teal, ship hull grey, hazard stripes, sci-fi
 white, safety orange, sun-faded blue, vintage cream enamel, worn matte black, old
 tractor green, vintage mint, navy machinery, red oxide primer, rusted-through paint.
 
+**Porcelain enamel (28):** 1950s refrigerators (turquoise, seafoam green, pastel pink,
+canary yellow, butter cream, appliance white, cherry red), the 70s coppertone, harvest
+gold and avocado green, a worn turquoise fridge and a rusty barn-find fridge, greasy stove
+top, black enameled grate, cast iron bathtub, antique clawfoot tub, vintage farmhouse
+sink, blue and black graniteware, white enamel mug, chipped camping mug, red agateware,
+blue swirl enamelware, enameled cast iron, red, weathered and cobalt street enamel signs,
+crazed antique enamel.
+
 **Military (22):** plain colors (olive drab, NATO green, desert tan, panzer grey,
 Soviet green, navy haze grey) and camouflage schemes (NATO three-tone, woodland,
 WWII ambush, tiger stripes, desert three-color, digital woodland and desert, urban,
@@ -371,10 +420,14 @@ polished mahogany, ebony, teak boat deck, shipping pallet, peeling barn red, whi
 painted planks, weathered grey wood, driftwood, charred wood (shou sugi ban),
 scorched planks.
 
-**Plastic (15):** glossy red, textured black, white ABS, toy brick yellow, piano
+**Plastic (31):** glossy red, textured black, white ABS, toy brick yellow, piano
 black, car dashboard (leather grain), ribbed rubber grip, translucent orange,
-recycled (flecked), sun-faded blue — and the dirty ones: yellowed retro beige, dirty
-white plastic, grimy garbage bin, old dusty toy, weathered garden chair.
+recycled (flecked), swirled recycled, sun-faded blue, brown Bakelite, marbled red
+Catalin, glitter, pearl white — and the dirty and wrecked ones: yellowed retro beige,
+smoker-yellowed, dirty white plastic, grimy garbage bin, old dusty toy, weathered garden
+chair, cracked old plastic, sun-rotted, burnt, scorched black, gouged cutting board,
+stained food container, sticker residue, oily shop plastic, abandoned playground slide,
+trashed plastic.
 
 **Glass (19):** clear, frosted, green bottle, amber bottle, cobalt blue, smoked, milk
 glass, reeded, hammered, wired safety glass, stained glass window, antique window
@@ -412,6 +465,13 @@ sweep, candy and hypnotic spirals, diamond, pyramid panel, retro tunnel, box fal
 snow and moss on top, rim glow, color-shift paint, holographic foil, studio backdrop,
 UV ramp, height fade (world).
 
+**Lights & neon (24):** red neon, dirty pink neon, dusty blue neon, failing green neon,
+old diner neon, abandoned neon, argon purple neon, white neon, unlit neon tube,
+fluorescent tube, blackened fluorescent tube, bug-filled light cover, yellowed office
+panel, failing hospital panel, grimy lightbox sign, emergency exit light, LED matrix,
+dirty LED sign, warm LED strip, sci-fi glow strips, grimy sci-fi panel, green CRT
+screen, grimy old monitor, cracked screen.
+
 **Biomechanical (11):** H.R. Giger-style surfaces where bone, sinew, tubing and
 machinery merge: biomech ribbed hull, xeno tubes, chrome vertebrae, bone armor
 plates, flesh wall, slime hive, obsidian biomech, rusted biomech, sinew cables, alien
@@ -427,8 +487,11 @@ a family has the full set of sliders. A few examples:
   planks with gaps, varnish, stain, paint that peels along the grain, weathering,
   cracks, charring.
 * **Plastic** – molded stipple texture, leather grain, grip ribs, recycled flecks,
-  translucency, scratches, scuffs, stress-whitened edges, fingerprints, sun fading,
-  yellowing, grime stuck in the texture.
+  marbling (Bakelite, Catalin), glitter, translucency, scratches, scuffs, stress-whitened
+  edges, fingerprints, sun fading, yellowing, grime stuck in the texture — and damage:
+  cracks, knife gouges, burns (melted, blistered char with a scorched halo), stains with
+  tide lines and sticky sticker residue with paper bits.
+* **Porcelain enamel** and **Lights** – see their sections above.
 * **Military paint** – up to four camouflage colors with their amounts and patch sizes;
   *Stretch* turns blotches into stripes, *Digital* snaps them to square pixels,
   *Angular* to straight-edged shards (splinter, dazzle); hard or soft (sprayed)
@@ -563,8 +626,18 @@ blender -b model.blend -P bpm_cli.py -- maps --objects all --save
   Geometry** in the *Displacement* section (see *Terrain* above).
 * **Displacement looks blocky or jagged.** The mesh needs more faces: subdivide it
   (or start from a denser mesh), then click Displace Geometry again.
-* **Lava or a glowing gradient looks washed out.** Very bright glow turns white in the
-  default *AgX* view; lower *Emission Strength*, or *Heat* for lava.
+* **Lava, neon or a glowing gradient looks washed out.** Very bright glow turns white
+  (and saturated neon turns pastel) in the default *AgX* view; lower *Emission
+  Strength*, or *Heat* for lava, or pick *Render Properties › Color Management › View
+  Transform › Standard*.
+* **The blackened ends of a fluorescent tube are in the wrong place.** Set *Ends Along*
+  (in *Faults*) to the axis the tube runs along; *UV* is for neon made from curves.
+* **Enamel mugs have no rim, or enamel has no chipped edges.** Rims and edge chips need
+  edges: preview in Cycles, click **Analyze Shape** or bake.
+* **A material from an older version has no *Cracks*, *Burns*… sliders.** Materials keep
+  the node setup they were made with, so old files look exactly the same after an update.
+  Click **Update Material** in *Adjust Material* to get the new sliders (all settings are
+  kept); loading a preset does it by itself.
 * **My saved presets are gone after reinstalling.** They live outside the add-on and
   stay; click the reload button in *My Presets*. If you moved the files, put them back
   in the folder **Open Presets Folder** shows.
@@ -580,9 +653,10 @@ blender -b model.blend -P bpm_cli.py -- maps --objects all --save
 ```
 bpm_procedural_metals/   the add-on (Blender extension)
   generators.py          registry of all generators
-  mat_*.py               one generator per family: metal, paint, camo (military),
-                         concrete, terrain (terrain + lava), gradient, wood, plastic,
-                         glass, lens, leather, fabric, organic (sliders + node tree)
+  mat_*.py               one generator per family: metal, paint, enamel, camo
+                         (military), concrete, terrain (terrain + lava), gradient,
+                         light, wood, plastic, glass, lens, leather, fabric, organic
+                         (sliders + node tree)
   overlays.py            dirt, dust, edge wear and scratch overlays (layer on any
                          material)
   decals.py              box-projected decals (each one is an overlay with its own
@@ -590,7 +664,7 @@ bpm_procedural_metals/   the add-on (Blender extension)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 304 presets: 278 materials + 26 overlays
+  presets.py             the 372 presets: 346 materials + 26 overlays
   user_presets.py        your own saved presets (a JSON file outside the add-on)
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
@@ -618,7 +692,9 @@ doesn't), that Auto Texture's UVs are packed without overlaps
 while materials keep reading their old UVs during the bake, that every setting the bake
 changes is restored,
 that baked lenses keep their coating, that gradients run the right way and only glow when
-asked to, that saved presets come back (with their overlays) after a restart, that digital camouflage really is made of
+asked to, that lights bake their glow (and none when switched off), that chipped enamel
+and damaged plastic really change the bake, that older plastic materials upgrade without
+losing their settings, that saved presets come back (with their overlays) after a restart, that digital camouflage really is made of
 square pixels, that decals land where their box is, follow it, come off when it is
 deleted and get baked, and that no shader — not even a material with four overlays — comes
 close to Cycles' fixed shader-stack limit.

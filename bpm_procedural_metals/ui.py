@@ -169,6 +169,10 @@ class BPM_PT_adjust(bpy.types.Panel):
         row.operator('bpm.save_preset', text='Save Preset', icon='FILE_TICK')
         row.operator('bpm.reset_material', text='', icon='LOOP_BACK')
         row.operator('bpm.randomize_seed', text='', icon='FILE_REFRESH')
+        if L.is_outdated(mat):
+            box = layout.box()
+            _wrap(box, context, 'Made with an older version of BPM: some newer sliders are missing.', 'INFO')
+            box.operator('bpm.update_material', icon='FILE_REFRESH')
 
         col = layout.column(align=True)
         for p in params:

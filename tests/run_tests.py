@@ -1774,6 +1774,109 @@ def user_presets_save_load_delete():
     assert L.find_bpm_node(copy) is not None, 'materials made from a deleted preset stay'
 
 
+@test
+def enamel_and_lights_tile_and_glow():
+    """Enamel and lights tile seamlessly; a light bakes its glow, a switched-off one doesn't."""
+    fresh_scene()
+    ids = ('enamel_fridge_barn_find', 'enamel_ware_blue_granite', 'light_neon_abandoned', 'light_screen_crt',
+           'plastic_trashed', 'plastic_glitter')
+    mats = [L.create_material(pid) for pid in ids]
+    job = B.TileBakeJob(bpy.context, mats, settings(resolution=128, maps={'BASE_COLOR', 'NORMAL', 'EMISSION'}))
+    B.run_to_end(job)
+    names = sorted(os.path.basename(p) for p in job.written)
+    glowing = [n for n in names if n.endswith('Emission.png')]
+    assert len(glowing) == 2 and len(names) == 2 * len(ids) + 2, names  # only the two lights glow
+    for path in job.written:
+        a = read_png(path)[..., :3].astype(np.float64)
+        assert seam_ok(a), 'visible seam in ' + os.path.basename(path)
+        assert a.std() > 0.003, 'flat texture: ' + os.path.basename(path)
+    crt = read_png([p for p in job.written if 'CRT' in p and p.endswith('Emission.png')][0])[..., :3]
+    assert crt[..., 1].mean() > 2 * crt[..., 0].mean(), ('a green screen glows green', crt.mean(axis=(0, 1)))
+
+    lit = add_cube('Lit')
+    lit.data.materials.append(L.create_material('light_panel_bugs'))
+    off = add_cube('Off', location=(5, 0, 0))
+    unlit = L.create_material('light_panel_bugs', 'Switched Off')
+    L.apply_values(L.find_bpm_node(unlit), {'Power': 0.0})
+    off.data.materials.append(unlit)
+    bsdf = L.find_principled(unlit.node_tree)
+    assert bsdf.inputs['Emission Color'].is_linked and bsdf.inputs['Emission Strength'].is_linked
+    job = B.ObjectBakeJob(bpy.context, [lit, off], settings(resolution=64))
+    B.run_to_end(job)
+    names = sorted(os.path.basename(p) for p in job.written)
+    assert 'Lit_Emission.png' in names and 'Off_Emission.png' not in names, names
+    baked = L.find_principled(lit.active_material.node_tree)
+    strength = L.preset_values(P.get('light_panel_bugs'))['Emission Strength']
+    assert abs(baked.inputs['Emission Strength'].default_value - strength) < 1e-5, 'glow strength kept'
+
+
+@test
+def enamel_chips_and_plastic_damage():
+    """Chipped enamel shows dark ground coat and rust; damaged plastic differs from clean plastic;
+    glitter makes plastic partly metallic."""
+    fresh_scene()
+    clean = L.create_material('enamel_fridge_white')
+    chipped = L.create_material('enamel_fridge_white', 'Chipped')
+    L.apply_values(L.find_bpm_node(chipped), {'Chips': 0.4, 'Rust': 1.0})
+    plain = L.create_material('plastic_white_abs')
+    damaged = L.create_material('plastic_white_abs', 'Damaged')
+    L.apply_values(L.find_bpm_node(damaged), {'Cracks': 0.8, 'Burns': 0.6, 'Gouges': 0.6, 'Stains': 0.6})
+    glitter = L.create_material('plastic_glitter')
+    job = B.TileBakeJob(bpy.context, [clean, chipped, plain, damaged, glitter],
+                        settings(resolution=64, maps={'BASE_COLOR', 'METALLIC'}))
+    B.run_to_end(job)
+    img = {os.path.basename(p): read_png(p)[..., :3].astype(np.float64) for p in job.written}
+    def get(name, kind):
+        return [v for k, v in img.items() if k.startswith(name) and k.endswith(kind + '.png')][0]
+    white = get('Appliance_White', 'BaseColor').mean()
+    assert get('Chipped', 'BaseColor').mean() < white - 0.05, 'chips are darker than the enamel'
+    assert get('Damaged', 'BaseColor').mean() < get('White_ABS', 'BaseColor').mean() - 0.03
+    assert get('Damaged', 'BaseColor').std() > 2 * get('White_ABS', 'BaseColor').std()
+    metal = get('Glitter_Plastic', 'Metallic')
+    assert 0.01 < metal.mean() < 0.6 and metal.max() > 0.5, ('glitter flakes are metal', metal.mean(), metal.max())
+    if any(k.startswith('White_ABS') and 'Metallic' in k for k in img):
+        assert get('White_ABS', 'Metallic').max() < 0.01, 'plain plastic stays dielectric'
+
+
+@test
+def every_module_is_reloaded():
+    """Every module of the add-on is in the reload list (Reload Scripts, installing over an old version)."""
+    folder = os.path.dirname(addon.__file__)
+    files = {f[:-3] for f in os.listdir(folder) if f.endswith('.py') and f not in ('__init__.py', 'cli.py')}
+    missing = files - set(addon._SUBMODULES)
+    assert not missing, missing
+    assert addon._SUBMODULES.index('generators') > max(addon._SUBMODULES.index(f) for f in files
+                                                        if f.startswith('mat_')), 'generators after mat_*'
+
+
+@test
+def plastic_upgrade_keeps_values():
+    """A plastic material made by 1.7 (version 2 group, no damage inputs) upgrades in place."""
+    fresh_scene()
+    mat = L.create_material('plastic_dirty_bin')
+    node = L.find_bpm_node(mat)
+    old = node.node_tree
+    old['bpm_version'] = 2
+    node.inputs['Grime'].default_value = 0.37
+    assert L.is_outdated_group(old)
+    assert L.upgrade_groups(mat) == 1
+    node = L.find_bpm_node(mat)
+    assert node.node_tree != old and not L.is_outdated_group(node.node_tree)
+    assert abs(node.inputs['Grime'].default_value - 0.37) < 1e-6 and node.outputs[0].is_linked
+    assert node.inputs['Cracks'].default_value == 0.0 and node.inputs['Glitter'].default_value == 0.0
+    assert not L.is_outdated(mat)
+    # loading a newer preset into an old material upgrades it first, so the preset's new sliders land
+    mat2 = L.create_material('plastic_white_abs')
+    L.find_bpm_node(mat2).node_tree['bpm_version'] = 2
+    assert L.is_outdated(mat2)
+    L.load_preset_into(mat2, 'plastic_burnt')
+    node = L.find_bpm_node(mat2)
+    assert not L.is_outdated(mat2)
+    want = L.preset_values(P.get('plastic_burnt'))['Burns']
+    assert want > 0 and abs(node.inputs['Burns'].default_value - want) < 1e-6
+    assert hasattr(bpy.types, 'BPM_OT_update_material')
+
+
 STACK_SCRIPT = r'''
 import bpy, sys
 sys.path.insert(0, %(root)r)

@@ -312,6 +312,13 @@ class Builder:
             return node.outputs[0]
         return self._memoized('gray', (value,), make)
 
+    def combine_color(self, r, g, b):
+        """A color socket from three values (no implicit vector-to-color conversion)."""
+        node = self.node('ShaderNodeCombineColor', mode='RGB')
+        for i, v in enumerate((r, g, b)):
+            self.feed(node.inputs[i], v)
+        return node.outputs[0]
+
     def color_scale(self, color, factor):
         """Multiply a color by a scalar (stays a color socket)."""
         if not is_socket(factor) and factor == 1.0:
