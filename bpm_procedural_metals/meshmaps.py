@@ -17,6 +17,22 @@ can be turned back into the distance to the edge.  The materials then draw
 edge wear and grime as bands of an exact width in meters, solid in every
 corner, and the same in EEVEE (Material Preview) as in Cycles.
 
+Making it hold up on real meshes:
+
+* Thin parts (plates, panels, fins thinner than the edge reach) block fewer
+  rays than a thick block, which would make their edge bands too wide.  The
+  occlusion of the flat surface around each edge tells the thickness, and
+  tables measured on test plates of known thickness turn (thickness, value)
+  back into the distance.  Edges are measured twice (ambient occlusion from
+  inside, and the Bevel node); the more trustworthy of the two wins.
+* Smooth-shaded low-poly meshes: the rays leave along a normal blended
+  towards the true face normal where the shading bends far from it, so a
+  smooth cube does not read as a crease everywhere.
+* Inside-out meshes (normals pointing in) are measured from the other side;
+  mixed normals, modifiers that repeat the UVs (Array, Mirror, ...) and edge
+  reaches only a few pixels wide in the maps are reported.
+* The maps are marked out of date when the mesh or its modifiers change.
+
 Storage (survives saving, works with materials shared by many objects):
 
 * UV map "BPM_Maps" on the mesh: its own Smart UV layout, moved into the
@@ -32,6 +48,7 @@ import os
 import re
 import shutil
 import tempfile
+import zlib
 
 import bpy
 import numpy as np
@@ -122,6 +139,61 @@ def signature(mesh):
     return '%d/%d/%.6e' % (n, len(mesh.polygons), float(np.dot(co.astype(np.float64), weights)))
 
 
+_UI_PROPS = {'name', 'show_viewport', 'show_render', 'show_in_editmode', 'show_on_cage', 'show_expanded',
+             'is_active', 'is_override_data_editable', 'use_pin_to_last', 'persistent_uid', 'use_apply_on_spline',
+             'execution_time'}
+
+
+def modifier_signature(obj):
+    """Text that changes when the modifiers that shape the analyzed surface change ('' without any).
+
+    The analysis measures the evaluated mesh (as shown in the viewport), so an Array count or a
+    Solidify thickness changes the maps as much as editing the mesh does.  The add-on's own
+    displacement preview is left out: it only shows what the materials already draw."""
+    parts = []
+    for mod in getattr(obj, 'modifiers', ()):
+        if mod.name == L.DISPLACE_MODIFIER or not mod.show_viewport:
+            continue
+        values = [mod.type]
+        for prop in mod.bl_rna.properties:
+            key = prop.identifier
+            if key in _UI_PROPS or key == 'rna_type' or prop.is_readonly:
+                continue
+            try:
+                value = getattr(mod, key)
+            except AttributeError:
+                continue
+            if prop.type == 'POINTER':
+                value = getattr(value, 'name', None)
+            elif prop.type == 'COLLECTION':
+                continue
+            elif getattr(prop, 'is_array', False):
+                value = tuple(value)
+            if isinstance(value, float):
+                value = round(value, 6)
+            values.append('%s=%r' % (key, value))
+        try:
+            keys = sorted(mod.keys())  # Geometry Nodes inputs
+        except TypeError:  # other modifiers have no custom properties
+            keys = ()
+        for key in keys:
+            value = mod[key]
+            if hasattr(value, 'to_list'):
+                value = value.to_list()
+            values.append('%s=%r' % (key, getattr(value, 'name', value)))
+        parts.append(';'.join(values))
+    if not parts:
+        return ''
+    return '%08x' % (zlib.crc32('|'.join(parts).encode('utf-8')) & 0xffffffff)
+
+
+def full_signature(obj):
+    """The mesh's signature, plus its modifiers' when it has any (older files keep matching)."""
+    text = signature(obj.data)
+    extra = modifier_signature(obj)
+    return text + '/m' + extra if extra else text
+
+
 def has_maps(mesh):
     return mesh is not None and bool(mesh.get(FLAG)) and UV_NAME in mesh.uv_layers
 
@@ -136,8 +208,13 @@ def status(obj):
     img = find_image()
     if UV_NAME not in mesh.uv_layers or img is None or int(mesh.get(TILE, 0)) not in tile_numbers(img):
         return 'BROKEN'
-    if mesh.get(SIGNATURE) != signature(mesh):
-        return 'OUTDATED'
+    current = full_signature(obj)
+    if mesh.get(SIGNATURE) != current:
+        # another object using the same mesh with other modifiers: it uses the maps made for
+        # the first one (said when they were made), until either changes
+        geometry = str(mesh.get(SIGNATURE, '')).split('/m')[0]
+        if obj.get(SIGNATURE) != current or geometry != signature(mesh):
+            return 'OUTDATED'
     return 'OK'
 
 
@@ -306,10 +383,55 @@ _T = np.linspace(0.0, 1.0, 4097)
 # Share of blocked rays next to a wall, at distance t (in ray lengths) from it: the part
 # of the cosine-weighted hemisphere whose rays hit the wall within the ray length.
 _WALL = (np.arccos(_T) - _T * np.sqrt(1.0 - _T * _T)) / np.pi
-# Bevel node: normal deviation (1 - dot) next to a 90 degree edge at distance s (in edge
-# reaches) for a bevel radius of 2 edge reaches (measured).
-_BEVEL_S = np.array([0.0, 0.1, 0.3, 0.5, 0.7, 0.9, 1.1])
-_BEVEL_DEV = np.array([0.29, 0.242, 0.143, 0.071, 0.031, 0.011, 0.003])
+# Calibration, measured on boxes and plates of thickness t with 90 degree edges (Cycles,
+# 1024 px maps, after the blur): rows = t in edge reaches (the last row: thick objects),
+# columns = distance to the edge in edge reaches.
+_CAL_T = np.array([0.05, 0.1, 0.2, 0.3, 0.45, 0.6, 0.8, 1.0])
+_CAL_D = np.array([0.0, 0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5, 0.55, 0.6, 0.7, 0.8, 0.9, 1.0, 1.1,
+                   1.2, 1.3, 2.0])
+# Bevel node (radius 2 edge reaches): normal deviation 1 - dot(bevel normal, normal)
+_CAL_DEV = np.array([
+    [0.2439, 0.2450, 0.2479, 0.2488, 0.2467, 0.2437, 0.2422, 0.2472, 0.2507, 0.2506, 0.2419, 0.2385, 0.2364,
+     0.2141, 0.1899, 0.1542, 0.1293, 0.0955, 0.0684, 0.0466, 0.0000],
+    [0.4274, 0.4287, 0.4311, 0.4319, 0.4290, 0.4232, 0.4107, 0.4045, 0.3968, 0.3855, 0.3477, 0.3291, 0.3153,
+     0.2688, 0.2253, 0.1656, 0.1344, 0.0940, 0.0690, 0.0431, 0.0000],
+    [0.5751, 0.5719, 0.5566, 0.5417, 0.5240, 0.5036, 0.4627, 0.4379, 0.4127, 0.3872, 0.3396, 0.3128, 0.2867,
+     0.2227, 0.1825, 0.1300, 0.1003, 0.0667, 0.0470, 0.0229, 0.0000],
+    [0.5710, 0.5632, 0.5364, 0.5118, 0.4864, 0.4609, 0.4147, 0.3896, 0.3644, 0.3383, 0.2836, 0.2551, 0.2302,
+     0.1710, 0.1347, 0.0890, 0.0643, 0.0388, 0.0261, 0.0117, 0.0000],
+    [0.5008, 0.4913, 0.4619, 0.4358, 0.4090, 0.3820, 0.3331, 0.3066, 0.2807, 0.2553, 0.2090, 0.1847, 0.1617,
+     0.1088, 0.0811, 0.0514, 0.0350, 0.0197, 0.0133, 0.0054, 0.0000],
+    [0.4417, 0.4328, 0.4027, 0.3761, 0.3498, 0.3237, 0.2768, 0.2513, 0.2270, 0.2038, 0.1624, 0.1411, 0.1212,
+     0.0804, 0.0588, 0.0353, 0.0230, 0.0124, 0.0078, 0.0031, 0.0000],
+    [0.3901, 0.3810, 0.3522, 0.3259, 0.2992, 0.2735, 0.2284, 0.2045, 0.1821, 0.1608, 0.1244, 0.1066, 0.0903,
+     0.0576, 0.0408, 0.0234, 0.0152, 0.0079, 0.0047, 0.0018, 0.0000],
+    [0.2985, 0.2915, 0.2750, 0.2460, 0.2205, 0.1891, 0.1721, 0.1433, 0.1225, 0.1032, 0.0823, 0.0716, 0.0554,
+     0.0356, 0.0222, 0.0150, 0.0084, 0.0050, 0.0025, 0.0011, 0.0000],
+])
+# ambient occlusion inside the object (ray length 1 edge reach): share of blocked rays
+_CAL_OCC = np.array([
+    [0.9990, 0.9990, 0.9988, 0.9988, 0.9987, 0.9986, 0.9984, 0.9983, 0.9983, 0.9983, 0.9986, 0.9986, 0.9985,
+     0.9981, 0.9981, 0.9977, 0.9975, 0.9974, 0.9975, 0.9976, 0.9977],
+    [0.9962, 0.9961, 0.9959, 0.9957, 0.9954, 0.9951, 0.9946, 0.9944, 0.9943, 0.9941, 0.9939, 0.9937, 0.9934,
+     0.9932, 0.9921, 0.9909, 0.9903, 0.9902, 0.9897, 0.9898, 0.9901],
+    [0.9838, 0.9835, 0.9830, 0.9826, 0.9822, 0.9816, 0.9800, 0.9790, 0.9780, 0.9771, 0.9763, 0.9757, 0.9748,
+     0.9710, 0.9683, 0.9645, 0.9612, 0.9601, 0.9599, 0.9604, 0.9598],
+    [0.9641, 0.9635, 0.9622, 0.9609, 0.9594, 0.9576, 0.9548, 0.9532, 0.9514, 0.9492, 0.9467, 0.9446, 0.9418,
+     0.9353, 0.9297, 0.9197, 0.9122, 0.9102, 0.9097, 0.9100, 0.9104],
+    [0.9185, 0.9171, 0.9137, 0.9105, 0.9072, 0.9037, 0.8983, 0.8946, 0.8901, 0.8850, 0.8767, 0.8710, 0.8646,
+     0.8503, 0.8378, 0.8128, 0.7994, 0.7970, 0.7970, 0.7968, 0.7998],
+    [0.8540, 0.8512, 0.8448, 0.8387, 0.8321, 0.8252, 0.8137, 0.8064, 0.7988, 0.7904, 0.7752, 0.7643, 0.7525,
+     0.7234, 0.6967, 0.6568, 0.6425, 0.6401, 0.6392, 0.6400, 0.6396],
+    [0.7333, 0.7281, 0.7152, 0.7033, 0.6909, 0.6774, 0.6543, 0.6393, 0.6229, 0.6049, 0.5718, 0.5482, 0.5222,
+     0.4586, 0.4191, 0.3775, 0.3637, 0.3596, 0.3593, 0.3601, 0.3596],
+    [0.5475, 0.5381, 0.5161, 0.4801, 0.4475, 0.4066, 0.3814, 0.3390, 0.3050, 0.2712, 0.2299, 0.2043, 0.1633,
+     0.1040, 0.0543, 0.0262, 0.0047, 0.0003, 0.0000, 0.0000, 0.0000],
+])
+# both fall with the distance (measurement noise aside); the occlusion as the share of its
+# rise above the flat surface's value, which is measured per pixel
+_CAL_DEV = np.minimum.accumulate(_CAL_DEV, axis=1)
+_CAL_EXCESS = np.minimum.accumulate(
+    (_CAL_OCC - _CAL_OCC[:, -1:]) / (_CAL_OCC[:, :1] - _CAL_OCC[:, -1:]), axis=1)
 
 
 def wall_distance(occlusion):
@@ -371,11 +493,54 @@ def dilate(values, covered, steps):
     return values
 
 
-def process(pass_a, pass_b, size):
+def _calibrated_distance(table, t, value):
+    """Distance to the edge (edge reaches) where the row of `table` for thickness `t` has `value`."""
+    pos = np.interp(t, _CAL_T, np.arange(len(_CAL_T), dtype=np.float64))
+    lo = np.floor(pos).astype(int)
+    frac = pos - lo
+    out = np.zeros_like(value)
+    for i, row in enumerate(table):
+        weight = np.where(lo == i, 1.0 - frac, 0.0) + np.where(lo + 1 == i, frac, 0.0)
+        use = weight > 0.0
+        if use.any():
+            out[use] += weight[use] * np.interp(value[use], row[::-1], _CAL_D[::-1])
+    return out
+
+
+def _block_min(values, f):
+    h, w = values.shape
+    big = np.full((-(-h // f) * f, -(-w // f) * f), np.inf, dtype=np.float32)
+    big[:h, :w] = values
+    return big.reshape(big.shape[0] // f, f, big.shape[1] // f, f).min(axis=(1, 3))
+
+
+def background(values, covered, radius):
+    """Lowest value within about `radius` pixels on the same UV island: the value of the flat
+    surface next to the edges (worked out on smaller pixels when the radius is large)."""
+    f = int(max(1, min(radius / 6.0, 8)))
+    small = _block_min(np.where(covered, values, np.inf).astype(np.float32), f)
+    inside = np.isfinite(small)
+    h, w = small.shape
+    for _ in range(int(np.ceil(radius / f))):
+        p = np.pad(small, 1, constant_values=np.inf)
+        low = small.copy()
+        for dy in (0, 1, 2):
+            for dx in (0, 1, 2):
+                low = np.minimum(low, p[dy:dy + h, dx:dx + w])
+        small = np.where(inside, low, np.inf)
+    full = np.repeat(np.repeat(small, f, axis=0), f, axis=1)[:values.shape[0], :values.shape[1]]
+    full = np.where(covered & np.isfinite(full), full, 0.0).astype(np.float32)
+    for _ in range(max(1, f // 2)):  # no blocky steps
+        full = blur(full[..., None], covered)[..., 0]
+    return full
+
+
+def process(pass_a, pass_b, size, edge_px=16.0):
     """Turn the two baked passes into the map pixels (size * size * 4 floats).
 
     pass_a: ambient occlusion inside (R), outside at the cavity reach (G), outside at the
     occlusion reach (B); pass_b: Bevel normal deviation (R).  Alpha = baked pixel.
+    edge_px: the edge reach in pixels of the maps.
     """
     a = pass_a.reshape(size, size, 4)
     b = pass_b.reshape(size, size, 4)
@@ -383,13 +548,24 @@ def process(pass_a, pass_b, size):
     raw = blur(np.concatenate([a[..., :3], b[..., :1]], axis=-1), covered)
     occ_in, occ_cav, occ_far = 1.0 - raw[..., 0], 1.0 - raw[..., 1], 1.0 - raw[..., 2]
     dev = raw[..., 3]
-    # outer edges seen from inside the object; faded out where every ray is blocked (thin plates)
-    convex_ao = (1.0 - wall_distance(occ_in)) * (1.0 - smoothstep(0.8, 0.93, occ_in))
-    # sharp edges (also on thin plates): the Bevel node, except near inner corners where it
-    # bends the normal too
-    s = np.interp(dev, _BEVEL_DEV[::-1], _BEVEL_S[::-1])
-    convex_bevel = np.clip(1.0 - s, 0.0, 1.0) * smoothstep(0.006, 0.02, dev) * (1.0 - smoothstep(0.05, 0.25, occ_cav))
-    convex = np.maximum(convex_ao, convex_bevel)
+    convex = np.zeros((size, size), dtype=np.float32)
+    if covered.any():
+        # Thickness: inside the object, rays shorter than the edge reach only hit the back of
+        # thin parts: on a flat plate of thickness t (in edge reaches) 1 - t^2 of them.
+        flat = np.clip(background(occ_in, covered, 1.25 * max(edge_px, 1.0)), 0.0, 0.9975)
+        sel = covered
+        t = np.sqrt(1.0 - flat[sel])
+        # 1) inside occlusion rising near the edges (walls of the object), relative to the flat
+        #    surface: reliable unless the part is so thin that nearly every ray is blocked anyway
+        top = np.interp(t, _CAL_T, _CAL_OCC[:, 0])
+        excess = np.clip((occ_in[sel] - flat[sel]) / np.maximum(top - flat[sel], 1e-4), 0.0, 1.0)
+        by_ao = np.clip(1.0 - _calibrated_distance(_CAL_EXCESS, t, excess), 0.0, 1.0)
+        w_ao = smoothstep(0.25, 0.45, t)
+        # 2) the Bevel node's bent normal: works on thin plates too, but inner corners bend it as
+        #    well, and smooth shading hides edges from it
+        by_bevel = np.clip(1.0 - _calibrated_distance(_CAL_DEV, t, dev[sel]), 0.0, 1.0)
+        w_bevel = 1.0 - smoothstep(0.05, 0.25, occ_cav[sel])
+        convex[sel] = np.maximum(w_ao * by_ao, w_bevel * by_bevel)
     concave = 1.0 - wall_distance(occ_cav)
     maps = np.stack([convex, concave, np.clip(occ_far, 0.0, 1.0)], axis=-1) * covered[..., None]
     maps = dilate(maps.astype(np.float32), covered, DILATE)
@@ -415,41 +591,180 @@ def _pass_material(name, image):
     return mat, tree, em
 
 
-def _ao(tree, distance, samples, inside=False, only_local=True):
+def _vector_math(tree, operation, a, b=None):
+    node = tree.nodes.new('ShaderNodeVectorMath')
+    node.operation = operation
+    tree.links.new(a, node.inputs[0])
+    if b is not None:
+        tree.links.new(b, node.inputs[1])
+    return node
+
+
+def probe_normal(tree, sign=1.0):
+    """The direction the probes look in: the shading normal, bent to the face's true normal
+    where smooth shading tilts it more than about 20 degrees (a smooth-shaded low-poly cube
+    would otherwise "see" its own faces: crevices everywhere, edges half as wide).  Mild
+    smoothing, like the facets of a low-poly cylinder, stays round.  `sign` -1 looks the
+    other way, for meshes whose faces all point inward."""
+    geo = tree.nodes.new('ShaderNodeNewGeometry')
+    shading, true = geo.outputs['Normal'], geo.outputs['True Normal']
+    cos = _vector_math(tree, 'DOT_PRODUCT', shading, true)
+    bend = tree.nodes.new('ShaderNodeMapRange')
+    bend.interpolation_type = 'SMOOTHSTEP'
+    bend.inputs['From Min'].default_value = 0.906  # cos 25 degrees: the true normal
+    bend.inputs['From Max'].default_value = 0.966  # cos 15 degrees: the shading normal
+    bend.inputs['To Min'].default_value = 1.0
+    bend.inputs['To Max'].default_value = 0.0
+    tree.links.new(cos.outputs['Value'], bend.inputs['Value'])
+    diff = _vector_math(tree, 'SUBTRACT', true, shading)
+    part = _vector_math(tree, 'SCALE', diff.outputs[0])
+    tree.links.new(bend.outputs['Result'], part.inputs['Scale'])
+    mixed = _vector_math(tree, 'ADD', shading, part.outputs[0])
+    unit = _vector_math(tree, 'NORMALIZE', mixed.outputs[0])
+    flip = _vector_math(tree, 'SCALE', unit.outputs[0])
+    flip.inputs['Scale'].default_value = sign
+    return flip.outputs[0]
+
+
+def _ao(tree, normal, distance, samples, inside=False, only_local=True):
     ao = tree.nodes.new('ShaderNodeAmbientOcclusion')
     ao.samples = samples
     ao.inside = inside
     ao.only_local = only_local
     ao.inputs['Distance'].default_value = distance
+    tree.links.new(normal, ao.inputs['Normal'])
     return ao.outputs['AO']
 
 
-def occlusion_material(image, edge, cavity, far, samples, other_objects):
+def occlusion_material(image, edge, cavity, far, samples, other_objects, sign=1.0):
     mat, tree, em = _pass_material('BPM Mesh Analysis', image)
+    normal = probe_normal(tree, sign)
     combine = tree.nodes.new('ShaderNodeCombineColor')
-    tree.links.new(_ao(tree, edge, samples, inside=True), combine.inputs[0])
-    tree.links.new(_ao(tree, cavity, samples, only_local=not other_objects), combine.inputs[1])
-    tree.links.new(_ao(tree, far, samples, only_local=not other_objects), combine.inputs[2])
+    tree.links.new(_ao(tree, normal, edge, samples, inside=True), combine.inputs[0])
+    tree.links.new(_ao(tree, normal, cavity, samples, only_local=not other_objects), combine.inputs[1])
+    tree.links.new(_ao(tree, normal, far, samples, only_local=not other_objects), combine.inputs[2])
     tree.links.new(combine.outputs[0], em.inputs['Color'])
     return mat
 
 
-def bevel_material(image, edge, samples):
+def bevel_material(image, edge, samples, sign=1.0):
     mat, tree, em = _pass_material('BPM Mesh Analysis Edges', image)
+    normal = probe_normal(tree, sign)
     bevel = tree.nodes.new('ShaderNodeBevel')
     bevel.samples = min(max(samples, 4), 16)
     bevel.inputs['Radius'].default_value = 2.0 * edge
-    geo = tree.nodes.new('ShaderNodeNewGeometry')
-    dot = tree.nodes.new('ShaderNodeVectorMath')
-    dot.operation = 'DOT_PRODUCT'
-    tree.links.new(bevel.outputs['Normal'], dot.inputs[0])
-    tree.links.new(geo.outputs['Normal'], dot.inputs[1])
+    tree.links.new(normal, bevel.inputs['Normal'])
+    dot = _vector_math(tree, 'DOT_PRODUCT', bevel.outputs['Normal'], normal)
     dev = tree.nodes.new('ShaderNodeMath')
     dev.operation = 'SUBTRACT'
     dev.inputs[0].default_value = 1.0
     tree.links.new(dot.outputs['Value'], dev.inputs[1])
     tree.links.new(dev.outputs[0], em.inputs['Color'])
     return mat
+
+
+# ------------------------------------------------------------ mesh checks
+def _triangles(mesh):
+    """(loop indices (n, 3), vertex indices (n, 3)) of the mesh's triangles."""
+    mesh.calc_loop_triangles()
+    n = len(mesh.loop_triangles)
+    loops = np.empty(n * 3, dtype=np.int64)
+    verts = np.empty(n * 3, dtype=np.int64)
+    mesh.loop_triangles.foreach_get('loops', loops)
+    mesh.loop_triangles.foreach_get('vertices', verts)
+    return loops.reshape(-1, 3), verts.reshape(-1, 3)
+
+
+def _coordinates(mesh):
+    co = np.empty(len(mesh.vertices) * 3, dtype=np.float64)
+    mesh.vertices.foreach_get('co', co)
+    return co.reshape(-1, 3)
+
+
+def areas(mesh, uv_name, matrix=None):
+    """(surface area, UV area) of a mesh; the surface in world units if `matrix` is given.
+    Overlapping UVs count every time."""
+    loops, verts = _triangles(mesh)
+    if not len(loops) or uv_name not in mesh.uv_layers:
+        return 0.0, 0.0
+    co = _coordinates(mesh)
+    if matrix is not None:
+        m = np.array(matrix)
+        co = co @ m[:3, :3].T
+    p = co[verts]
+    surface = 0.5 * np.linalg.norm(np.cross(p[:, 1] - p[:, 0], p[:, 2] - p[:, 0]), axis=1).sum()
+    uv = np.empty(len(mesh.loops) * 2, dtype=np.float64)
+    mesh.uv_layers[uv_name].data.foreach_get('uv', uv)
+    q = uv.reshape(-1, 2)[loops]
+    e1, e2 = q[:, 1] - q[:, 0], q[:, 2] - q[:, 0]
+    return float(surface), float(0.5 * np.abs(e1[:, 0] * e2[:, 1] - e1[:, 1] * e2[:, 0]).sum())
+
+
+def orientation(mesh):
+    """(share of the faces' shared edges where neighbors point opposite ways, inside-out
+    measure: -1 every face points inward .. 1 every face points outward; 0 for open shapes)."""
+    nl, ne = len(mesh.loops), len(mesh.edges)
+    if not nl or not ne:
+        return 0.0, 1.0
+    lv = np.empty(nl, dtype=np.int64)
+    le = np.empty(nl, dtype=np.int64)
+    mesh.loops.foreach_get('vertex_index', lv)
+    mesh.loops.foreach_get('edge_index', le)
+    ev = np.empty(ne * 2, dtype=np.int64)
+    mesh.edges.foreach_get('vertices', ev)
+    forward = (lv == ev.reshape(-1, 2)[le, 0]).astype(np.float64)
+    uses = np.bincount(le, minlength=ne)
+    ahead = np.bincount(le, weights=forward, minlength=ne)
+    shared = uses == 2  # an edge between two faces runs opposite ways in them
+    flipped = float((ahead[shared] != 1).sum()) / max(int(shared.sum()), 1)
+    _loops, verts = _triangles(mesh)
+    co = _coordinates(mesh)
+    p = co[verts] - co.mean(axis=0)
+    volumes = np.einsum('ij,ij->i', p[:, 0], np.cross(p[:, 1], p[:, 2]))
+    total = np.abs(volumes).sum()
+    return flipped, float(volumes.sum() / total) if total > 0 else 1.0
+
+
+_REPEATING = {'ARRAY': 'Array', 'MIRROR': 'Mirror', 'SOLIDIFY': 'Solidify', 'SCREW': 'Screw',
+              'NODES': 'Geometry Nodes', 'PARTICLE_INSTANCE': 'Particle Instance'}
+
+
+def check_mesh(context, obj):
+    """Problems of an object for the analysis: (probe sign, [(level, text)])."""
+    notes = []
+    depsgraph = context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    mesh = evaluated.to_mesh()
+    try:
+        flipped, outward = orientation(mesh)
+        sign = 1.0
+        if outward < -0.3:
+            sign = -1.0
+            notes.append(('INFO', '"%s": its faces point inward; it was analyzed as if they pointed outward. '
+                          'Recalculate the normals (Edit Mode, Shift+N) to fix its shading too.' % obj.name))
+        if flipped > 0.02:
+            notes.append(('WARNING', '"%s": %d%% of its faces point the other way than their neighbors: edges '
+                          'and corners are swapped there. Fix: Edit Mode, select all, Mesh > Normals > '
+                          'Recalculate Outside (Shift+N).' % (obj.name, round(100 * flipped))))
+        _surface, repeated = areas(mesh, UV_NAME)
+    finally:
+        evaluated.to_mesh_clear()
+    _surface, own = areas(obj.data, UV_NAME)
+    if own > 0 and repeated > 1.15 * own:
+        kinds = sorted({_REPEATING[m.type] for m in obj.modifiers if m.show_viewport and m.type in _REPEATING})
+        what = ('its %s modifier' % ' / '.join(kinds)) if kinds else 'a modifier'
+        notes.append(('WARNING', '"%s": %s repeats faces with the same UVs, so the copies share one analysis '
+                      '(their edges and corners mix). Apply the modifier (Ctrl+A) before analyzing for exact '
+                      'maps.' % (obj.name, what)))
+    return sign, notes
+
+
+def texels_per_unit(obj, size):
+    """Map pixels per meter on the object's surface (BPM_Maps UVs)."""
+    surface, uv_area = areas(obj.data, UV_NAME, obj.matrix_world)
+    if surface <= 0 or uv_area <= 0:
+        return 0.0
+    return size * float(np.sqrt(uv_area / surface))
 
 
 def skip_reason(context, obj):
@@ -542,6 +857,7 @@ class MapsJob(B.Job):
                 twin = done.get(obj.data.name)
                 if twin is not None:
                     self.analyzed.append(obj.name)
+                    obj[SIGNATURE] = full_signature(obj)
                     self.info('"%s" shares its mesh with "%s": it uses the same maps.' % (obj.name, twin))
                     continue
                 yield 'Analyzing %s' % obj.name
@@ -642,6 +958,14 @@ class MapsJob(B.Job):
             if render is not None and render in layers:
                 layers[render].active_render = True
             self.done_steps += 1
+            context.view_layer.update()
+            sign, notes = check_mesh(context, obj)
+            for level, text in notes:
+                (self.warn if level == 'WARNING' else self.info)(text)
+            edge_px = edge * texels_per_unit(obj, size)
+            if 0.0 < edge_px < 2.5:
+                self.warn('"%s": its edge reach (%.1f mm) is only %.1f pixels wide in its maps: the edges come out '
+                          'blurry. Raise the Resolution (or the Edge Reach).' % (obj.name, edge * 1000.0, edge_px))
 
             images = []
             for label in ('Occlusion', 'Edges'):
@@ -650,8 +974,8 @@ class MapsJob(B.Job):
                 img.pixels.foreach_set(np.zeros(size * size * 4, dtype=np.float32))  # alpha 0 = not baked
                 self._temp_images.append(img)
                 images.append(img)
-            occ_mat = occlusion_material(images[0], edge, cavity, far, rays, s.other_objects)
-            edge_mat = bevel_material(images[1], edge, rays)
+            occ_mat = occlusion_material(images[0], edge, cavity, far, rays, s.other_objects, sign)
+            edge_mat = bevel_material(images[1], edge, rays, sign)
             self._materials += [occ_mat, edge_mat]
             if not obj.material_slots:
                 mesh.materials.append(None)
@@ -663,7 +987,7 @@ class MapsJob(B.Job):
                 _bake(context, obj)
                 self.done_steps += 0.5
             yield 'Processing the mesh maps of %s' % obj.name
-            pixels = process(B._pixels(images[0]), B._pixels(images[1]), size)
+            pixels = process(B._pixels(images[0]), B._pixels(images[1]), size, edge_px or 16.0)
             self._drop_temp_images()
 
             tile = self._pick_tile(mesh)
@@ -678,7 +1002,7 @@ class MapsJob(B.Job):
             mesh[EDGE] = edge / scale
             mesh[CAVITY] = cavity / scale
             mesh[OCCLUSION] = far / scale
-            mesh[SIGNATURE] = signature(mesh)
+            mesh[SIGNATURE] = obj[SIGNATURE] = full_signature(obj)
             mesh[RESOLUTION] = size
             self._new_tiles[tile] = (pixels, size)
             self.done_steps += 1

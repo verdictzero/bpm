@@ -1388,6 +1388,113 @@ def mesh_maps_measure_edges_and_corners():
     assert values[flat, :3].max() < 0.05, values[flat, :3].max()
 
 
+@test
+def mesh_maps_thin_plates_keep_their_band():
+    """A plate thinner than the edge reach blocks fewer rays: its band must not come out wider."""
+    fresh_scene()
+    plate = grid_box('Plate')
+    plate.scale = (1.0, 1.0, 0.02)  # 2 cm thick, edge reach 5 cm
+    bpy.context.view_layer.update()
+    job = M.analyze(bpy.context, [plate], M.MapsSettings(resolution=512, quality='GOOD'))
+    assert job.analyzed == ['Plate'] and not job.warnings(), job.messages
+    mesh = plate.data
+    edge = mesh[M.EDGE] * M.object_scale(plate)
+    assert abs(edge - 0.05) < 1e-6, edge
+    values = maps_at_loops(mesh)
+    co = np.array([mesh.vertices[l.vertex_index].co[:] for l in mesh.loops])
+    normal = np.array([mesh.polygons[i].normal[:] for i, p in enumerate(mesh.polygons) for _ in p.loop_indices])
+    top = (np.abs(co[:, 2] - 0.5) < 1e-6) & (normal[:, 2] > 0.99) & (np.abs(co[:, 1]) < 0.2)
+    for d in (0.01, 0.02, 0.03, 0.04, 0.06, 0.1, 0.25):
+        rows = top & (np.abs((0.5 - co[:, 0]) - d) < 1e-6)
+        convex = values[rows, 0].mean()
+        expected = max(0.0, 1.0 - d / edge)
+        assert abs(convex - expected) < 0.15, ('convex', d, convex, expected)
+    assert values[top, 1].max() < 0.1, values[top, 1].max()  # no inner corners
+
+
+def analyzed_face_centers(obj):
+    """Mesh maps (convex, concave, occlusion) at the face centers and just inside the corners."""
+    mesh = obj.data
+    du, dv = M.tile_offset(mesh[M.TILE])
+    px = maps_tile(mesh)
+    uv = uv_array(mesh, M.UV_NAME) - (du, dv)
+    mid = np.array([uv[p.loop_start:p.loop_start + p.loop_total].mean(axis=0) for p in mesh.polygons])
+    corner = uv + (np.repeat(mid, 4, axis=0) - uv) * 0.05
+    return sample(px, mid), sample(px, corner)
+
+
+@test
+def mesh_maps_handle_awkward_meshes():
+    fresh_scene()
+    smooth = add_cube('Smooth')
+    smooth.data.polygons.foreach_set('use_smooth', [True] * len(smooth.data.polygons))
+    inverted = add_cube('Inverted', location=(5, 0, 0))
+    bm_flip(inverted.data, all_faces=True)
+    mixed = add_cube('Mixed', location=(10, 0, 0))
+    bm_flip(mixed.data, all_faces=False)
+    repeated = add_cube('Repeated', location=(0, 5, 0))
+    repeated.modifiers.new('Array', 'ARRAY').count = 3
+    objects = [smooth, inverted, mixed, repeated]
+    for obj in objects:
+        obj.data.update()
+    job = M.analyze(bpy.context, objects, M.MapsSettings(resolution=256, quality='GOOD'))
+    assert sorted(job.analyzed) == sorted(o.name for o in objects), job.messages
+    warnings = job.warnings()
+    assert any('"Mixed"' in w and 'point the other way' in w for w in warnings), warnings
+    assert any('"Repeated"' in w and 'Array modifier' in w for w in warnings), warnings
+    assert not any('"Smooth"' in w or '"Inverted"' in w for w in warnings), warnings
+    assert any(level == 'INFO' and '"Inverted"' in text and 'inward' in text for level, text in job.messages)
+    for obj in (smooth, inverted):
+        centers, corners = analyzed_face_centers(obj)
+        assert centers[:, :2].max() < 0.1, (obj.name, centers[:, :2].max())
+        assert corners[:, 0].min() > 0.6, (obj.name, corners[:, 0].min())  # edges found from the right side
+        assert corners[:, 1].max() < 0.1, (obj.name, corners[:, 1].max())  # and no false inner corners
+    # an edge reach only a few pixels wide in the maps is worth a warning
+    fresh_scene()
+    big = add_cube('Big', size=10.0)
+    job = M.analyze(bpy.context, [big], M.MapsSettings(resolution=64, quality='FAST'))
+    assert any('"Big"' in w and 'pixels wide' in w for w in job.warnings()), job.messages
+
+
+def bm_flip(mesh, all_faces):
+    """Flip every face of a mesh (inside out), or only one of them (mixed normals)."""
+    import bmesh
+    bm = bmesh.new()
+    bm.from_mesh(mesh)
+    bm.faces.ensure_lookup_table()
+    bmesh.ops.reverse_faces(bm, faces=list(bm.faces) if all_faces else [bm.faces[0], bm.faces[1]])
+    bm.to_mesh(mesh)
+    bm.free()
+
+
+@test
+def mesh_maps_follow_the_modifiers():
+    fresh_scene()
+    obj = add_cube('Arrayed')
+    plain = add_cube('Plain', location=(0, 8, 0))
+    signature = M.signature(plain.data)
+    assert M.full_signature(plain) == signature  # no modifiers: as in older versions
+    array = obj.modifiers.new('Array', 'ARRAY')
+    twin = bpy.data.objects.new('Twin', obj.data)  # same mesh, no modifiers
+    bpy.context.scene.collection.objects.link(twin)
+    twin.location = (0, -8, 0)
+    job = M.analyze(bpy.context, [obj, twin, plain], M.MapsSettings(resolution=64, quality='FAST'))
+    assert sorted(job.analyzed) == ['Arrayed', 'Plain', 'Twin'], job.messages
+    assert M.status(obj) == M.status(twin) == M.status(plain) == 'OK'
+    array.count = 3
+    assert M.status(obj) == 'OUTDATED' and M.status(twin) == 'OK'
+    array.count = 2
+    assert M.status(obj) == 'OK'
+    array.show_viewport = False  # hidden: the analysis did not see it either
+    assert M.status(obj) == 'OUTDATED'
+    array.show_viewport = True
+    assert M.status(obj) == 'OK'
+    obj.modifiers.new(L.DISPLACE_MODIFIER, 'DISPLACE')  # the add-on's own displacement preview
+    assert M.status(obj) == 'OK'
+    obj.data.vertices[0].co.x += 0.1  # editing the mesh outdates both users
+    assert M.status(obj) == M.status(twin) == 'OUTDATED'
+
+
 def mask_material():
     """Emission = (edge mask, cavity mask, 0), like the materials use them."""
     mat = bpy.data.materials.new('Masks')
