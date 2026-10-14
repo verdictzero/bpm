@@ -11,6 +11,7 @@ from bpy.props import BoolProperty, EnumProperty, FloatProperty, FloatVectorProp
 from . import bake as B
 from . import decals as D
 from . import library as L
+from . import mapsview as V
 from . import meshmaps as M
 from . import presets as P
 from . import user_presets as U
@@ -735,6 +736,47 @@ class BPM_OT_remove_mesh_maps(bpy.types.Operator):
         return {'FINISHED'}
 
 
+class BPM_OT_save_mesh_maps(bpy.types.Operator):
+    """Save the mesh maps of the objects as image files, to check or reuse them: <Object>_MeshMaps.png
+(red = edges, green = corners, blue = occlusion) and one grayscale image per map. An open Image Editor shows
+the first one"""
+    bl_idname = 'bpm.save_mesh_maps'
+    bl_label = 'Save as Images'
+
+    def execute(self, context):
+        try:
+            objs = [o for o in _scope_objects(context) if o.type == 'MESH']
+            folder = B.resolve_output_dir(context.scene.bpm.maps_save_dir or '//BPM_Mesh_Maps')
+        except B.BakeError as exc:
+            self.report({'ERROR'}, str(exc))
+            return {'CANCELLED'}
+        saved, missing = V.save_images(objs, folder)
+        if not saved:
+            self.report({'WARNING'}, 'These objects have no mesh maps yet: click "Analyze Shape" first.')
+            return {'CANCELLED'}
+        context.scene.bpm.last_folder = folder
+        first = saved[next(iter(saved))][0]
+        shown = V.show_in_image_editor(context, first)
+        text = 'Saved the mesh maps of %d object%s to %s' % (len(saved), 's' * (len(saved) != 1), folder)
+        if missing:
+            text += ' (%d without maps)' % len(missing)
+        if not shown:
+            text += '. Open an Image Editor to look at them'
+        self.report({'INFO'}, text)
+        return {'FINISHED'}
+
+
+class BPM_OT_analysis_view_off(bpy.types.Operator):
+    """Show the objects' own materials again"""
+    bl_idname = 'bpm.analysis_view_off'
+    bl_label = 'Show Materials'
+    bl_options = {'REGISTER', 'UNDO'}
+
+    def execute(self, context):
+        V.turn_off(context)
+        return {'FINISHED'}
+
+
 class BPM_OT_open_folder(bpy.types.Operator):
     """Open the folder with the baked textures"""
     bl_idname = 'bpm.open_folder'
@@ -756,6 +798,7 @@ class BPM_OT_show_procedural(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        V.turn_off(context)
         done = 0
         for obj in _selected_material_objects(context):
             done += B.restore_procedural(obj)
@@ -771,6 +814,7 @@ class BPM_OT_show_baked(bpy.types.Operator):
     bl_options = {'REGISTER', 'UNDO'}
 
     def execute(self, context):
+        V.turn_off(context)
         done = 0
         for obj in _selected_material_objects(context):
             mat = bpy.data.materials.get('%s Baked' % obj.name)
@@ -1043,6 +1087,8 @@ CLASSES = (
     BPM_OT_auto_texture,
     BPM_OT_analyze_shape,
     BPM_OT_remove_mesh_maps,
+    BPM_OT_save_mesh_maps,
+    BPM_OT_analysis_view_off,
     BPM_OT_open_folder,
     BPM_OT_show_procedural,
     BPM_OT_show_baked,

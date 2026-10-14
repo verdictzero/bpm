@@ -590,6 +590,8 @@ def can_have_material(obj):
 
 def assign_material(obj, mat):
     """Put `mat` in the active material slot (adding a slot if needed)."""
+    from . import mapsview  # the analysis view hides the materials: show them again first
+    mapsview.turn_off(bpy.context)
     if not obj.material_slots:
         obj.data.materials.append(mat)
         return

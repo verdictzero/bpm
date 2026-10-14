@@ -170,6 +170,35 @@ Reaches are a share of the object's size, so they suit small and big objects ali
 **Auto Texture** analyzes every object without up-to-date maps first (*Analyze
 Shape First*, on by default), so the baked textures get the precise version.
 
+**It checks your mesh.** Thin plates and sheet metal get edges as wide as on solid
+parts, smooth (shade smooth) low-poly surfaces don't turn into fake creases, and
+the analysis tells you when something will spoil it: normals that point inwards
+(it copes, but other tools won't), *mixed* normals (some faces flipped: use *Mesh >
+Normals > Recalculate Outside*), maps too small for the edge reach (raise *Map Size*),
+or Array / Mirror modifiers that make copies share one spot of the maps (apply them
+first). Changing a modifier also marks the analysis as out of date.
+
+#### View the Maps: check what the analysis found
+
+Open **View the Maps** in the Shape Analysis panel and pick what to show on every
+mesh in the scene (the viewport switches to Material Preview by itself):
+
+* **All**: red = outer edges, green = inner corners, blue = occlusion;
+* **Edges**, **Corners**, **Occlusion**: one map in gray (white = most);
+* **UV Layout**: a checker in the maps' own UV layout; stretched or tiny squares
+  show where the maps are blurry.
+
+Objects without maps show **dark purple**. Your materials stay as they are: click
+**Off** (or **Show Materials** in the Library panel, or apply any material) and
+everything is back, viewport shading included. Baking and analyzing hide the view
+while they run.
+
+**Save as Images** writes the active (or selected) objects' maps as PNG files into
+the folder below it (`//BPM_Mesh_Maps/` = next to the `.blend` file):
+`<Object>_MeshMaps.png` (all three channels) and `_Edges`, `_Corners`, `_Occlusion.png`,
+and shows them in an open Image Editor. The viewport colors pass through Blender's
+color management (AgX/Filmic look); the saved images hold the exact values.
+
 The maps live in a UV map called `BPM_Maps` and an image called `BPM Mesh Maps` packed
 into the `.blend` file. Leave them be; **Remove Mesh Maps** removes both. Exports and
 bakes always use your own UV maps, never `BPM_Maps`.
@@ -561,6 +590,9 @@ blender -b model.blend -P bpm_cli.py -- auto --objects all --size 2048 --save
 
 # only analyze the shape of every mesh (Shape Analysis), then save
 blender -b model.blend -P bpm_cli.py -- maps --objects all --save
+
+# ... and also write the maps as PNG images to check them
+blender -b model.blend -P bpm_cli.py -- maps --objects all --images ./mesh_maps
 ```
 
 `auto` analyzes shapes first; `--no-shape-analysis` skips that and `--maps-size`,
@@ -612,7 +644,12 @@ blender -b model.blend -P bpm_cli.py -- maps --objects all --save
   Cycles (**Preview in Cycles**), or just Auto Texture. It shows on corners and bevels,
   not on smooth spheres.
 * **Edge wear or dirt is in the wrong place after I edited the mesh.** Shape Analysis
-  remembers the old shape: the panel says *the mesh changed*. Click Analyze Shape again.
+  remembers the old shape: the panel says *the mesh or its modifiers changed*. Click
+  Analyze Shape again.
+* **Edge wear or dirt looks wrong even right after analyzing.** Open *View the Maps*
+  (Shape Analysis panel) and look at *Edges* / *Corners*: a whole side white or
+  missing usually means flipped normals (*Mesh > Normals > Recalculate Outside*); blocky
+  edges mean the maps are too small (raise *Map Size*). Read the analysis' warnings.
 * **Lens coating colors are missing in my game engine.** They come from Blender's
   *thin film* setting, which game engines don't have; the baked material in Blender
   keeps it. The engine still gets the glossy, dark (or mirrored) lens.

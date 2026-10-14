@@ -1009,7 +1009,7 @@ class MapsJob(B.Job):
             finished = True
         finally:
             if added_slot:
-                mesh.materials.pop()
+                mesh.materials.clear()  # it had none; pop() would leave the object's slot behind
             else:
                 for slot, mat in zip(obj.material_slots, slots):
                     slot.material = mat

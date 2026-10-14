@@ -1437,8 +1437,10 @@ def mesh_maps_handle_awkward_meshes():
     objects = [smooth, inverted, mixed, repeated]
     for obj in objects:
         obj.data.update()
+    assert not smooth.material_slots
     job = M.analyze(bpy.context, objects, M.MapsSettings(resolution=256, quality='GOOD'))
     assert sorted(job.analyzed) == sorted(o.name for o in objects), job.messages
+    assert not smooth.material_slots and not len(smooth.data.materials)  # its temporary slot is gone
     warnings = job.warnings()
     assert any('"Mixed"' in w and 'point the other way' in w for w in warnings), warnings
     assert any('"Repeated"' in w and 'Array modifier' in w for w in warnings), warnings
@@ -1493,6 +1495,65 @@ def mesh_maps_follow_the_modifiers():
     assert M.status(obj) == 'OK'
     obj.data.vertices[0].co.x += 0.1  # editing the mesh outdates both users
     assert M.status(obj) == M.status(twin) == 'OUTDATED'
+
+
+@test
+def mesh_maps_debug_view():
+    """The analysis view shows the maps on the objects and puts every material back afterwards."""
+    from bpm_procedural_metals import mapsview as V
+    fresh_scene()
+    props = bpy.context.scene.bpm
+    analyzed = add_cube('Analyzed')
+    paint = L.create_material('paint_industrial_yellow')
+    analyzed.data.materials.append(paint)
+    plain = add_cube('Plain', location=(5, 0, 0))  # no maps, no material slots
+    twin = bpy.data.objects.new('Twin', analyzed.data)
+    bpy.context.scene.collection.objects.link(twin)
+    twin.location = (0, 5, 0)
+    M.analyze(bpy.context, [analyzed], M.MapsSettings(resolution=512, quality='FAST'))
+    props.analysis_view = 'ALL'
+    view = V.find_material()
+    assert view is not None
+    for obj in (analyzed, plain, twin):
+        assert [s.material for s in obj.material_slots] == [view], obj.name
+    assert list(analyzed.data.materials) == [paint]  # the mesh keeps its material
+    for obj in (analyzed, plain):
+        obj.select_set(False)
+    px = bake_masks(analyzed, view, size=512)
+    centers = sample(px, face_uv_centers(analyzed.data, 'UVMap'))
+    uv = uv_array(analyzed.data, 'UVMap')
+    mid = np.repeat(face_uv_centers(analyzed.data, 'UVMap'), 4, axis=0)
+    corners = sample(px, uv + (mid - uv) * 0.02)  # 2 cm from the edges (edge reach 10 cm)
+    assert centers[:, :3].max() < 0.05 and corners[:, 0].min() > 0.6, (centers[:, :3].max(), corners[:, 0].min())
+    px = bake_masks(plain, view)
+    purple = sample(px, face_uv_centers(plain.data, 'UVMap'))[:, :3]
+    assert np.abs(purple - np.array(V.NO_MAPS[:3])).max() < 0.02, purple
+    props.analysis_view = 'CONVEX'
+    assert V.find_material() == view and analyzed.material_slots[0].material == view
+    px = bake_masks(analyzed, view, size=512)
+    corners = sample(px, uv + (mid - uv) * 0.02)
+    assert corners[:, 0].min() > 0.6 and np.abs(corners[:, 0] - corners[:, 2]).max() < 1e-3  # gray
+    # analyzing again while it is shown: the materials are not touched, the view stays
+    M.analyze(bpy.context, [analyzed], M.MapsSettings(resolution=512, quality='FAST'))
+    assert analyzed.material_slots[0].material == view and analyzed.bpm_view_slots[0].material is None
+    props.analysis_view = 'OFF'
+    assert [s.material for s in analyzed.material_slots] == [paint] == [s.material for s in twin.material_slots]
+    assert all(s.link == 'DATA' for s in analyzed.material_slots) and not plain.material_slots
+    assert V.find_material() is None
+    # assigning a material turns the view off first
+    props.analysis_view = 'OCCLUSION'
+    L.assign_material(analyzed, paint)
+    assert props.analysis_view == 'OFF' and analyzed.material_slots[0].material == paint
+    # saved as images
+    folder = os.path.join(TMP, 'maps_images')
+    saved, missing = V.save_images([analyzed, plain, twin], folder)
+    assert sorted(saved) == ['Analyzed', 'Twin'] and missing == ['Plain'], (saved, missing)
+    tile = maps_tile(analyzed.data)
+    combined = read_png(saved['Analyzed'][0])
+    assert combined.shape[:2] == tile.shape[:2] and np.abs(combined[..., :3] - tile[..., :3]).max() < 2e-3
+    for path, channel in zip(saved['Analyzed'][1:], range(3)):
+        gray = read_png(path)
+        assert np.abs(gray[..., 0] - tile[..., channel]).max() < 2e-3, path
 
 
 def mask_material():
@@ -1669,10 +1730,14 @@ def command_line_maps():
     os.makedirs(os.path.dirname(blend), exist_ok=True)
     bpy.ops.wm.save_as_mainfile(filepath=blend)
     cmd = [bpy.app.binary_path, '-b', '--factory-startup', blend, '-P', os.path.join(ROOT, 'bpm_cli.py'), '--',
-           'maps', '--objects', 'all', '--size', '64', '--quality', 'fast', '--save']
+           'maps', '--objects', 'all', '--size', '64', '--quality', 'fast', '--save',
+           '--images', '//maps_images']
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
     text = res.stdout + res.stderr
     assert res.returncode == 0 and 'Mesh maps ready for 1 object' in text, text[-3000:]
+    folder = os.path.join(os.path.dirname(blend), 'maps_images')
+    assert sorted(os.listdir(folder)) == ['Crate_Corners.png', 'Crate_Edges.png', 'Crate_MeshMaps.png',
+                                          'Crate_Occlusion.png'], os.listdir(folder)
     bpy.ops.wm.open_mainfile(filepath=blend)
     assert M.status(bpy.data.objects['Crate']) == 'OK'
 

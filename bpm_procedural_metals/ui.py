@@ -82,6 +82,10 @@ class BPM_PT_library(bpy.types.Panel):
         layout = self.layout
         settings = context.scene.bpm
         wm = context.window_manager
+        if settings.analysis_view != 'OFF':
+            box = layout.box()
+            _wrap(box, context, 'The shape analysis is shown instead of the materials.', 'HIDE_OFF')
+            box.operator('bpm.analysis_view_off', icon='MATERIAL')
 
         grid = layout.grid_flow(row_major=True, columns=3, even_columns=True, align=True)
         grid.prop(settings, 'category', expand=True)
@@ -350,8 +354,16 @@ class BPM_PT_mesh_maps(bpy.types.Panel):
     STATUS = {
         'NONE': ('Not analyzed: edges and corners are found live (Cycles only).', 'INFO'),
         'OK': ('Analyzed: edge wear and grime follow its shape.', 'CHECKMARK'),
-        'OUTDATED': ('The mesh changed since its analysis: analyze it again.', 'ERROR'),
+        'OUTDATED': ('The mesh or its modifiers changed since its analysis: analyze it again.', 'ERROR'),
         'BROKEN': ('Its mesh maps were lost (UV map or image deleted): analyze it again.', 'ERROR'),
+    }
+
+    VIEW_HELP = {
+        'ALL': 'Red: outer edges, green: inner corners, blue: enclosed areas.',
+        'CONVEX': 'White on outer edges, fading out at the edge reach.',
+        'CONCAVE': 'White in inner corners and creases, fading out at the corner reach.',
+        'OCCLUSION': 'White where the surface is enclosed, black where it is open.',
+        'UV': 'Even squares everywhere = even map detail. Big or stretched squares: blurry maps there.',
     }
 
     def draw(self, context):
@@ -373,6 +385,15 @@ class BPM_PT_mesh_maps(bpy.types.Panel):
         col.enabled = count > 0
         col.operator('bpm.analyze_shape', icon='MOD_EDGESPLIT',
                      text='Analyze Shape of %d Object%s' % (count, 's' * (count != 1)) if count else 'Analyze Shape')
+        header, body = layout.panel('bpm_maps_view', default_closed=props.analysis_view == 'OFF')
+        header.label(text='View the Maps', icon='HIDE_OFF')
+        if body is not None:
+            grid = body.grid_flow(row_major=True, columns=3, even_columns=True, align=True)
+            grid.prop(props, 'analysis_view', expand=True)
+            if props.analysis_view != 'OFF':
+                _wrap(body, context, self.VIEW_HELP[props.analysis_view] + ' Dark purple: no maps.', 'INFO')
+            body.prop(props, 'maps_save_dir')
+            body.operator('bpm.save_mesh_maps', icon='IMAGE_DATA')
         header, body = layout.panel('bpm_maps_options', default_closed=True)
         header.label(text='Options')
         if body is not None:

@@ -598,6 +598,8 @@ class _SceneState:
         self.mode = context.mode
         if self.active is not None and self.active.mode != 'OBJECT':
             bpy.ops.object.mode_set(mode='OBJECT')
+        from . import mapsview  # the analysis view must not end up in the bakes
+        self.analysis_view = mapsview.suspend(context)
 
     def prepare(self, device, samples):
         scene = self.scene
@@ -647,6 +649,8 @@ class _SceneState:
                         bpy.ops.object.mode_set(mode='EDIT')
             except (ReferenceError, RuntimeError):
                 pass
+            from . import mapsview
+            mapsview.resume(self.context, self.analysis_view)
 
 
 def _bake_call(context, obj, kind, settings, uv_name, normal=False):

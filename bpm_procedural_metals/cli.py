@@ -12,6 +12,7 @@ Run through the ``bpm_cli.py`` script next to this add-on folder, for example::
     blender -b model.blend -P bpm_cli.py -- bake --objects Body,Lid --size 2048 --out ./textures
     blender -b model.blend -P bpm_cli.py -- auto --objects all --size 2048 --save
     blender -b model.blend -P bpm_cli.py -- maps --objects all --save
+    blender -b model.blend -P bpm_cli.py -- maps --objects all --images ./mesh_maps
 """
 
 import argparse
@@ -21,6 +22,7 @@ import bpy
 
 from . import bake as B
 from . import library as L
+from . import mapsview as V
 from . import meshmaps as M
 from . import presets as P
 
@@ -89,6 +91,8 @@ def _parser():
     maps.add_argument('--remove', action='store_true', help='Remove the mesh maps instead')
     maps.add_argument('--save', action='store_true', help='Save the .blend file afterwards')
     maps.add_argument('--gpu', action='store_true', help='Use the GPU if one is configured')
+    maps.add_argument('--images', metavar='FOLDER',
+                      help='Also save each object\'s maps as PNG files into FOLDER (to check them)')
     maps_options(maps)
     return parser
 
@@ -267,6 +271,12 @@ def main(argv=None):
             except B.BakeError as exc:
                 raise SystemExit('BPM error: %s' % exc)
             _print_messages(job)
+            if args.images:
+                saved, missing = V.save_images(objs, bpy.path.abspath(args.images))
+                for name, paths in saved.items():
+                    print('BPM: saved the maps of %s: %s' % (name, ', '.join(paths)))
+                for name in missing:
+                    print('BPM: %s has no mesh maps' % name)
         if args.save:
             if not bpy.data.filepath:
                 raise SystemExit('Cannot --save: open a .blend file first.')

@@ -5,6 +5,7 @@ import bpy
 from bpy.props import (BoolProperty, CollectionProperty, EnumProperty, FloatProperty, IntProperty,
                        PointerProperty, StringProperty)
 
+from . import mapsview as V
 from . import presets as P
 
 
@@ -12,6 +13,17 @@ class BPM_SlotBackup(bpy.types.PropertyGroup):
     """Original material of a slot, kept while the baked material is shown."""
     index: IntProperty()
     material: PointerProperty(type=bpy.types.Material)
+
+
+class BPM_ViewSlot(bpy.types.PropertyGroup):
+    """A material slot as it was before the analysis view was shown on it."""
+    index: IntProperty()
+    link: StringProperty(default='DATA')
+    material: PointerProperty(type=bpy.types.Material)
+
+
+def _analysis_view_changed(self, context):
+    V.update(context)
 
 
 RESOLUTIONS = [
@@ -138,6 +150,15 @@ class BPM_Settings(bpy.types.PropertyGroup):
         name='Include Other Objects', default=True,
         description='Other objects nearby (the floor, parts touching each other) also make corners and '
                     'shade the object. Off: each object is analyzed on its own')
+    analysis_view: EnumProperty(
+        name='View Maps',
+        items=V.MODES,
+        default='OFF', update=_analysis_view_changed,
+        description='Show the shape analysis on the objects instead of their materials (Material Preview), '
+                    'to check what it found. Objects without maps show dark purple')
+    maps_save_dir: StringProperty(
+        name='Folder', subtype='DIR_PATH', default='//BPM_Mesh_Maps/',
+        description='Where "Save as Images" writes the mesh maps ("//" means next to your .blend file)')
     auto_mesh_maps: BoolProperty(
         name='Analyze Shape First', default=True,
         description='Auto Texture: analyze the shape of objects without (up-to-date) mesh maps before '
@@ -156,7 +177,7 @@ class BPM_Settings(bpy.types.PropertyGroup):
     last_warnings: StringProperty(default='')
 
 
-CLASSES = (BPM_SlotBackup, BPM_Settings)
+CLASSES = (BPM_SlotBackup, BPM_ViewSlot, BPM_Settings)
 
 
 def register():
@@ -164,9 +185,11 @@ def register():
         bpy.utils.register_class(cls)
     bpy.types.Scene.bpm = PointerProperty(type=BPM_Settings)
     bpy.types.Object.bpm_backup = CollectionProperty(type=BPM_SlotBackup)
+    bpy.types.Object.bpm_view_slots = CollectionProperty(type=BPM_ViewSlot)
 
 
 def unregister():
+    del bpy.types.Object.bpm_view_slots
     del bpy.types.Object.bpm_backup
     del bpy.types.Scene.bpm
     for cls in reversed(CLASSES):
