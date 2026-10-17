@@ -1,10 +1,10 @@
 # SPDX-License-Identifier: GPL-3.0-or-later
-"""Overlay generators: dirt, dust, edge wear and scratches layered on top of
+"""Overlay generators: dirt, dust, moss, edge wear and scratches layered on top of
 any material.
 
 An overlay node group takes the PBR channels of the material below as inputs
 (Base Color, Metallic, Roughness, Normal, Height, Coat, Transmission) and
-outputs the same channels with its layer mixed on top.  Dirt and dust are
+outputs the same channels with its layer mixed on top.  Dirt, dust and moss are
 opaque: on glass they block the view through it.  It is inserted between the
 material and its Principled BSDF, so overlays stack, work on non-BPM materials
 too and end up in baked textures automatically.
@@ -209,6 +209,87 @@ def build_dust(b, I, gout, tile):
     _finish(b, gout, I, mask, col, I['Dust Roughness'], I['Fill'], thickness, 1.0, normal, height, geo_n)
 
 
+# ------------------------------------------------------------------ moss
+MOSS_PARAMS = [
+    C.fac('Amount', 0.55, 'Moss', 'How much of the surface the moss covers', key=True),
+    C.fac('Opacity', 1.0, 'Moss', 'Fade the whole layer in or out (0 = hidden)'),
+    C.color('Moss Color', (0.035, 0.075, 0.012), 'Moss', 'Main (shaded) moss color', key=True),
+    C.color('Moss Color 2', (0.13, 0.19, 0.025), 'Moss', 'Bright tips and young growth'),
+    C.fac('Moss Roughness', 0.85, 'Moss', 'Glossiness of the moss (1 = completely dull)'),
+    C.fac('Top Facing', 1.0, 'Where', 'Moss grows on surfaces that face up (0 = on every side)', key=True),
+    C.fac('Side Reach', 0.3, 'Where', 'How far the moss creeps over the edges and down the sides'),
+    C.fac('Crevices', 0.6, 'Where', 'Moss filling corners and gaps (Cycles / bake)', key=True),
+    C.fac('Ground Growth', 0.0, 'Where', 'Moss rising from the bottom of the object, like on a damp wall'),
+    C.fac('Patchiness', 0.5, 'Where', 'Separate cushions and clumps instead of an even carpet', key=True),
+    C.scale('Clump Size', 1.0, 0.1, 10.0, 'Where', 'Size of the clumps (higher = bigger)'),
+    C.fac('Lichen', 0.0, 'Lichen', 'Pale crusty lichen spots, also on the sides', key=True),
+    C.color('Lichen Color', (0.30, 0.33, 0.20), 'Lichen', 'Color of the lichen'),
+    C.fac('Dryness', 0.0, 'Look', 'Dried-out moss: brown and straw colored', key=True),
+    C.color('Dry Color', (0.16, 0.11, 0.04), 'Look', 'Color of the dried-out moss'),
+    C.fac('Wetness', 0.0, 'Look', 'Wet moss: darker, deeper green and a little glossy'),
+    C.fac('Fuzz', 0.6, 'Look', 'Fuzzy, uneven borders and texture'),
+    C.fac('Fill', 0.9, 'Look', 'How much the moss hides the surface relief below'),
+    C.fac('Thickness', 0.6, 'Look', 'Thickness of the moss in the height map'),
+] + OVERLAY_PATTERN
+
+
+def build_moss(b, I, gout, tile):
+    S = _space(b, I, tile, 6)
+    inv = b.div(1.0, I['Scale'])
+    cav = F.cavity_mask(b, S, b.mul(inv, 0.3))
+    _c, _m, _r, normal, height, _coat, geo_n = _below(b, I)
+
+    fine = S.znoise(22.0, 51, detail=5.0, roughness=0.7, label='Moss Fuzz')
+    clump = S.znoise(b.div(2.2, I['Clump Size']), 52, detail=5.0, roughness=0.6, label='Moss Clumps')
+    if tile:
+        facing = 1.0  # a tile is treated like a surface that faces up
+        near_ground = 0.0
+    else:
+        # up-facing faces; Side Reach lowers the slope the moss still grows on
+        start = b.madd(I['Side Reach'], -0.95, 0.7)
+        up = b.smoothstep(start, b.add(start, 0.3), b.madd(fine, 0.03, b.separate(geo_n)[2]))
+        facing = b.mix(I['Top Facing'], 1.0, up)
+        gz = b.separate(b.texcoord().outputs['Generated'])[2]
+        rim = b.madd(clump, 0.05, b.madd(fine, 0.012, gz))
+        near_ground = b.mul(b.one_minus(b.smoothstep(0.04, 0.3, rim)), I['Ground Growth'])
+    amount = I['Amount']
+    density = b.mul(amount, facing)
+    if is_socket(cav):
+        density = b.maximum(density, b.mul(cav, b.mul(I['Crevices'], b.clamp01(b.madd(amount, 2.0, 0.5)))))
+    density = b.maximum(density, near_ground)
+    # clumps: the patch field is mostly clump noise when patchy, mostly fine grain when it is a carpet
+    patchy = I['Patchiness']
+    fuzz = I['Fuzz']
+    field = b.madd(clump, patchy, b.mul(fine, b.madd(fuzz, 0.3, 0.1)))
+    soft = b.madd(fuzz, 0.25, b.madd(patchy, -0.1, 0.25))
+    moss = F.cover(b, field, density, soft)
+
+    # lichen: round crusty spots, any direction
+    lz = S.znoise(14.0, 53, detail=2.0, roughness=0.45, label='Lichen')
+    spread = S.znoise(1.5, 55, detail=2.0, label='Lichen Spread')
+    lichen = F.cover(b, b.madd(spread, 0.6, b.madd(fine, 0.1, lz)), b.mul(I['Lichen'], 0.3), 0.07)
+    lichen = b.mul(lichen, b.one_minus(moss))
+    mask = b.maximum(moss, lichen)
+
+    # color: shaded cushions with bright tips, thinner (darker) at the borders
+    tips = b.smoothstep(-0.6, 1.8, b.madd(fine, 0.8, b.mul(clump, 0.4)))
+    col = b.mix_color(tips, I['Moss Color'], I['Moss Color 2'])
+    cz = S.znoise(3.0, 54, detail=3.0, roughness=0.5, label='Moss Color')
+    grain = b.madd(fine, b.mul(fuzz, 0.12), b.madd(cz, 0.12, b.madd(moss, 0.25, 0.75)))
+    col = b.color_scale(col, b.maximum(grain, 0.3))
+    dry = b.clamp01(b.mul(I['Dryness'], b.madd(cz, 0.35, 1.0)))
+    col = b.mix_color(dry, col, b.color_scale(I['Dry Color'], b.madd(tips, 0.6, 0.7)))
+    wet = I['Wetness']
+    col = b.color_scale(col, b.madd(wet, -0.35, 1.0))
+    col = b.mix_color(b.div(lichen, b.maximum(mask, 0.001)), col, I['Lichen Color'])
+    rough = b.madd(wet, -0.2, b.madd(fine, 0.03, I['Moss Roughness']))
+
+    # height: cushions, bumpy with the fine grain
+    pile = b.clamp01(b.madd(fine, b.mul(fuzz, 0.15), b.madd(clump, 0.12, 0.75)))
+    thickness = b.mul(b.mul(I['Thickness'], 0.16), b.mix(b.div(lichen, b.maximum(mask, 0.001)), pile, 0.08))
+    _finish(b, gout, I, mask, col, rough, I['Fill'], thickness, 1.0, normal, height, geo_n)
+
+
 # ------------------------------------------------------------------ edge wear
 WEAR_PARAMS = [
     C.fac('Amount', 0.6, 'Edge Wear', 'How far the edges are worn (visible in Cycles and in baked textures)',
@@ -365,6 +446,10 @@ DIRT_SPEC = dict(
 DUST_SPEC = dict(
     label='Dust Overlay', category='OVERLAY', kind='overlay', params=_channel_params() + DUST_PARAMS,
     outputs=OUTPUTS, build=build_dust, version=OVERLAY_VERSION,
+)
+MOSS_SPEC = dict(
+    label='Moss Overlay', category='OVERLAY', kind='overlay', params=_channel_params() + MOSS_PARAMS,
+    outputs=OUTPUTS, build=build_moss, version=OVERLAY_VERSION,
 )
 # Decals (decals.py) are overlays too, but every decal has a node group of its own.
 DECAL_SPEC = dict(

@@ -241,7 +241,7 @@ class BPM_OT_save_preset(bpy.types.Operator):
     name: StringProperty(name='Name', description='Name of your preset (an existing name is replaced)')
     description: StringProperty(name='Description', description='A short note shown in the gallery')
     include_overlays: BoolProperty(name='Include Overlays', default=True,
-                                   description='Save the dirt, dust, wear and scratch overlays too')
+                                   description='Save the dirt, dust, moss, wear and scratch overlays too')
 
     @classmethod
     def poll(cls, context):
@@ -430,7 +430,7 @@ def _plain_material(obj):
 
 
 class BPM_OT_add_overlay(bpy.types.Operator):
-    """Layer dirt, dust, edge wear or scratches on top of the material of the selected objects"""
+    """Layer dirt, dust, moss, edge wear or scratches on top of the material of the selected objects"""
     bl_idname = 'bpm.add_overlay'
     bl_label = 'Add Overlay'
     bl_options = {'REGISTER', 'UNDO'}

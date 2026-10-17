@@ -1,9 +1,9 @@
 schema_version = "1.0.0"
 
 id = "bpm_procedural_metals"
-version = "1.8.1"
+version = "1.9.0"
 name = "BPM - Procedural Materials"
-tagline = "Metal, enamel, neon, terrain, gradients, decals, auto texture"
+tagline = "Metal, paint, moss, terrain, gradients, decals, auto texture"
 maintainer = "verdictzero"
 type = "add-on"
 website = "https://github.com/verdictzero/bpm"

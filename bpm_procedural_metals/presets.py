@@ -33,7 +33,8 @@ CATEGORIES = (
     ('LEATHER', 'Leather', 'Smooth, pebbled, suede, patent, croc and worn leather', 'Leather', 5),
     ('FABRIC', 'Fabric & Composites', 'Canvas, denim, nylon, carbon fiber, kevlar...', 'Fabric', 6),
     ('ORGANIC', 'Biomechanical', 'Giger-style organic machinery: ribs, tubes, bone, slime', 'Organic', 7),
-    ('OVERLAY', 'Dirt & Dust', 'Layers of dirt or dust that go on top of any material', 'Dirt & Dust', 8),
+    ('OVERLAY', 'Dirt, Dust & Moss', 'Layers of dirt, dust, moss or lichen that go on top of any material',
+     'Dirt & Moss', 8),
     ('WEAR', 'Edge Wear & Scratches', 'Chipped or rubbed edges, scratches and swirl marks that go on top of any '
      'material', 'Wear', 12),
     ('USER', 'My Presets', 'Materials you saved yourself (Adjust Material > Save Preset)', 'Mine', 16),
@@ -46,7 +47,7 @@ GENERATOR_CATEGORY = {
     'METAL': 'METAL', 'PAINT': 'PAINT', 'ENAMEL': 'ENAMEL', 'LIGHT': 'LIGHT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'TERRAIN': 'TERRAIN',
     'LAVA': 'TERRAIN', 'GRADIENT': 'GRADIENT', 'WOOD': 'WOOD',
     'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS', 'LENS': 'LENS', 'LEATHER': 'LEATHER', 'FABRIC': 'FABRIC',
-    'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
+    'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY', 'MOSS': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
 }
 
 PRESETS = []
@@ -324,6 +325,51 @@ _add('paint_rusted_through', 'Rusted-Through Paint', 'PAINT',
      'Grey paint that has mostly lost the fight against rust.',
      Paint_Color=(0.35, 0.33, 0.30), Wear=0.6, Edge_Wear=1.0, Primer=0.2, Rust=1.0, Rust_Spread=0.8,
      Rust_Streaks=0.6, Fading=0.4, Dirt=0.5)
+
+# ------------------------------------------------------------------ tractor paints
+# Glossy farm-machine enamels over cast iron, each from showroom new to a rusty relic in the field.
+MUD = (0.055, 0.038, 0.022)
+MUD_2 = (0.12, 0.085, 0.05)
+FIELD_DUST = (0.36, 0.30, 0.22)
+TRACTOR_STATES = (
+    ('new', 'New', 'Showroom-new, deep glossy enamel',
+     dict(Paint_Roughness=0.14, Orange_Peel=0.25, Paint_Variation=0.05, Wear=0.0, Edge_Wear=0.04,
+          Scratches=0.02, Rust=0.0, Rust_Spread=0.0, Dirt=0.05), ()),
+    ('worked', 'Working', 'Hard at work: glossy but scratched, chipped on the edges and muddy low down',
+     dict(Paint_Roughness=0.3, Wear=0.02, Edge_Wear=0.55, Primer=0.2, Scratches=0.35, Rust=0.25,
+          Rust_Spread=0.1, Dirt=0.5, Dirt_Color=MUD),
+     (('DIRT', dict(Amount=0.65, Ground_Grime=0.85, Grime_Height=0.35, Splatter=0.6, Streaks=0.3,
+                    Patches=0.2, Wetness=0.2, Dirt_Color=MUD, Dirt_Color_2=MUD_2)),)),
+    ('faded', 'Sun-Faded', 'Decades in the sun: chalky, faded paint, worn edges and light rust',
+     dict(Fading=0.4, Paint_Roughness=0.55, Wear=0.06, Edge_Wear=0.75, Primer=0.3, Scratches=0.3,
+          Rust=0.45, Rust_Spread=0.3, Rust_Streaks=0.2, Dirt=0.35),
+     (('DUST', dict(Amount=0.15, Dust_Color=FIELD_DUST)),)),
+    ('barn', 'Barn Find', 'Parked in a barn for years: flaking paint, rust streaks and a thick coat of dust',
+     dict(Fading=0.3, Paint_Roughness=0.55, Wear=0.25, Edge_Wear=0.95, Primer=0.35, Primer_Color=RED_OXIDE,
+          Scratches=0.4, Rust=0.8, Rust_Spread=0.55, Rust_Streaks=0.5, Dirt=0.6),
+     (('DUST', dict(Amount=0.35, Clumps=0.5, Dust_Color=FIELD_DUST)),)),
+    ('relic', 'Field Relic', 'Left out in the field: mostly rust, the paint hanging on in patches, moss on top',
+     dict(Fading=0.7, Paint_Roughness=0.7, Wear=0.55, Edge_Wear=1.0, Primer=0.2, Scratches=0.3, Rust=1.0,
+          Rust_Spread=0.8, Rust_Streaks=0.7, Rust_Scale=3.0, Dirt=0.6),
+     (('MOSS', dict(Amount=0.35, Patchiness=0.75, Side_Reach=0.2, Lichen=0.3, Dryness=0.25)),)),
+)
+TRACTOR_COLORS = (
+    ('green', 'Tractor Green', (0.037, 0.202, 0.024), 'classic farm green'),
+    ('yellow', 'Tractor Yellow', (0.86, 0.52, 0.0), 'wheel and stripe yellow'),
+    ('red', 'Tractor Red', (0.462, 0.006, 0.011), 'classic tractor red'),
+    ('orange', 'Tractor Orange', (0.807, 0.175, 0.004), 'bright tractor orange'),
+    ('blue', 'Tractor Blue', (0.012, 0.078, 0.332), 'deep tractor blue'),
+    ('grey', 'Tractor Grey', (0.254, 0.266, 0.275), 'light grey of the little grey tractors'),
+    ('cream', 'Tractor Cream', (0.70, 0.60, 0.37), 'cream wheel and grille paint'),
+    ('lime', 'Tractor Light Green', (0.114, 0.323, 0.023), 'lighter, yellowish tractor green'),
+)
+for _key, _name, _color, _what in TRACTOR_COLORS:
+    for _state, _label, _desc, _values, _overlays in TRACTOR_STATES:
+        _add('tractor_%s_%s' % (_key, _state), '%s (%s)' % (_name, _label), 'PAINT',
+             '%s. %s.' % (_what[0].upper() + _what[1:], _desc),
+             overlays=[overlay(g, **v) for g, v in _overlays], Paint_Color=_color,
+             Metal_Color=(0.2, 0.2, 0.21), Metal_Roughness=0.5, **_values)
+del _key, _name, _color, _what, _state, _label, _desc, _values, _overlays
 
 # ------------------------------------------------------------------ porcelain enamel
 ENAMEL_THUMB = dict(zoom=0.6)
@@ -849,9 +895,138 @@ _grad('grad_copper_fade', 'Copper to Bronze', 'Warm metal shading from bright co
 _grad('grad_paint_to_metal', 'Paint Fading to Metal', 'Matte red paint turning into bare polished steel.',
       ['#9b1b1b', '#c4c6c8'], positions=(0.4, 0.6), Interpolation=SMOOTH, Metallic=0.0, Metallic_End=1.0,
       Roughness=0.6, Roughness_End=0.15)
+_grad('grad_copper_verdigris', 'Copper to Verdigris', 'Bright copper turning into chalky blue-green verdigris.',
+      ['#c77a4f', '#7a5236', '#3f8a70', '#86c9ad'], positions=(0.0, 0.35, 0.65, 1.0), Noise=0.35,
+      Noise_Size=0.15, Metallic=1.0, Metallic_End=0.0, Roughness=0.3, Roughness_End=0.85)
+_grad('grad_bronze_patina', 'Bronze Patina', 'Dark statue bronze with green patina gathering higher up.',
+      ['#4a2f17', '#6e4a26', '#4f6b4a', '#6fa38a'], Noise=0.45, Noise_Size=0.1, Metallic=1.0,
+      Metallic_End=0.1, Roughness=0.4, Roughness_End=0.8)
 _grad('grad_conic_chrome', 'Conic Chrome', 'Spun-metal highlights sweeping around the center.',
       ['#4a4a4a', '#f0f0f0'], Type=ANGULAR, Repeat=4, Repeat_Mode=PING_PONG, Interpolation=SMOOTH,
       Metallic=1.0, Metallic_End=1.0, Roughness=0.15, Roughness_End=0.15)
+# -- rust and oxides
+STEEL_HEX = '#8c9196'
+_grad('grad_rust_bleed', 'Rust Bleed', 'Rust spreading down over bare steel from the top, with a ragged edge.',
+      [STEEL_HEX, '#7a6a5e', '#a24a1c', '#5e260d'], positions=(0.0, 0.35, 0.55, 1.0), Noise=0.55,
+      Noise_Size=0.08, Metallic=1.0, Metallic_End=0.0, Roughness=0.35, Roughness_End=0.9)
+_grad('grad_rust_creep', 'Rust Creeping Up', 'Steel rusting from the ground up: heavy rust low, clean metal on top.',
+      ['#3d1a0a', '#8a3a14', '#b0622f', STEEL_HEX], positions=(0.0, 0.25, 0.45, 0.7), Noise=0.5,
+      Noise_Size=0.1, Metallic=0.0, Metallic_End=1.0, Roughness=0.9, Roughness_End=0.35)
+_grad('grad_rusty_steel', 'Steel to Rust', 'Left to right from bright steel through orange rust to dark flaking scale.',
+      ['#9a9fa4', '#b8642a', '#7a3212', '#2e1308'], Angle=H, Noise=0.3, Noise_Size=0.2, Metallic=1.0,
+      Metallic_End=0.0, Roughness=0.3, Roughness_End=0.95)
+_grad('grad_iron_oxide', 'Iron Oxide', 'Deep red-brown to bright orange oxide, like old mining spoil.',
+      ['#3a1405', '#7a2e0e', '#b5541f', '#d88a3d'], Noise=0.3, Noise_Size=0.3, Roughness=0.9, Roughness_End=0.85)
+_grad('grad_corten', 'Weathering Steel', 'Even, velvety brown rust of Cor-Ten steel, darker at the base.',
+      ['#2e140a', '#5f2a12', '#8a3f1a', '#9c5126'], Noise=0.25, Noise_Size=0.05, Roughness=0.85,
+      Roughness_End=0.8)
+_grad('grad_burnt_orange', 'Burnt Orange', 'Deep burnt orange to warm amber.',
+      ['#4f1a05', '#b34a0c', '#e8862a'], Roughness=0.6, Roughness_End=0.5)
+_grad('grad_rust_spot', 'Rust Spot', 'A round rust bloom on steel: dark pitted center, orange halo, clean metal outside.',
+      ['#3a1607', '#9a3f15', '#c4743b', STEEL_HEX], positions=(0.0, 0.35, 0.6, 0.85), Type=RADIAL, Noise=0.4,
+      Noise_Size=0.08, Metallic=0.0, Metallic_End=1.0, Roughness=0.95, Roughness_End=0.35)
+_grad('grad_rust_waterline', 'Rust Waterline', 'A rusty band around the middle where water stood, steel above and below.',
+      ['#5a250c', '#a8521f', STEEL_HEX], positions=(0.0, 0.3, 0.75), Type=MIRRORED, Size=0.5, Noise=0.45,
+      Noise_Size=0.06, Metallic=0.0, Metallic_End=1.0, Roughness=0.9, Roughness_End=0.35)
+_grad('grad_rust_top', 'Rust on Top', 'Rust where rain sits: on the faces that look up, bare steel on the sides.',
+      [STEEL_HEX, STEEL_HEX, '#a24a1c', '#6b2c10'], positions=(0.0, 0.62, 0.78, 0.95), Type=SLOPE,
+      Projection=WORLD, View_Axis=TOP, Noise=0.4, Noise_Size=0.06, Metallic=1.0, Metallic_End=0.0,
+      Roughness=0.35, Roughness_End=0.9)
+_grad('grad_rust_bands', 'Rust Bands', 'Hard bands of rust colors, from fresh orange to black scale.',
+      ['#1f0d05', '#5a240c', '#94401a', '#c4682e', '#dd9b55'], Steps=7, Noise=0.2, Noise_Size=0.2,
+      Roughness=0.9, Roughness_End=0.8)
+_grad('grad_scorched_rust', 'Scorched Rust', 'Fire-blackened metal fading into heat-reddened rust.',
+      ['#0c0907', '#2e130a', '#7a2a10', '#b0582a'], Noise=0.35, Noise_Size=0.15, Metallic=0.6,
+      Metallic_End=0.0, Roughness=0.7, Roughness_End=0.9)
+_grad('grad_rusty_sheen', 'Rusty Sheen', 'Rust in the middle of each face, still-metallic brown at the grazing edges.',
+      ['#b0562a', '#8a3c16', '#5a3a28'], Type=FACING, Metallic=0.0, Metallic_End=0.8, Roughness=0.9,
+      Roughness_End=0.5)
+# -- earth tones
+_grad('grad_terracotta', 'Terracotta', 'Fired clay from deep brick red to sun-baked pale terracotta.',
+      ['#7a3420', '#b55a3c', '#d98a68'], Roughness=0.85, Roughness_End=0.85)
+_grad('grad_ochre', 'Ochre', 'Dark yellow-brown earth to bright golden ochre pigment.',
+      ['#5e3c0e', '#a8761f', '#d9aa4a'], Roughness=0.85, Roughness_End=0.85)
+_grad('grad_sienna', 'Burnt Sienna', 'Rich red-brown earth pigment, dark to light.',
+      ['#3f190a', '#8a3b1c', '#c0653a'], Roughness=0.8, Roughness_End=0.8)
+_grad('grad_umber', 'Raw to Burnt Umber', 'Cool dark brown warming into raw umber.',
+      ['#1f150d', '#4a3220', '#7a5c3c'], Angle=H, Roughness=0.8, Roughness_End=0.8)
+_grad('grad_red_clay', 'Red Clay', 'Wet dark clay at the bottom drying to pale orange on top.',
+      ['#4a1e10', '#8f3f22', '#c27a52'], Noise=0.3, Noise_Size=0.2, Roughness=0.3, Roughness_End=0.9)
+_grad('grad_drying_mud', 'Drying Mud', 'Glossy wet mud low down, dull and pale where it has dried.',
+      ['#1c130b', '#3a2a1a', '#7a6650', '#a39079'], positions=(0.0, 0.3, 0.55, 1.0), Noise=0.5,
+      Noise_Size=0.12, Roughness=0.15, Roughness_End=0.95)
+_grad('grad_wet_sand', 'Wet Sand Shore', 'Dark wet sand at the waterline drying into pale beach sand.',
+      ['#4f4030', '#8a7558', '#d6c09a', '#ead8b4'], positions=(0.0, 0.3, 0.6, 1.0), Noise=0.35,
+      Noise_Size=0.2, Roughness=0.25, Roughness_End=0.9)
+_grad('grad_desert_dunes', 'Desert Dunes', 'Warm dune sand from shaded orange to pale sunlit crest.',
+      ['#8a4a22', '#c9874c', '#e9c48c', '#f5e0b8'], Noise=0.3, Noise_Size=0.5, Roughness=0.9, Roughness_End=0.9)
+_grad('grad_sand_top', 'Sand on Top', 'Pale sand drifted onto the faces that look up, dark rock on the sides.',
+      ['#4a3b2e', '#4a3b2e', '#c9a873', '#e2c793'], positions=(0.0, 0.7, 0.82, 1.0), Type=SLOPE,
+      Projection=WORLD, View_Axis=TOP, Noise=0.35, Noise_Size=0.08, Roughness=0.75, Roughness_End=0.95)
+_grad('grad_dirt_top', 'Soil on Top', 'Brown soil caked on the top faces, grey stone below.',
+      ['#6b6862', '#6b6862', '#4a3524', '#2e2016'], positions=(0.0, 0.66, 0.8, 1.0), Type=SLOPE,
+      Projection=WORLD, View_Axis=TOP, Noise=0.45, Noise_Size=0.08, Roughness=0.7, Roughness_End=0.95)
+_grad('grad_canyon_strata', 'Canyon Strata', 'Wavy layered canyon rock: rust red, salmon, cream and brown.',
+      ['#7a2e16', '#c2643a', '#e3a77a', '#f0d6b0', '#8a4a2a'], Repeat=4, Repeat_Mode=PING_PONG, Noise=0.3,
+      Noise_Size=0.6, Roughness=0.85, Roughness_End=0.85)
+_grad('grad_sandstone', 'Sandstone Bands', 'Fine, wavy bands of buff and rose sandstone.',
+      ['#c29a6e', '#e2c39b', '#b87a56', '#ead2ae'], Repeat=7, Repeat_Mode=PING_PONG, Interpolation=SMOOTH,
+      Noise=0.25, Noise_Size=0.35, Roughness=0.9, Roughness_End=0.9, Relief=0.25)
+_grad('grad_red_rock', 'Red Rock Mesa', 'Dark rust-red base under bright red cliffs and a pale cap rock.',
+      ['#4a1a0e', '#9a3b1e', '#c4552c', '#d98e5e', '#ecd2b0'], positions=(0.0, 0.25, 0.55, 0.8, 0.9),
+      Noise=0.2, Noise_Size=0.4, Roughness=0.85, Roughness_End=0.85)
+_grad('grad_badlands', 'Badlands', 'Striped badlands clay: mauve, ochre, grey and white in hard layers.',
+      ['#6b4f5c', '#c79a5a', '#9a958e', '#e6ddd0', '#8a5a3a'], Repeat=3, Repeat_Mode=REPEAT, Steps=10,
+      Noise=0.3, Noise_Size=0.5, Roughness=0.9, Roughness_End=0.9)
+_grad('grad_soil_layers', 'Soil Layers', 'A dug-out soil profile: bedrock, orange clay, brown subsoil, black topsoil.',
+      ['#7d7a72', '#b8743a', '#6b4626', '#2a1b10', '#1a120a'], positions=(0.0, 0.25, 0.5, 0.78, 0.92),
+      Interpolation=SMOOTH, Noise=0.4, Noise_Size=0.15, Roughness=0.8, Roughness_End=0.95)
+_grad('grad_sediment', 'River Sediment', 'Many thin silt and sand layers, gently wavy.',
+      ['#4a3e32', '#8a7a62', '#b8a684', '#6e5a44'], Repeat=5, Repeat_Mode=PING_PONG, Steps=14, Noise=0.35,
+      Noise_Size=0.3, Roughness=0.85, Roughness_End=0.85, Relief=0.3)
+_grad('grad_peat', 'Peat Bog', 'Black wet peat rising into fibrous brown and dry straw.',
+      ['#0d0907', '#2e1f12', '#5a3d1e', '#9a7a42'], positions=(0.0, 0.4, 0.75, 1.0), Noise=0.45, Noise_Size=0.1,
+      Roughness=0.3, Roughness_End=0.95)
+_grad('grad_loam', 'Garden Loam', 'Dark, rich garden soil with a lighter, dry crust.',
+      ['#140d08', '#2e1e13', '#4f3b2a'], Noise=0.5, Noise_Size=0.05, Roughness=0.85, Roughness_End=0.95)
+_grad('grad_adobe', 'Adobe Wall', 'Dusty adobe: darker, dirtier near the ground, pale sun-bleached higher up.',
+      ['#5a3f2a', '#a37a54', '#d2b08a', '#e3c9a6'], positions=(0.0, 0.2, 0.5, 1.0), Noise=0.3, Noise_Size=0.2,
+      Roughness=0.9, Roughness_End=0.9)
+_grad('grad_brick_dust', 'Brick Dust', 'Crushed brick red fading to dusty pink.',
+      ['#6a2214', '#a8452c', '#d2917a'], Angle=D45, Size=1.4, Roughness=0.9, Roughness_End=0.9)
+_grad('grad_volcanic_soil', 'Volcanic Soil', 'Black basalt grit into dark red-brown scoria.',
+      ['#0e0c0b', '#2a1a14', '#5a2a1a'], Noise=0.4, Noise_Size=0.1, Roughness=0.85, Roughness_End=0.9)
+_grad('grad_mars_dust', 'Martian Dust', 'Butterscotch dust over rusty red regolith.',
+      ['#5a2412', '#a24a24', '#c97a44', '#dba878'], Noise=0.3, Noise_Size=0.4, Roughness=0.9, Roughness_End=0.9)
+_grad('grad_desert_dusk', 'Desert Dusk', 'Dusty orange horizon up to a brown-violet evening sky.',
+      ['#e8a35a', '#c46a3c', '#7a3e3a', '#3a2232'], Bias=0.2, Roughness=0.6)
+_grad('grad_earth_palette', 'Earth Palette', 'Five earth pigments side by side: umber, sienna, ochre, olive, sand.',
+      ['#3e2a1a', '#8a3b1c', '#b07d24', '#5c5a2a', '#d9c49a'], Angle=H, Steps=5, Roughness=0.8, Roughness_End=0.8)
+_grad('grad_clay_pot', 'Sun-Baked Clay', 'A pale sun-baked center darkening to shaded red clay outside.',
+      ['#e0a87e', '#b8683f', '#6a2c18'], Type=RADIAL, Interpolation=SMOOTH, Roughness=0.85, Roughness_End=0.85)
+# -- plants and natural browns
+_grad('grad_autumn', 'Autumn Leaves', 'The turn of the leaves: green, gold, orange, red and brown.',
+      ['#4a6b1f', '#c9a12a', '#d9701c', '#9a2a14', '#4a2a14'], Angle=H, Noise=0.25, Noise_Size=0.2,
+      Roughness=0.6, Roughness_End=0.7)
+_grad('grad_forest_floor', 'Forest Floor', 'Dark humus, brown leaf litter and green moss on top.',
+      ['#140e09', '#4a3220', '#7a5a34', '#4f5f22'], positions=(0.0, 0.35, 0.65, 1.0), Noise=0.5,
+      Noise_Size=0.08, Roughness=0.85, Roughness_End=0.9)
+_grad('grad_savanna', 'Savanna Grass', 'Dry golden grass at the tips, olive green at the roots.',
+      ['#3e4a1c', '#7a7a2e', '#c4a54e', '#e2c97a'], Noise=0.2, Noise_Size=0.2, Roughness=0.8, Roughness_End=0.8)
+_grad('grad_wheat', 'Wheat Field', 'Ripe wheat: warm straw gold to pale cream.',
+      ['#8a5e1e', '#c9973e', '#ead09a'], Roughness=0.75, Roughness_End=0.75)
+_grad('grad_olive_khaki', 'Olive to Khaki', 'Drab olive green to dusty khaki.',
+      ['#3b3d1c', '#6b6a3a', '#b5a476'], Angle=H, Roughness=0.75, Roughness_End=0.75)
+_grad('grad_tobacco', 'Tobacco Leaf', 'Cured tobacco browns: deep mahogany to golden leaf.',
+      ['#3a1e0e', '#7a4420', '#b8803e'], Noise=0.2, Noise_Size=0.15, Roughness=0.6, Roughness_End=0.7)
+_grad('grad_saddle_tan', 'Saddle Tan', 'Worn saddle leather: dark brown to honey tan, glossy where it is darker.',
+      ['#2e170b', '#7a4422', '#c08850'], Interpolation=SMOOTH, Roughness=0.35, Roughness_End=0.6)
+_grad('grad_coffee', 'Coffee & Cream', 'Espresso brown swirling up into milky cream.',
+      ['#1f120a', '#5a3620', '#b08a64', '#e8d6bc'], Roughness=0.3, Roughness_End=0.4)
+_grad('grad_cinnamon', 'Cinnamon Spice', 'Cinnamon, nutmeg and ginger browns.',
+      ['#5a2a12', '#9a5226', '#c88a52'], Angle=D45, Size=1.4, Roughness=0.8, Roughness_End=0.8)
+_grad('grad_honey', 'Honey Amber', 'Dark amber honey to glowing golden honey.',
+      ['#4a1e04', '#a8560c', '#e8a42a'], Roughness=0.15, Roughness_End=0.15)
 # -- radial and spherical
 _grad('grad_spotlight', 'Spotlight', 'Bright white center fading to black.',
       ['#ffffff', '#000000'], Type=RADIAL, Interpolation=SMOOTH)
@@ -1570,6 +1745,51 @@ _add('dirt_oil', 'Oily Grime', 'DIRT',
      'Black, greasy grime, like in an engine bay.',
      thumb=DIRT_THUMB, Wetness=0.8, Dirt_Color=(0.008, 0.008, 0.008), Dirt_Color_2=(0.03, 0.028, 0.025),
      Crevices=1.0, Patches=0.35)
+
+# Moss grows on top: on the faces that look up, over the edges and into the cracks.
+MOSS_THUMB = dict(shape='steps', base='concrete_precast')
+ORANGE_LICHEN = (0.40, 0.15, 0.025)
+
+_add('moss_light', 'Light Moss', 'MOSS',
+     'A thin green fuzz of moss on the top surfaces.',
+     thumb=MOSS_THUMB, Amount=0.35, Thickness=0.4)
+_add('moss_cushions', 'Moss Cushions', 'MOSS',
+     'Thick, round cushions of moss sitting on top.',
+     thumb=MOSS_THUMB, Amount=0.7, Patchiness=0.85, Thickness=1.0, Side_Reach=0.4, Fuzz=0.7)
+_add('moss_carpet', 'Moss Carpet', 'MOSS',
+     'A dense, even carpet of moss over the tops and down the sides.',
+     thumb=MOSS_THUMB, Amount=0.92, Patchiness=0.15, Side_Reach=0.65, Thickness=0.8, Crevices=0.9)
+_add('moss_patchy', 'Patchy Moss', 'MOSS',
+     'Scattered clumps of moss with bare surface between them.',
+     thumb=MOSS_THUMB, Amount=0.4, Patchiness=1.0, Clump_Size=0.6, Crevices=0.4)
+_add('moss_wet', 'Wet Moss', 'MOSS',
+     'Soaked, deep green moss that glistens a little.',
+     thumb=MOSS_THUMB, Amount=0.7, Wetness=0.8, Moss_Color=(0.02, 0.06, 0.012),
+     Moss_Color_2=(0.07, 0.15, 0.02), Side_Reach=0.45)
+_add('moss_dry', 'Dried Moss', 'MOSS',
+     'Moss dried out by the sun: brown and straw-colored with a few green bits.',
+     thumb=MOSS_THUMB, Amount=0.6, Dryness=0.75, Moss_Roughness=0.95, Thickness=0.4, Patchiness=0.6)
+_add('moss_cracks', 'Moss in the Cracks', 'MOSS',
+     'Moss only in corners, gaps and cracks (Cycles or baked mesh maps).',
+     thumb=MOSS_THUMB, Amount=0.15, Crevices=1.0, Patchiness=0.3, Side_Reach=0.0)
+_add('moss_damp_wall', 'Damp Wall Moss', 'MOSS',
+     'Moss and algae rising from the ground up a damp wall, thinning out higher up.',
+     thumb=MOSS_THUMB, Amount=0.2, Top_Facing=0.4, Ground_Growth=0.9, Patchiness=0.4,
+     Moss_Color=(0.03, 0.06, 0.02), Moss_Color_2=(0.09, 0.14, 0.04), Thickness=0.3)
+_add('moss_overgrown', 'Overgrown', 'MOSS',
+     'Reclaimed by nature: thick moss everywhere, heaviest on top and at the bottom.',
+     thumb=MOSS_THUMB, Amount=0.95, Top_Facing=0.6, Side_Reach=1.0, Ground_Growth=0.8, Patchiness=0.4,
+     Crevices=1.0, Thickness=1.0, Lichen=0.3)
+_add('moss_lichen', 'Lichen Spots', 'MOSS',
+     'Pale grey-green crusty lichen spots on every side, a little moss on top.',
+     thumb=MOSS_THUMB, Amount=0.12, Lichen=0.8, Patchiness=0.8, Thickness=0.3)
+_add('moss_lichen_orange', 'Orange Lichen', 'MOSS',
+     'Bright orange lichen crusts, like on old roof tiles and seaside rocks.',
+     thumb=MOSS_THUMB, Amount=0.0, Crevices=0.0, Lichen=0.75, Lichen_Color=ORANGE_LICHEN)
+_add('moss_rusty_metal', 'Moss on Rusty Metal', 'MOSS',
+     'Moss and lichen taking over abandoned, rusting steel.',
+     thumb=dict(shape='steps', base='iron_rust_heavy'), Amount=0.55, Patchiness=0.7, Side_Reach=0.35,
+     Lichen=0.35, Dryness=0.2)
 
 # Edge wear and scratches go on top of any material too.
 EDGE_THUMB = dict(base='paint_car_red')

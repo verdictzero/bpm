@@ -4,7 +4,7 @@
 A library of procedural materials (bare and painted metal, military paint and
 camouflage, concrete, terrain and lava, gradients, wood, plastic, glass, lenses,
 leather, fabric and composites, biomechanical surfaces) with simple sliders and
-your own saved presets, overlays (dirt, dust, edge wear, scratches) that layer on
+your own saved presets, overlays (dirt, dust, moss, edge wear, scratches) that layer on
 top of any material, box-projected decals, and one-click "Auto Texture": new UVs, baking to image textures and applying them.
 
 Find it in: 3D Viewport > Sidebar (press N) > BPM tab.
@@ -13,11 +13,11 @@ Find it in: 3D Viewport > Sidebar (press N) > BPM tab.
 bl_info = {
     "name": "BPM - Procedural Materials",
     "author": "verdictzero",
-    "version": (1, 8, 1),
+    "version": (1, 9, 0),
     "blender": (4, 2, 0),
     "location": "3D Viewport > Sidebar (N) > BPM",
     "description": "Procedural metal, paint, porcelain enamel, camouflage, concrete, lights and neon, wood, "
-                   "plastic, glass, lens, leather, fabric and biomechanical materials, dirt, dust, wear and "
+                   "plastic, glass, lens, leather, fabric and biomechanical materials, dirt, dust, moss, wear and "
                    "scratch overlays, decals, and one-click auto texturing (UVs, bake, apply)",
     "doc_url": "https://github.com/verdictzero/bpm",
     "category": "Material",

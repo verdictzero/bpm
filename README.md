@@ -1,14 +1,16 @@
 # BPM – Procedural Materials for Blender
 
-346 ready-made materials for Blender — **bare metal, painted metal, porcelain enamel
+435 ready-made materials for Blender — **bare metal, painted metal (with 40 tractor paints, from
+showroom new to rusty field relic), porcelain enamel
 (1950s fridges, stoves, bathtubs, graniteware, enamel signs), military paint and
 camouflage, concrete, terrain (cratered moons, asteroids, Mars) and glowing lava and magma,
-51 gradients (linear, radial, angular, spiral… projected from any side), glowing lights
+100 gradients (linear, radial, angular, spiral… projected from any side; plenty of rust and
+earth tones), glowing lights
 (neon, fluorescent tubes, light panels, LEDs, screens — clean, dusty, bug-filled or burnt
 out), wood, plastic (from showroom new to cracked, burnt and trashed), glass,
 lenses and visors, leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and
-H.R. Giger-style biomechanical surfaces** — plus 26
-**overlays (dirt, dust, edge wear and scratches)** that you can stack on top of *any*
+H.R. Giger-style biomechanical surfaces** — plus 38
+**overlays (dirt, dust, moss, edge wear and scratches)** that you can stack on top of *any*
 material, and **decals**: put any image (with its normal, roughness, metallic and height
 maps if it has them) on your model by dragging a box over it. Every material has plain sliders you can tweak, and
 one click on **Auto Texture** turns it into normal image textures (Base Color,
@@ -35,7 +37,7 @@ material, click **Apply**, move some sliders, click **Auto Texture**. Liked what
 ![Leather materials](docs/gallery_leather.png)
 ![Fabric and composite materials](docs/gallery_fabric.png)
 ![Biomechanical materials](docs/gallery_organic.png)
-![Dirt and dust overlays](docs/gallery_overlay.png)
+![Dirt, dust and moss overlays](docs/gallery_overlay.png)
 ![Edge wear and scratch overlays](docs/gallery_wear.png)
 
 Works with **Blender 4.2 or newer**. Tested on Blender 4.2 LTS, 4.5 LTS and 5.2 LTS
@@ -45,7 +47,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.8.1.zip`](dist/bpm_procedural_metals-1.8.1.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.9.0.zip`](dist/bpm_procedural_metals-1.9.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
@@ -64,7 +66,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 1. In the 3D view, **click your object** to select it.
 2. Press **N** (with the mouse over the 3D view) to open the sidebar and click the
    **BPM** tab.
-3. Pick a category (Metal, Enamel, Military, Terrain, Gradients, Lights, Wood, Plastic, Glass, Fabric, Dirt & Dust, Wear…),
+3. Pick a category (Metal, Enamel, Military, Terrain, Gradients, Lights, Wood, Plastic, Glass, Fabric, Dirt & Moss, Wear…),
    click the big picture to see its materials, pick one, then click
    **Apply to Selected**.
 4. To see the material, switch the viewport to **Material Preview**: press **Z** and
@@ -97,12 +99,20 @@ it too.
   `user_presets.json` and the `.png` thumbnails to another computer to take them along,
   then click the reload button.
 
-### Dirt, dust, edge wear and scratches on top of anything
+### Dirt, dust, moss, edge wear and scratches on top of anything
 
 Two categories hold overlays, layers that go on top of another material:
 
-* **Dirt & Dust** – grime, heavy grime, mud splatter, rain streaks, oily grime,
-  light / heavy dust, dust with wipe marks, ash and soot, desert sand.
+* **Dirt, Dust & Moss** – grime, heavy grime, mud splatter, rain streaks, oily grime,
+  light / heavy dust, dust with wipe marks, ash and soot, desert sand, and moss: light
+  moss, moss cushions, moss carpet, patchy, wet and dried moss, moss in the cracks, damp
+  wall moss, overgrown, lichen spots, orange lichen, moss on rusty metal.
+
+  Moss grows on top: on the faces that look up (*Top Facing*), creeping over the edges
+  and down the sides as far as *Side Reach* lets it, into corners and gaps (*Crevices*)
+  and up from the bottom of the object (*Ground Growth*). *Patchiness* turns an even
+  carpet into separate cushions, *Lichen* adds pale crusty spots on every side, and
+  *Dryness* / *Wetness* turn it brown and straw-colored or dark and glistening.
 * **Wear** – edge wear (paint chipped to grey primer and steel, to bare shiny metal,
   rusty chips, heavy chips, worn to red primer, aircraft-style zinc chromate and
   aluminium, paint chipped to wood, edges just rubbed lighter for wood, leather or
@@ -420,11 +430,15 @@ brass, antique bronze, heat-tinted titanium, burnt exhaust steel, gunmetal, blue
 steel, cast iron, hammered wrought iron, galvanized steel, weathered zinc, lightly
 rusted steel, heavily rusted iron, Corten weathering steel, satin nickel, pewter.
 
-**Painted metal (22):** chipped industrial yellow, military olive drab, desert tan,
+**Painted metal (62):** chipped industrial yellow, military olive drab, desert tan,
 worn fire-engine red, metallic car paint (blue, candy red), black powder coat,
 hammertone (green, silver), peeling teal, ship hull grey, hazard stripes, sci-fi
 white, safety orange, sun-faded blue, vintage cream enamel, worn matte black, old
-tractor green, vintage mint, navy machinery, red oxide primer, rusted-through paint.
+tractor green, vintage mint, navy machinery, red oxide primer, rusted-through paint,
+and **tractor paints**: green, yellow, red, orange, blue, grey, cream and light green
+farm-machine enamel over cast iron, each in five states — *New* (deep gloss), *Working*
+(scratched, chipped and muddy low down), *Sun-Faded* (chalky, light rust), *Barn Find*
+(flaking, rust streaks, thick dust) and *Field Relic* (mostly rust, moss on top).
 
 **Porcelain enamel (28):** 1950s refrigerators (turquoise, seafoam green, pastel pink,
 canary yellow, butter cream, appliance white, cherry red), the 70s coppertone, harvest
@@ -487,7 +501,7 @@ lava: molten lava, lava lake, cooling lava crust, glowing cracks, magma, churnin
 pahoehoe (hot and cooled), aa lava (advancing and cooled), cooled basalt, obsidian,
 sulfur vent rock, ash-covered lava field.
 
-**Gradients (51):** black to white, sunset, daylight and night skies, ocean depths,
+**Gradients (100):** black to white, sunset, daylight and night skies, ocean depths,
 fire, rainbow, thermal camera, viridis, magma, turbo, teal & orange, cyan to magenta,
 pastel dream, mint & peach, hand-dyed ombre, retro stepped sunset, diagonal stripes,
 soft bands, neon tube, horizon glow, heat-tinted titanium, chrome to gold, copper to
@@ -495,7 +509,15 @@ bronze, paint fading to metal, conic chrome, spotlight, vignette, glowing orb, t
 rings, ripples, neon ring, soft ellipse, soap bubble, color wheel, sunburst, radar
 sweep, candy and hypnotic spirals, diamond, pyramid panel, retro tunnel, box falloff,
 snow and moss on top, rim glow, color-shift paint, holographic foil, studio backdrop,
-UV ramp, height fade (world).
+UV ramp, height fade (world); copper to verdigris, bronze patina; rust: rust bleed, rust
+creeping up, steel to rust, iron oxide, weathering steel, burnt orange, rust spot, rust
+waterline, rust on top, rust bands, scorched rust, rusty sheen; earth: terracotta,
+ochre, burnt sienna, raw to burnt umber, red clay, drying mud, wet sand shore, desert
+dunes, sand and soil on top, canyon strata, sandstone bands, red rock mesa, badlands,
+soil layers, river sediment, peat bog, garden loam, adobe wall, brick dust, volcanic
+soil, Martian dust, desert dusk, earth palette, sun-baked clay; plants and browns:
+autumn leaves, forest floor, savanna grass, wheat field, olive to khaki, tobacco leaf,
+saddle tan, coffee & cream, cinnamon spice, honey amber.
 
 **Lights & neon (24):** red neon, dirty pink neon, dusty blue neon, failing green neon,
 old diner neon, abandoned neon, argon purple neon, white neon, unlit neon tube,
@@ -509,7 +531,7 @@ machinery merge: biomech ribbed hull, xeno tubes, chrome vertebrae, bone armor
 plates, flesh wall, slime hive, obsidian biomech, rusted biomech, sinew cables, alien
 skin, hive resin.
 
-**Overlays (26):** 10 dirt and dust, 9 edge wear and 7 scratches — see above.
+**Overlays (38):** 10 dirt and dust, 12 moss and lichen, 9 edge wear and 7 scratches — see above.
 
 Everything is built from a handful of adjustable "generators", so every material of
 a family has the full set of sliders. A few examples:
@@ -706,14 +728,14 @@ bpm_procedural_metals/   the add-on (Blender extension)
                          (military), concrete, terrain (terrain + lava), gradient,
                          light, wood, plastic, glass, lens, leather, fabric, organic
                          (sliders + node tree)
-  overlays.py            dirt, dust, edge wear and scratch overlays (layer on any
+  overlays.py            dirt, dust, moss, edge wear and scratch overlays (layer on any
                          material)
   decals.py              box-projected decals (each one is an overlay with its own
                          node group)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 372 presets: 346 materials + 26 overlays
+  presets.py             the 473 presets: 435 materials + 38 overlays
   user_presets.py        your own saved presets (a JSON file outside the add-on)
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
@@ -745,7 +767,7 @@ asked to, that lights bake their glow (and none when switched off), that chipped
 and damaged plastic really change the bake, that older plastic materials upgrade without
 losing their settings, that saved presets come back (with their overlays) after a restart, that digital camouflage really is made of
 square pixels, that decals land where their box is, follow it, come off when it is
-deleted and get baked, and that no shader — not even a material with four overlays — comes
+deleted and get baked, and that no shader — not even a material with five overlays — comes
 close to Cycles' fixed shader-stack limit.
 
 License: GPL-3.0-or-later (like Blender itself).

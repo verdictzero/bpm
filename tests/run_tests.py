@@ -504,6 +504,40 @@ def wear_and_scratch_overlays():
 
 
 @test
+def moss_grows_on_top():
+    """Moss covers the faces that look up and leaves the sides bare unless it is allowed everywhere."""
+    fresh_scene()
+    obj = add_cube()
+    mat = generic_material((0.5, 0.5, 0.5, 1.0), 0.0, 0.5)
+    obj.data.materials.append(mat)
+    moss = L.add_overlay(mat, 'MOSS', {'Amount': 1.0, 'Patchiness': 0.0, 'Side Reach': 0.0, 'Crevices': 0.0})
+    assert L.overlay_stack(mat) == [moss]
+    centers = face_uv_centers(obj.data, 'UVMap')
+    up = np.array([p.normal.z > 0.9 for p in obj.data.polygons])
+    side = np.array([abs(p.normal.z) < 0.1 for p in obj.data.polygons])
+    out = os.path.join(TMP, 'moss')
+
+    def colors():
+        B.run_to_end(B.ObjectBakeJob(bpy.context, [obj], settings(maps={'BASE_COLOR', 'HEIGHT'}, output_dir=out,
+                                                                 assign_baked=False)))
+        return sample(read_png(os.path.join(out, 'Cube_BaseColor.png')), centers)[..., :3]
+
+    def green(c):
+        return (c[:, 1] > c[:, 0] + 0.03) & (c[:, 1] > c[:, 2] + 0.05)
+
+    col = colors()
+    assert green(col[up]).all(), col[up]
+    assert not green(col[side]).any() and (np.abs(col[side] - col[side].mean()) < 0.05).all(), col[side]
+    assert os.path.exists(os.path.join(out, 'Cube_Height.png')), 'moss has thickness'
+    L.apply_values(moss, {'Top Facing': 0.0})
+    assert green(colors()[side]).all(), 'moss everywhere'
+    # dried out: brown, not green
+    L.apply_values(moss, {'Dryness': 1.0})
+    col = colors()[up]
+    assert not green(col).any() and (col[:, 0] > col[:, 2]).all(), col
+
+
+@test
 def lens_keeps_its_coating():
     """Lenses are opaque; their coating (thin film) and IOR are copied into the baked material."""
     fresh_scene()
@@ -544,7 +578,7 @@ def overlay_menu_lists_every_overlay():
     fresh_scene()
     items = OPS._overlay_items(None, bpy.context)
     assert [i[0] for i in items if i[0]] == [p['id'] for p in P.PRESETS if P.is_overlay(p)]
-    assert [i[1] for i in items if not i[0]] == ['Dirt & Dust', 'Edge Wear & Scratches']
+    assert [i[1] for i in items if not i[0]] == ['Dirt, Dust & Moss', 'Edge Wear & Scratches']
     obj = add_cube()
     obj.select_set(True)
     bpy.context.view_layer.objects.active = obj
@@ -2198,6 +2232,7 @@ bpy.ops.mesh.primitive_cube_add(); ob = bpy.context.active_object
 combos = [(gen, ()) for gen in G.material_generators()]
 combos += [(gen, ('DIRT', 'DUST')) for gen in G.material_generators()]
 combos += [(gen, ('DIRT', 'DUST', 'WEAR', 'SCRATCH')) for gen in G.material_generators()]
+combos += [(gen, ('DIRT', 'DUST', 'MOSS', 'WEAR', 'SCRATCH')) for gen in G.material_generators()]
 for gen, overlays in combos:
     for tile in (False, True):
         # tile bakes only use emission passes (their normal maps are computed from the height)
@@ -2246,7 +2281,9 @@ def shader_stack_has_headroom():
         return
     worst = max(int(v) for v in peaks.values())
     print('    peak stack usage: %d / 255' % worst)
-    assert worst < 230, peaks
+    # worst case: enamel's normal path with all five overlays (230); each overlay holds its coverage
+    # on the stack while the material's bump is computed, so every overlay costs one slot
+    assert worst < 236, peaks
 
 
 # --------------------------------------------------------------------- runner

@@ -7,8 +7,8 @@ All user-facing settings are inputs of that group, so they can be tweaked live
 recompiling anything.
 
 Material generators output PBR channels for a Principled BSDF.  Overlay
-generators take those channels as inputs and put dirt, dust, edge wear or
-scratches on top, so they can be stacked on any material.
+generators take those channels as inputs and put dirt, dust, moss, edge wear
+or scratches on top, so they can be stacked on any material.
 """
 
 from . import (mat_camo, mat_concrete, mat_enamel, mat_fabric, mat_glass, mat_gradient, mat_leather, mat_lens,
@@ -53,6 +53,7 @@ _register('FABRIC', mat_fabric.SPEC)
 _register('ORGANIC', mat_organic.SPEC)
 _register('DIRT', overlays.DIRT_SPEC)
 _register('DUST', overlays.DUST_SPEC)
+_register('MOSS', overlays.MOSS_SPEC)
 _register('WEAR', overlays.WEAR_SPEC)
 _register('SCRATCH', overlays.SCRATCH_SPEC)
 _register('DECAL', overlays.DECAL_SPEC)

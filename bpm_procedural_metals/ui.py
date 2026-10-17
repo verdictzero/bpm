@@ -157,7 +157,7 @@ class BPM_PT_adjust(bpy.types.Panel):
             return
         if node is None:
             _wrap(layout, context, 'The active material is not a BPM material. Pick one in the gallery '
-                                   'above and click "Apply to Selected". Overlays (dirt, dust, edge wear, '
+                                   'above and click "Apply to Selected". Overlays (dirt, dust, moss, edge wear, '
                                    'scratches) work on any material.', 'INFO')
             return
 
