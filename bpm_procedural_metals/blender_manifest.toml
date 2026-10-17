@@ -1,7 +1,7 @@
 schema_version = "1.0.0"
 
 id = "bpm_procedural_metals"
-version = "1.10.0"
+version = "1.10.1"
 name = "BPM - Procedural Materials"
 tagline = "Metal, paint, moss, terrain, gradients, decals, auto texture"
 maintainer = "verdictzero"

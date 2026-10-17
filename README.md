@@ -48,7 +48,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.10.0.zip`](dist/bpm_procedural_metals-1.10.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.10.1.zip`](dist/bpm_procedural_metals-1.10.1.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
