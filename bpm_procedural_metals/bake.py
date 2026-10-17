@@ -60,6 +60,35 @@ class BakeError(Exception):
     """An error with a message that is meant to be shown to the user."""
 
 
+class GpuFailure(BakeError):
+    """The GPU failed during a bake (out of memory, a driver reset, ...): try the CPU."""
+
+    def __init__(self, text, detail):
+        super().__init__(text)
+        self.detail = detail
+
+
+# Blender's error once the GPU failed in this session.  A GPU that was lost (a driver reset,
+# "device lost") stays unusable until Blender restarts, so everything bakes on the CPU from then on.
+_gpu_failure = None
+
+
+def gpu_failed(detail):
+    global _gpu_failure
+    _gpu_failure = detail or 'it stopped working'
+
+
+def gpu_failure():
+    return _gpu_failure
+
+
+def gpu_failure_text(name=None, what='baking went on'):
+    return ('The GPU stopped working%s (%s): %s on the CPU, which is used for the rest of this Blender '
+            'session (restart Blender to use the GPU again). If it happens again, update the graphics '
+            'driver, lower the size, or set Device to CPU.'
+            % (' on "%s"' % name if name else '', _gpu_failure, what))
+
+
 class BakeSettings:
     """Plain settings container (filled from the UI or the command line)."""
 
@@ -163,8 +192,8 @@ def uses_nodes(mat):
 
 
 def choose_device(preference):
-    """'GPU' only if the user has set up a GPU in Preferences > System."""
-    if preference == 'CPU':
+    """'GPU' only if the user has set up a GPU in Preferences > System (and it has not failed)."""
+    if preference == 'CPU' or _gpu_failure is not None:
         return 'CPU'
     try:
         cprefs = bpy.context.preferences.addons['cycles'].preferences
@@ -669,6 +698,15 @@ def _bake_call(context, obj, kind, settings, uv_name, normal=False):
         detail = str(exc).strip().splitlines()[-1]
         if 'poll()' in detail:
             detail = 'Blender refused to bake it. Make sure it is visible and enabled in the viewport.'
+        elif context.scene.cycles.device == 'GPU':
+            context.scene.cycles.device = 'CPU'  # the GPU may have failed: try the CPU
+            try:
+                _bake_call(context, obj, kind, settings, uv_name, normal)
+            except BakeError:
+                context.scene.cycles.device = 'GPU'
+                raise  # the CPU fails too: not the GPU's fault
+            gpu_failed(detail)
+            return
         raise BakeError('Blender could not bake "%s": %s' % (obj.name, detail))
     if 'FINISHED' not in result:
         raise BakeError('Baking "%s" was cancelled.' % obj.name)
@@ -935,6 +973,21 @@ class Job:
     def warn(self, text):
         self.messages.append(('WARNING', text))
 
+    def device_for(self, preference):
+        """The Cycles device to bake on, with a warning when it is not the one asked for."""
+        device = choose_device(preference)
+        if preference != 'CPU' and _gpu_failure is not None:
+            self.warn('The GPU failed earlier in this Blender session (%s): using the CPU. Restart Blender '
+                      'to use the GPU again.' % _gpu_failure)
+        elif preference == 'GPU' and device == 'CPU':
+            self.warn('No GPU is set up in Preferences > System, baking on the CPU.')
+        return device
+
+    def note_gpu_failure(self, before):
+        """Warn if the GPU failed (and the CPU took over) since `before` = gpu_failure()."""
+        if before is None and _gpu_failure is not None:
+            self.warn(gpu_failure_text())
+
     def warnings(self):
         return [text for level, text in self.messages if level == 'WARNING']
 
@@ -1053,11 +1106,9 @@ class ObjectBakeJob(Job):
         state = _SceneState(context)
         samples, ao_samples = s.samples
         errors = []
+        gpu_before = _gpu_failure
         try:
-            device = choose_device(s.device)
-            state.prepare(device, samples)
-            if s.device == 'GPU' and device == 'CPU':
-                self.warn('No GPU is set up in Preferences > System, baking on the CPU.')
+            state.prepare(self.device_for(s.device), samples)
             skipped = {}
             for obj in self.objects:
                 reason = skip_reason(context, obj)
@@ -1094,6 +1145,7 @@ class ObjectBakeJob(Job):
             if errors and not self.baked:
                 raise BakeError(errors[0])
         finally:
+            self.note_gpu_failure(gpu_before)
             self._drop_temp_images()
             self._drop_pending_uvs()
             state.restore()
@@ -1327,8 +1379,9 @@ class TileBakeJob(Job):
         state = _SceneState(context)
         samples, _ = s.samples
         plane = mesh = temp_mat = None
+        gpu_before = _gpu_failure
         try:
-            state.prepare(choose_device(s.device), samples)
+            state.prepare(self.device_for(s.device), samples)
             mesh = bpy.data.meshes.new('BPM_TilePlane')
             size = float(s.tile_size)
             mesh.from_pydata([(0, 0, 0), (size, 0, 0), (size, size, 0), (0, size, 0)], [], [(0, 1, 2, 3)])
@@ -1360,6 +1413,7 @@ class TileBakeJob(Job):
                 bpy.data.materials.remove(temp_mat)
                 temp_mat = None
         finally:
+            self.note_gpu_failure(gpu_before)
             self._drop_temp_images()
             if plane is not None:
                 bpy.data.objects.remove(plane)

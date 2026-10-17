@@ -1470,6 +1470,142 @@ def bm_flip(mesh, all_faces):
 
 
 @test
+def mesh_maps_survive_a_gpu_failure():
+    """On the GPU every probe casts few rays per sample (short GPU jobs); when the GPU fails
+    ("device lost", out of memory) the CPU analyzes the object again and takes over."""
+    fresh_scene()
+    a = add_cube('A')
+    b = add_cube('B', location=(5, 0, 0))
+    bpy.context.view_layer.update()
+    settings = M.MapsSettings(resolution=256, quality='FAST')
+    assert settings.samples_on('CPU') == (8, 8) and settings.samples_on('GPU') == (16, 4)
+    assert M.MapsSettings(quality='BEST').samples_on('GPU') == (256, 4)
+    real_choose, real_bake = B.choose_device, M._bake
+    calls = []
+
+    def fake_gpu(preference):
+        return 'CPU' if preference == 'CPU' or B.gpu_failure() is not None else 'GPU'
+
+    def bake(context, obj, image, reach, other_objects):
+        calls.append((obj.name, context.scene.cycles.device, context.scene.cycles.samples))
+        real_bake(context, obj, image, reach, other_objects)  # without a GPU set up, Cycles uses the CPU
+
+    def failing_gpu(context, obj, image, reach, other_objects):
+        if context.scene.cycles.device == 'GPU':
+            calls.append((obj.name, 'GPU', 'failed'))
+            raise B.GpuFailure('The GPU could not analyze "%s".' % obj.name, 'UR_RESULT_ERROR_DEVICE_LOST')
+        bake(context, obj, image, reach, other_objects)
+
+    scene_device = bpy.context.scene.cycles.device
+    try:
+        B.choose_device = fake_gpu
+        M._bake = bake
+        job = M.analyze(bpy.context, [a], settings)
+        assert job.analyzed == ['A'] and not job.warnings(), job.messages
+        assert calls == [('A', 'GPU', 16)] * 2, calls
+        assert bpy.context.scene.cycles.device == scene_device
+
+        calls.clear()
+        M._bake = failing_gpu
+        job = M.analyze(bpy.context, [a, b], settings)
+        assert job.analyzed == ['A', 'B'], job.messages
+        assert calls == [('A', 'GPU', 'failed'), ('A', 'CPU', 8), ('A', 'CPU', 8), ('B', 'CPU', 8), ('B', 'CPU', 8)], calls
+        assert B.gpu_failure() == 'UR_RESULT_ERROR_DEVICE_LOST'
+        warnings = job.warnings()
+        assert len(warnings) == 1 and 'GPU stopped working on "A"' in warnings[0], warnings
+        assert M.status(a) == 'OK' and M.status(b) == 'OK'
+        assert bpy.context.scene.cycles.device == scene_device
+
+        calls.clear()
+        job = M.analyze(bpy.context, [b], settings)  # the rest of the session: the CPU
+        assert job.analyzed == ['B'] and calls[0][1] == 'CPU', calls
+        assert any('failed earlier' in w for w in job.warnings()), job.messages
+        assert B.choose_device('AUTO') == 'CPU'
+    finally:
+        B.choose_device, M._bake = real_choose, real_bake
+        B._gpu_failure = None
+    # the CPU failing too is a plain error, not blamed on the GPU
+    def broken(context, *args):
+        if context.scene.cycles.device == 'GPU':
+            raise B.GpuFailure('The GPU could not analyze it.', 'gpu')
+        raise B.BakeError('broken')
+
+    try:
+        B.choose_device = fake_gpu
+        M._bake = broken
+        try:
+            M.analyze(bpy.context, [a], settings)
+        except B.BakeError as exc:
+            assert 'broken' in str(exc), exc
+        else:
+            raise AssertionError('the CPU failure was not reported')
+        assert B.gpu_failure() is None and bpy.context.scene.cycles.device == scene_device
+    finally:
+        B.choose_device, M._bake = real_choose, real_bake
+        B._gpu_failure = None
+
+
+@test
+def mesh_maps_hide_what_they_cannot_see():
+    """Objects beyond the reach (or all others, without Include Other Objects) are left out of
+    the analysis bake, and come back afterwards."""
+    fresh_scene()
+    box = add_cube('Box', size=1.0)
+    near = add_cube('Near', size=1.0, location=(1.2, 0, 0))
+    far = add_cube('Far', size=1.0, location=(50, 0, 0))
+    off = add_cube('Off', size=1.0, location=(1.2, 1.2, 0))
+    off.hide_render = True
+    bpy.ops.object.light_add(type='POINT', location=(0, 0, 2))
+    lamp = bpy.context.active_object
+    bpy.context.view_layer.update()
+    hidden = M._hide_unseen(bpy.context, box, 0.5, True)
+    assert {o.name for o in hidden} == {'Far', lamp.name}, [o.name for o in hidden]
+    assert far.hide_render and lamp.hide_render and not near.hide_render
+    M._show_again(hidden)
+    assert not far.hide_render and not lamp.hide_render and off.hide_render
+    hidden = M._hide_unseen(bpy.context, box, 0.5, False)
+    assert {o.name for o in hidden} == {'Near', 'Far', lamp.name}
+    M._show_again(hidden)
+    job = M.analyze(bpy.context, [box], M.MapsSettings(resolution=256, quality='FAST'))
+    assert job.analyzed == ['Box'], job.messages
+    assert [o.hide_render for o in (box, near, far, off, lamp)] == [False, False, False, True, False]
+    with_far = maps_tile(box.data)
+    bpy.data.objects.remove(far)
+    job = M.analyze(bpy.context, [box], M.MapsSettings(resolution=256, quality='FAST'))
+    assert np.abs(maps_tile(box.data)[..., :3] - with_far[..., :3]).max() < 0.15
+
+
+@test
+def gallery_follows_the_category():
+    """The gallery always holds a material of its category (reading a stale one prints warnings)."""
+    from bpm_procedural_metals import previews
+    fresh_scene()
+    wm, settings = bpy.context.window_manager, bpy.context.scene.bpm
+    for category in ['ALL'] + [c[0] for c in P.CATEGORIES]:
+        settings.category = category
+        items = previews.gallery_items(None, bpy.context)
+        numbers = [item[4] for item in items]
+        assert numbers[0] == 0 and len(set(numbers)) == len(numbers), category
+        if items[0][0] != 'NONE':
+            assert wm.bpm_gallery == previews.current(bpy.context), category
+    settings.category = 'ALL'
+    glass = P.by_category('GLASS')[-1]['id']
+    wm.bpm_gallery = glass
+    assert previews.current(bpy.context) == glass
+    settings.category = 'METAL'  # not in it: the first metal
+    assert previews.current(bpy.context) == P.by_category('METAL')[0]['id'] == wm.bpm_gallery
+    wm.bpm_gallery = P.by_category('METAL')[2]['id']
+    settings.category = 'ALL'  # still there: kept
+    assert wm.bpm_gallery == P.by_category('METAL')[2]['id']
+    previews._current = None  # e.g. a newly loaded file
+    assert previews.current(bpy.context) == P.PRESETS[0]['id']
+    previews.sync()
+    assert wm.bpm_gallery == P.PRESETS[0]['id'] == previews.current(bpy.context)
+    bpy.ops.bpm.gallery_step(step=1)
+    assert wm.bpm_gallery == P.PRESETS[1]['id']
+
+
+@test
 def mesh_maps_follow_the_modifiers():
     fresh_scene()
     obj = add_cube('Arrayed')

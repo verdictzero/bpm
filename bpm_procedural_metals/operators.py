@@ -14,6 +14,7 @@ from . import library as L
 from . import mapsview as V
 from . import meshmaps as M
 from . import presets as P
+from . import previews
 from . import user_presets as U
 from .nodebuilder import set_socket_value
 
@@ -105,8 +106,8 @@ class BPM_OT_gallery_step(bpy.types.Operator):
             return {'CANCELLED'}
         ids = [p['id'] for p in presets]
         try:
-            index = ids.index(wm.bpm_gallery)
-        except (ValueError, TypeError):
+            index = ids.index(previews.current(context))
+        except ValueError:
             index = 0
         wm.bpm_gallery = ids[(index + self.step) % len(ids)]
         return {'FINISHED'}
@@ -302,6 +303,7 @@ class BPM_OT_delete_preset(bpy.types.Operator):
         except OSError as error:
             self.report({'ERROR'}, 'Could not delete the preset: %s' % error)
             return {'CANCELLED'}
+        previews.sync(context)
         self.report({'INFO'}, 'Deleted "%s".' % preset['name'])
         return {'FINISHED'}
 
@@ -323,6 +325,7 @@ class BPM_OT_reload_presets(bpy.types.Operator):
 
     def execute(self, context):
         U.load()
+        previews.sync(context)
         self.report({'INFO'}, '%d presets of your own.' % len(U.user_presets()))
         return {'FINISHED'}
 

@@ -7,6 +7,7 @@ from bpy.props import (BoolProperty, CollectionProperty, EnumProperty, FloatProp
 
 from . import mapsview as V
 from . import presets as P
+from . import previews
 
 
 class BPM_SlotBackup(bpy.types.PropertyGroup):
@@ -40,7 +41,7 @@ class BPM_Settings(bpy.types.PropertyGroup):
     category: EnumProperty(
         name='Category',
         items=[('ALL', 'All', 'Show every material', 0)] + [(c[0], c[3], c[2], c[4]) for c in P.CATEGORIES],
-        default='ALL')
+        default='ALL', update=lambda self, context: previews.sync(context))
     fit_to_object: BoolProperty(
         name='Fit Pattern Size to Object', default=True,
         description='Adapt the pattern size (scratches, grain, dirt...) to the size of the selected object(s)')
@@ -116,9 +117,11 @@ class BPM_Settings(bpy.types.PropertyGroup):
                     'overlapping ones)')
     device: EnumProperty(
         name='Device',
+        description='Where baking and the shape analysis run.  If the GPU fails (out of memory, a driver '
+                    'reset), the CPU takes over until Blender is restarted',
         items=[('AUTO', 'Auto', 'Use the GPU if one is set up in Preferences > System, otherwise the CPU'),
-               ('CPU', 'CPU', 'Always bake on the CPU'),
-               ('GPU', 'GPU', 'Bake on the GPU (falls back to CPU if none is set up)')],
+               ('CPU', 'CPU', 'Always use the CPU: slower, but works when the GPU runs out of memory or crashes'),
+               ('GPU', 'GPU', 'Use the GPU (falls back to the CPU if none is set up)')],
         default='AUTO')
     tile_size: FloatProperty(
         name='Tile Size', default=1.0, min=0.01, soft_max=10.0, subtype='DISTANCE', unit='LENGTH',

@@ -94,7 +94,8 @@ class BPM_PT_library(bpy.types.Panel):
         row.template_icon_view(wm, 'bpm_gallery', show_labels=True, scale=7.0, scale_popup=6.0)
         row.operator('bpm.gallery_step', text='', icon='TRIA_RIGHT').step = 1
 
-        preset = P.find(wm.bpm_gallery) if wm.bpm_gallery not in {'', 'NONE'} else None
+        preset_id = previews.current(context)
+        preset = P.find(preset_id) if preset_id else None
         if settings.category == P.USER_CATEGORY:
             if preset is None:
                 _wrap(layout, context, 'No presets of your own yet. Adjust a material the way you like it, '
@@ -404,6 +405,7 @@ class BPM_PT_mesh_maps(bpy.types.Panel):
             col.prop(props, 'maps_cavity_reach')
             col.prop(props, 'maps_occlusion_reach')
             col.prop(props, 'maps_other_objects')
+            col.prop(props, 'device')
             col.operator('bpm.remove_mesh_maps', icon='TRASH')
 
 
@@ -582,7 +584,8 @@ def register():
     for cls in CLASSES:
         bpy.utils.register_class(cls)
     bpy.types.WindowManager.bpm_gallery = bpy.props.EnumProperty(
-        items=previews.gallery_items, name='Material', description='Click to see all materials')
+        items=previews.gallery_items, name='Material', description='Click to see all materials',
+        update=previews.picked)
 
 
 def unregister():

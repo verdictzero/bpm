@@ -164,7 +164,8 @@ They also work in **EEVEE** and Material Preview, where the live edges don't.
 **Options**: *Map Size*, *Quality*, *Edge Reach* (the widest edge wear can get),
 *Corner Reach* (how far dirt can build up out of a corner), *Occlusion Reach* (how far
 away a surface still counts as enclosing), *Include Other Objects* (off: each object is
-analyzed on its own, without the floor or its neighbours) and **Remove Mesh Maps**.
+analyzed on its own, without the floor or its neighbours), *Device* (the same as for
+baking, below) and **Remove Mesh Maps**.
 Reaches are a share of the object's size, so they suit small and big objects alike.
 
 **Auto Texture** analyzes every object without up-to-date maps first (*Analyze
@@ -405,7 +406,9 @@ Files (for an object called `Crate`):
 * **Use Baked Material** / **Auto UV Unwrap** – for *Bake with Current UVs* (Auto
   Texture always unwraps and always switches to the textures).
 * **Device** – *Auto* uses your graphics card if it is set up in
-  *Edit › Preferences › System › Cycles Render Devices*; otherwise the CPU.
+  *Edit › Preferences › System › Cycles Render Devices*; otherwise the CPU. If the
+  graphics card fails (out of memory, a driver reset), the CPU finishes the job and is
+  used until you restart Blender. Also used by Shape Analysis.
 * **Tile Size** – how many meters of surface one seamless tile shows.
 
 ## 4. The materials
@@ -614,6 +617,15 @@ blender -b model.blend -P bpm_cli.py -- maps --objects all --images ./mesh_maps
 * **Baking takes long.** Use a lower resolution or *Fast* quality first. A set-up GPU
   (see *Device* above) is much faster. Very detailed meshes also take a few seconds
   each to unwrap and pack.
+* **"Out of GPU memory", "device lost" or "UR_RESULT_ERROR_DEVICE_LOST" in the console
+  (Shape Analysis or baking).** The graphics card ran out of memory or its driver
+  stopped a job that took too long. The add-on notices, does that object again on the
+  CPU and stays on the CPU until you **restart Blender** (a crashed graphics card stays
+  unusable until then). If it keeps happening: update the graphics driver, lower *Map
+  Size* or *Quality*, close other programs that use the graphics card, switch the 3D
+  view out of *Material Preview* / *Rendered* while analyzing, or set **Device** to
+  *CPU*. Laptop and integrated GPUs (e.g. Intel Arc laptop chips, which share memory
+  with the system) hit this most often.
 * **Strange smeared patches in baked textures.** The object's UVs overlap in a way
   that can't be detected automatically. Use **Auto Texture**: it always makes fresh UVs.
 * **Auto Texture skipped an object.** The reason is listed under the result: it has no

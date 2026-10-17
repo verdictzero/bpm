@@ -52,6 +52,7 @@ import zlib
 
 import bpy
 import numpy as np
+from mathutils import Vector
 
 from . import bake as B
 from . import library as L
@@ -75,6 +76,10 @@ QUALITY = {
     'GOOD': (16, 16),
     'BEST': (32, 32),
 }
+# On the GPU every probe casts at most this many rays per sample (and the samples go up to
+# keep the same number of rays): each GPU job stays short.  Long ones can be killed as "hung"
+# by the graphics driver (Windows: about 2 s, Linux i915: about 4 s): "device lost".
+GPU_RAYS = 4
 # reach limits in meters: (edge, cavity, occlusion)
 REACH_MIN = (0.002, 0.004, 0.01)
 REACH_MAX = (0.2, 0.4, 2.0)
@@ -107,6 +112,13 @@ class MapsSettings:
     @property
     def samples(self):
         return QUALITY.get(self.quality, QUALITY['GOOD'])
+
+    def samples_on(self, device):
+        """(Cycles samples, rays per sample) on 'CPU' or 'GPU': the same rays in total."""
+        samples, rays = self.samples
+        if device == 'GPU' and rays > GPU_RAYS:
+            return samples * rays // GPU_RAYS, GPU_RAYS
+        return samples, rays
 
     @property
     def uv_margin(self):
@@ -781,17 +793,81 @@ def skip_reason(context, obj):
     return None
 
 
-def _bake(context, obj):
+OCCLUDERS = {'MESH', 'CURVE', 'SURFACE', 'META', 'FONT', 'CURVES', 'POINTCLOUD', 'GPENCIL', 'GREASEPENCIL'}
+
+
+def _world_box(obj):
+    corners = np.array([tuple(obj.matrix_world @ Vector(c)) for c in obj.bound_box])
+    return corners.min(axis=0), corners.max(axis=0)
+
+
+def _seen_by(obj, other, low, high):
+    """Could `other` darken the analysis of `obj` (whose box, grown by the reach, is low..high)?"""
+    if other.instance_type == 'COLLECTION' or len(getattr(other, 'particle_systems', ())):
+        return True  # what it puts in the scene is not in its own bounds
+    if other.type not in OCCLUDERS:
+        return False  # lights, cameras, volumes
+    try:
+        other_low, other_high = _world_box(other)
+    except (AttributeError, TypeError, ValueError):
+        return True
+    return bool(np.all(other_low <= high) and np.all(other_high >= low))
+
+
+def _hide_unseen(context, obj, reach, other_objects):
+    """Hide from rendering what the analysis of `obj` cannot see: everything else without
+    Include Other Objects, else what is beyond the reach.  Less to load onto the GPU (and less
+    for the rays to search).  Returns the objects to show again."""
+    if other_objects:
+        low, high = _world_box(obj)
+        low, high = low - reach, high + reach
+    hidden = []
+    for other in context.view_layer.objects:
+        if other == obj or other.hide_render:
+            continue
+        if other_objects and _seen_by(obj, other, low, high):
+            continue
+        try:
+            other.hide_render = True
+        except (AttributeError, RuntimeError):  # linked from a library
+            continue
+        hidden.append(other)
+    return hidden
+
+
+def _show_again(hidden):
+    for other in hidden:
+        try:
+            other.hide_render = False
+        except (AttributeError, ReferenceError, RuntimeError):
+            pass
+
+
+def _bake(context, obj, image, reach, other_objects):
+    """Bake the analysis material of `obj` into `image`.  Raises B.GpuFailure if the GPU failed
+    (an error, or nothing baked: its pixels start transparent)."""
+    on_gpu = context.scene.cycles.device == 'GPU'
     override = dict(active_object=obj, object=obj, selected_objects=[obj], selected_editable_objects=[obj])
+    hidden = _hide_unseen(context, obj, reach, other_objects)
     try:
         with context.temp_override(**override):
             result = bpy.ops.object.bake(type='EMIT', margin=0, use_clear=False, use_selected_to_active=False,
                                          target='IMAGE_TEXTURES', save_mode='INTERNAL', uv_layer=UV_NAME)
     except RuntimeError as exc:
         detail = str(exc).strip().splitlines()[-1]
+        if on_gpu and 'poll()' not in detail:
+            raise B.GpuFailure('The GPU could not analyze "%s": %s' % (obj.name, detail), detail)
         raise B.BakeError('Blender could not analyze "%s": %s' % (obj.name, detail))
+    finally:
+        _show_again(hidden)
     if 'FINISHED' not in result:
+        if on_gpu:
+            raise B.GpuFailure('The GPU did not analyze "%s".' % obj.name, 'the bake was cancelled')
         raise B.BakeError('Analyzing "%s" was cancelled.' % obj.name)
+    if on_gpu:
+        px = B._pixels(image)
+        if not px[:, 3].max() > 0.0 or not np.isfinite(px).all():
+            raise B.GpuFailure('The GPU baked nothing for "%s".' % obj.name, 'it baked nothing')
 
 
 class MapsJob(B.Job):
@@ -837,10 +913,10 @@ class MapsJob(B.Job):
     def run(self):
         context = self.context
         state = B._SceneState(context)
-        samples, rays = self.settings.samples
         errors = []
         try:
-            device = B.choose_device(self.settings.device)
+            device = self.device_for(self.settings.device)
+            samples, rays = self.settings.samples_on(device)
             state.prepare(device, samples)
             skipped = {}
             for obj in self.objects:
@@ -862,7 +938,21 @@ class MapsJob(B.Job):
                     continue
                 yield 'Analyzing %s' % obj.name
                 try:
-                    yield from self._analyze(obj, state, rays)
+                    try:
+                        yield from self._analyze(obj, state, rays)
+                    except B.GpuFailure as exc:
+                        yield 'The GPU failed: analyzing %s on the CPU' % obj.name
+                        samples, rays = self.settings.samples_on('CPU')
+                        state.prepare('CPU', samples)
+                        try:
+                            yield from self._analyze(obj, state, rays)
+                        except B.BakeError:
+                            samples, rays = self.settings.samples_on(device)
+                            state.prepare(device, samples)  # the CPU fails too: not the GPU's fault
+                            raise
+                        B.gpu_failed(exc.detail)
+                        device = 'CPU'
+                        self.warn(B.gpu_failure_text(obj.name, 'it was analyzed'))
                 except B.BakeError as exc:
                     errors.append(str(exc))
                     self.warn(str(exc))
@@ -980,11 +1070,12 @@ class MapsJob(B.Job):
             if not obj.material_slots:
                 mesh.materials.append(None)
                 added_slot = True
-            for mat, label in ((occ_mat, 'corners and occlusion'), (edge_mat, 'sharp edges')):
+            for mat, image, label in ((occ_mat, images[0], 'corners and occlusion'),
+                                      (edge_mat, images[1], 'sharp edges')):
                 yield 'Measuring %s of %s' % (label, obj.name)
                 for slot in obj.material_slots:
                     slot.material = mat
-                _bake(context, obj)
+                _bake(context, obj, image, far + edge, s.other_objects)
                 self.done_steps += 0.5
             yield 'Processing the mesh maps of %s' % obj.name
             pixels = process(B._pixels(images[0]), B._pixels(images[1]), size, edge_px or 16.0)
