@@ -55,11 +55,16 @@ def forget(preset_id):
     _reload.add(preset_id)
 
 
+# The gallery popup hands the picked item's number back as a float, so numbers above
+# 2**24 come back rounded and match no item: clicking a thumbnail did nothing.
+_MAX_NUMBER = 0xFFFFFF
+
+
 def _number(preset_id, taken):
     """A stable item number (the same in every category, and when presets come and go)."""
-    number = (zlib.crc32(preset_id.encode('utf-8')) & 0x3FFFFFFF) or 1
+    number = (zlib.crc32(preset_id.encode('utf-8')) & _MAX_NUMBER) or 1
     while number in taken:
-        number = number % 0x3FFFFFFF + 1
+        number = number % _MAX_NUMBER + 1
     return number
 
 

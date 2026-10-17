@@ -9,6 +9,7 @@ Exits with code 1 if any test fails.
 import os
 import re
 import shutil
+import struct
 import subprocess
 import sys
 import tempfile
@@ -1620,6 +1621,8 @@ def gallery_follows_the_category():
         items = previews.gallery_items(None, bpy.context)
         numbers = [item[4] for item in items]
         assert numbers[0] == 0 and len(set(numbers)) == len(numbers), category
+        # clicking a thumbnail hands its number back as a float: it must survive that
+        assert all(struct.unpack('f', struct.pack('f', n))[0] == n for n in numbers), category
         if items[0][0] != 'NONE':
             assert wm.bpm_gallery == previews.current(bpy.context), category
     settings.category = 'ALL'
