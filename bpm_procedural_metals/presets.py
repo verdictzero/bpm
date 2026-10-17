@@ -229,6 +229,281 @@ _add('pewter', 'Pewter', 'METAL',
      Metal_Color=(0.58, 0.58, 0.57), Roughness=0.4, Tarnish=0.5, Tarnish_Color=(0.6, 0.6, 0.6),
      Smudges=0.3, Dirt=0.25)
 
+# -- more metals
+PLATINUM = (0.673, 0.637, 0.585)
+PALLADIUM = (0.733, 0.697, 0.652)
+RHODIUM = (0.79, 0.77, 0.74)
+ROSE_GOLD = (0.97, 0.68, 0.56)
+WHITE_GOLD = (0.86, 0.83, 0.75)
+GOLD_24K = (1.0, 0.71, 0.26)
+GOLD_14K = (0.94, 0.79, 0.47)
+ELECTRUM = (0.95, 0.87, 0.58)
+CHAMPAGNE = (0.86, 0.76, 0.56)
+NICKEL_SILVER = (0.76, 0.74, 0.69)
+TUNGSTEN = (0.504, 0.498, 0.478)
+COBALT = (0.66, 0.65, 0.61)
+MAGNESIUM = (0.86, 0.86, 0.85)
+LEAD = (0.45, 0.46, 0.48)
+TIN = (0.76, 0.76, 0.77)
+WHITE_OXIDE = (0.62, 0.63, 0.62)
+WHITE_OXIDE_2 = (0.36, 0.37, 0.37)
+DARK_TARNISH = (0.06, 0.05, 0.045)
+COPPER_BROWN = (0.16, 0.07, 0.045)
+# precious
+_add('platinum_polished', 'Polished Platinum', 'METAL',
+     'Cool, heavy white metal of fine jewellery, mirror polished.',
+     Metal_Color=PLATINUM, Roughness=0.05, Scratches=0.08, Smudges=0.08, Color_Variation=0.03)
+_add('platinum_brushed', 'Brushed Platinum', 'METAL',
+     'Satin brushed platinum, like a watch case.',
+     Metal_Color=PLATINUM, Roughness=0.24, Brushed=0.9, Brush_Scale=300.0, Scratches=0.06, Color_Variation=0.04)
+_add('palladium', 'Palladium', 'METAL',
+     'Bright, slightly warm white metal, lighter than platinum.',
+     Metal_Color=PALLADIUM, Roughness=0.09, Scratches=0.1, Color_Variation=0.04)
+_add('rhodium_plated', 'Rhodium Plating', 'METAL',
+     'Very bright, hard white plating used on jewellery and white gold.',
+     Metal_Color=RHODIUM, Roughness=0.03, Scratches=0.04, Color_Variation=0.02)
+_add('gold_rose', 'Rose Gold', 'METAL',
+     'Pink copper-gold alloy, polished.',
+     Metal_Color=ROSE_GOLD, Roughness=0.08, Scratches=0.08, Smudges=0.08, Color_Variation=0.04)
+_add('gold_rose_brushed', 'Brushed Rose Gold', 'METAL',
+     'Satin rose gold, like a phone or a watch.',
+     Metal_Color=ROSE_GOLD, Roughness=0.26, Brushed=0.85, Brush_Scale=260.0, Scratches=0.05)
+_add('gold_white', 'White Gold', 'METAL',
+     'Pale, warm white gold, polished.',
+     Metal_Color=WHITE_GOLD, Roughness=0.07, Scratches=0.08, Smudges=0.08)
+_add('gold_24k', '24 Karat Gold', 'METAL',
+     'Pure, deep orange-yellow gold: soft, so it is covered in fine scratches.',
+     Metal_Color=GOLD_24K, Roughness=0.1, Scratches=0.35, Scratch_Scale=3.0, Color_Variation=0.06)
+_add('gold_14k', '14 Karat Gold', 'METAL',
+     'Paler, harder yellow gold of everyday jewellery.',
+     Metal_Color=GOLD_14K, Roughness=0.08, Scratches=0.12, Smudges=0.06)
+_add('gold_leaf', 'Gold Leaf', 'METAL',
+     'Hand-laid gold leaf: crinkled, uneven and slightly broken up.',
+     Metal_Color=GOLD, Roughness=0.2, Roughness_Variation=0.6, Color_Variation=0.35, Variation_Scale=8.0,
+     Hammered=0.35, Hammer_Scale=30.0, Grain=0.3, Pit_Scale=400.0, Scratches=0.0)
+_add('gold_antique', 'Antique Gold', 'METAL',
+     'Old gilded metal: dark tarnish in the crevices, bright on the edges.',
+     Metal_Color=(0.86, 0.62, 0.28), Roughness=0.3, Tarnish=0.65, Tarnish_Color=(0.25, 0.16, 0.06),
+     Edge_Polish=0.8, Edge_Color=GOLD, Dirt=0.3, Scratches=0.2)
+_add('gold_satin', 'Satin Gold', 'METAL',
+     'Soft-glow bead-blasted gold.',
+     Metal_Color=GOLD, Roughness=0.38, Grain=0.8, Pit_Scale=500.0, Scratches=0.03)
+_add('silver_polished', 'Polished Sterling Silver', 'METAL',
+     'Bright, freshly polished silver.',
+     Metal_Color=SILVER, Roughness=0.05, Scratches=0.1, Smudges=0.1, Tarnish=0.05,
+     Tarnish_Color=(0.6, 0.55, 0.45))
+_add('silver_brushed', 'Brushed Silver', 'METAL',
+     'Satin brushed silver.',
+     Metal_Color=SILVER, Roughness=0.25, Brushed=0.85, Scratches=0.06)
+_add('silver_oxidized', 'Oxidized Silver', 'METAL',
+     'Blackened silver jewellery, polished bright only on the high points.',
+     Metal_Color=SILVER, Roughness=0.2, Tarnish=1.0, Tarnish_Color=DARK_TARNISH, Tarnish_Scale=1.5,
+     Edge_Polish=1.0, Edge_Color=SILVER, Edge_Width=0.05, Scratches=0.2)
+_add('electrum', 'Electrum', 'METAL',
+     'Pale greenish gold-silver alloy of ancient coins.',
+     Metal_Color=ELECTRUM, Roughness=0.22, Hammered=0.3, Hammer_Scale=12.0, Tarnish=0.3,
+     Tarnish_Color=(0.4, 0.33, 0.18), Scratches=0.2)
+# copper, brass, bronze
+_add('copper_brushed', 'Brushed Copper', 'METAL',
+     'Satin brushed copper sheet.',
+     Metal_Color=COPPER, Roughness=0.26, Brushed=0.9, Scratches=0.08, Tarnish=0.1,
+     Tarnish_Color=(0.55, 0.35, 0.28))
+_add('copper_aged_brown', 'Aged Copper (Brown)', 'METAL',
+     'Copper a few years outdoors: dark chocolate brown before it turns green.',
+     Metal_Color=COPPER, Roughness=0.4, Tarnish=0.95, Tarnish_Color=COPPER_BROWN, Tarnish_Scale=2.0,
+     Color_Variation=0.3, Dirt=0.2, Scratches=0.05)
+_add('copper_pipe', 'Copper Pipe', 'METAL',
+     'Plumbing copper: dull, slightly tarnished, fingerprinted.',
+     Metal_Color=COPPER, Roughness=0.3, Tarnish=0.35, Tarnish_Color=(0.45, 0.25, 0.18), Smudges=0.3,
+     Scratches=0.15, Brushed=0.2)
+_add('copper_antique', 'Antique Copper', 'METAL',
+     'Darkened copper with bright worn edges, like an old kettle.',
+     Metal_Color=COPPER, Roughness=0.3, Tarnish=0.8, Tarnish_Color=(0.2, 0.09, 0.05), Edge_Polish=0.9,
+     Edge_Color=COPPER, Dirt=0.25, Scratches=0.2)
+_add('copper_heat', 'Flame-Painted Copper', 'METAL',
+     'Copper torched into reds, purples and blues.',
+     Metal_Color=COPPER, Roughness=0.18, Heat_Tint=0.9, Heat_Tint_Scale=0.7, Tarnish=0.2,
+     Tarnish_Color=(0.5, 0.25, 0.2))
+_add('copper_verdigris_heavy', 'Heavy Verdigris', 'METAL',
+     'Copper fully turned to chalky green, a little brown copper showing through.',
+     Metal_Color=COPPER, Roughness=0.3, Tarnish=0.8, Tarnish_Color=COPPER_BROWN, Rust=1.0,
+     Rust_Color=PATINA_A, Rust_Color_2=PATINA_B, Rust_Scale=5.0, Dirt=0.3)
+_add('brass_brushed', 'Brushed Brass', 'METAL',
+     'Satin brushed brass, like modern hardware.',
+     Metal_Color=BRASS, Roughness=0.25, Brushed=0.9, Scratches=0.06)
+_add('brass_champagne', 'Champagne Brass', 'METAL',
+     'Pale, soft satin brass of modern fixtures.',
+     Metal_Color=CHAMPAGNE, Roughness=0.3, Brushed=0.5, Grain=0.3, Scratches=0.04)
+_add('brass_lacquered', 'Lacquered Brass', 'METAL',
+     'Mirror-bright lacquered brass of a musical instrument.',
+     Metal_Color=BRASS, Roughness=0.04, Smudges=0.25, Scratches=0.05)
+_add('brass_casing', 'Brass Shell Casing', 'METAL',
+     'Cartridge brass: warm, slightly uneven, tarnished in spots.',
+     Metal_Color=(0.93, 0.74, 0.40), Roughness=0.16, Color_Variation=0.2, Tarnish=0.3,
+     Tarnish_Color=(0.45, 0.3, 0.15), Tarnish_Scale=6.0, Scratches=0.15)
+_add('brass_patina', 'Brass with Patina', 'METAL',
+     'Weathered brass: dull, brown and spotted with green.',
+     Metal_Color=BRASS, Roughness=0.4, Tarnish=0.75, Tarnish_Color=(0.3, 0.22, 0.1), Rust=0.3,
+     Rust_Color=PATINA_A, Rust_Color_2=PATINA_B, Rust_Scale=6.0, Dirt=0.3)
+_add('bronze_polished', 'Polished Bronze', 'METAL',
+     'Freshly polished warm bronze.',
+     Metal_Color=BRONZE, Roughness=0.1, Scratches=0.12, Color_Variation=0.06)
+_add('bronze_oil_rubbed', 'Oil-Rubbed Bronze', 'METAL',
+     'Very dark brown bronze of door hardware, with copper showing on the edges.',
+     Metal_Color=(0.12, 0.07, 0.04), Roughness=0.32, Edge_Polish=0.8, Edge_Color=(0.72, 0.42, 0.24),
+     Scratches=0.15, Color_Variation=0.2)
+_add('bronze_verdigris', 'Statue Bronze (Verdigris)', 'METAL',
+     'Outdoor statue: green patina streaked over dark bronze.',
+     Metal_Color=BRONZE, Roughness=0.4, Tarnish=0.85, Tarnish_Color=(0.2, 0.13, 0.07), Rust=0.7,
+     Rust_Color=PATINA_A, Rust_Color_2=PATINA_B, Rust_Scale=2.5, Dirt=0.3, Edge_Polish=0.3,
+     Edge_Color=BRONZE)
+_add('bronze_bell', 'Bell Bronze', 'METAL',
+     'Cast bell metal: pale golden bronze with a fine cast grain.',
+     Metal_Color=(0.82, 0.62, 0.38), Roughness=0.3, Grain=0.5, Pit_Scale=200.0, Tarnish=0.4,
+     Tarnish_Color=(0.3, 0.2, 0.1), Scratches=0.1)
+_add('nickel_polished', 'Polished Nickel', 'METAL',
+     'Warm, bright nickel plating.',
+     Metal_Color=NICKEL, Roughness=0.06, Scratches=0.08, Smudges=0.1)
+_add('nickel_silver', 'Nickel Silver', 'METAL',
+     'Silvery copper-nickel-zinc alloy of keys and instruments.',
+     Metal_Color=NICKEL_SILVER, Roughness=0.16, Tarnish=0.2, Tarnish_Color=(0.35, 0.33, 0.25), Scratches=0.2)
+# steel and iron
+_add('steel_mirror', 'Mirror Stainless Steel', 'METAL',
+     'Mirror-polished stainless steel.',
+     Metal_Color=STAINLESS, Roughness=0.02, Scratches=0.05, Smudges=0.1, Color_Variation=0.02)
+_add('steel_mill_scale', 'Hot-Rolled Steel (Mill Scale)', 'METAL',
+     'Raw hot-rolled plate: blotchy blue-grey mill scale with spots of rust.',
+     Metal_Color=(0.13, 0.14, 0.16), Roughness=0.45, Roughness_Variation=0.5, Color_Variation=0.45,
+     Variation_Scale=1.5, Tarnish=0.4, Tarnish_Color=(0.2, 0.2, 0.22), Rust=0.1, Scratches=0.25)
+_add('steel_cold_rolled', 'Cold-Rolled Steel', 'METAL',
+     'Smooth, slightly hazy sheet steel straight from the mill.',
+     Metal_Color=(0.50, 0.51, 0.52), Roughness=0.22, Roughness_Variation=0.35, Color_Variation=0.15,
+     Smudges=0.2, Scratches=0.15)
+_add('steel_machined', 'Machined Steel', 'METAL',
+     'Freshly machined tool steel with fine tool marks.',
+     Metal_Color=STEEL, Roughness=0.16, Brushed=0.6, Brush_Scale=400.0, Scratches=0.08, Color_Variation=0.04)
+_add('steel_sandblasted', 'Sandblasted Steel', 'METAL',
+     'Matte grey blasted steel, ready for paint.',
+     Metal_Color=(0.48, 0.49, 0.5), Roughness=0.55, Grain=1.0, Pit_Scale=350.0, Scratches=0.03)
+_add('steel_case_hardened', 'Case-Hardened Steel', 'METAL',
+     'Mottled blues, browns and straw colors of a case-hardened gun receiver.',
+     Metal_Color=STEEL, Roughness=0.12, Heat_Tint=1.0, Heat_Tint_Scale=2.5, Color_Variation=0.3,
+     Variation_Scale=6.0, Scratches=0.1)
+_add('steel_weld_heat', 'Heat-Affected Steel', 'METAL',
+     'Stainless steel tinted straw and blue by welding heat.',
+     Metal_Color=STAINLESS, Roughness=0.25, Heat_Tint=0.7, Heat_Tint_Scale=0.9, Brushed=0.5, Scratches=0.1)
+_add('steel_parkerized', 'Parkerized Steel', 'METAL',
+     'Dark grey, finely grainy phosphate finish of military hardware.',
+     Metal_Color=(0.085, 0.09, 0.09), Roughness=0.68, Grain=1.0, Pit_Scale=500.0, Edge_Polish=0.4,
+     Edge_Color=(0.4, 0.4, 0.4), Scratches=0.15)
+_add('steel_scratched', 'Scratched Sheet Steel', 'METAL',
+     'Steel sheet covered in scuffs and scratches from heavy use.',
+     Metal_Color=STEEL, Roughness=0.3, Scratches=0.85, Scratch_Scale=1.5, Smudges=0.2, Dirt=0.2)
+_add('steel_tea_stained', 'Tea-Stained Stainless', 'METAL',
+     'Stainless steel by the sea: light brown rust staining on a dull finish.',
+     Metal_Color=STAINLESS, Roughness=0.3, Brushed=0.6, Rust=0.18, Rust_Color=(0.35, 0.17, 0.07),
+     Rust_Color_2=(0.2, 0.1, 0.05), Rust_Scale=5.0, Dirt=0.25)
+_add('steel_ship_hull', 'Rusting Ship Steel', 'METAL',
+     'Heavy plate steel bleeding rust in streaks and blooms.',
+     Metal_Color=(0.3, 0.31, 0.32), Roughness=0.5, Rust=0.6, Rust_Scale=1.8, Pitting=0.3, Dirt=0.4,
+     Scratches=0.2)
+_add('iron_forged_black', 'Black Forged Iron', 'METAL',
+     'Blacksmith iron: black scale, hammer marks, polished high points.',
+     Metal_Color=(0.07, 0.07, 0.075), Roughness=0.5, Hammered=0.9, Hammer_Scale=5.0, Color_Variation=0.3,
+     Edge_Polish=0.6, Edge_Color=(0.45, 0.45, 0.45), Scratches=0.1)
+_add('iron_rusty_nail', 'Rusty Iron', 'METAL',
+     'Old iron: orange rust in patches, dark iron between.',
+     Metal_Color=(0.25, 0.25, 0.26), Roughness=0.55, Rust=0.55, Rust_Scale=4.0, Pitting=0.5, Pit_Scale=80.0,
+     Dirt=0.3)
+_add('iron_meteorite', 'Meteorite Iron', 'METAL',
+     'Cut and polished iron-nickel meteorite: grainy, mottled and pitted.',
+     Metal_Color=(0.52, 0.52, 0.5), Roughness=0.2, Color_Variation=0.5, Variation_Scale=12.0, Grain=0.6,
+     Pitting=0.4, Pit_Scale=90.0, Tarnish=0.3, Tarnish_Color=(0.3, 0.25, 0.2))
+# chrome
+_add('chrome_satin', 'Satin Chrome', 'METAL',
+     'Soft, brushed chrome of modern taps.',
+     Metal_Color=CHROME, Roughness=0.2, Brushed=0.7, Scratches=0.05)
+_add('chrome_black', 'Black Chrome', 'METAL',
+     'Smoky dark mirror chrome.',
+     Metal_Color=(0.17, 0.17, 0.18), Roughness=0.04, Scratches=0.08, Smudges=0.15)
+_add('chrome_worn', 'Pitted Old Chrome', 'METAL',
+     'Old car bumper chrome: pitted, scratched and spotted with rust.',
+     Metal_Color=CHROME, Roughness=0.08, Pitting=0.5, Pit_Scale=200.0, Rust=0.2, Rust_Scale=8.0,
+     Scratches=0.45, Dirt=0.25)
+# other metals
+_add('tungsten', 'Tungsten', 'METAL',
+     'Dense, dark grey tungsten carbide, polished.',
+     Metal_Color=TUNGSTEN, Roughness=0.08, Scratches=0.04, Color_Variation=0.03)
+_add('cobalt', 'Cobalt Chrome', 'METAL',
+     'Bright, hard cobalt-chrome alloy, slightly warm.',
+     Metal_Color=COBALT, Roughness=0.1, Scratches=0.08)
+_add('magnesium', 'Magnesium', 'METAL',
+     'Light, matte magnesium casting with a dull oxide film.',
+     Metal_Color=MAGNESIUM, Roughness=0.42, Grain=0.6, Tarnish=0.35, Tarnish_Color=(0.55, 0.55, 0.53),
+     Scratches=0.1)
+_add('lead_weathered', 'Weathered Lead', 'METAL',
+     'Soft, dull lead flashing with white oxide bloom.',
+     Metal_Color=LEAD, Roughness=0.55, Hammered=0.25, Hammer_Scale=4.0, Rust=0.35,
+     Rust_Color=WHITE_OXIDE, Rust_Color_2=WHITE_OXIDE_2, Rust_Scale=3.0, Dirt=0.2, Scratches=0.1)
+_add('tin', 'Tin', 'METAL',
+     'Soft, satin silver-grey tin.',
+     Metal_Color=TIN, Roughness=0.3, Color_Variation=0.1, Scratches=0.15)
+_add('tinplate', 'Tinplate', 'METAL',
+     'Shiny tin-coated steel of old cans and toys, faintly crystalline.',
+     Metal_Color=TIN, Roughness=0.12, Spangle=0.2, Spangle_Scale=20.0, Scratches=0.12, Smudges=0.1)
+_add('zinc_plated', 'Zinc Plating', 'METAL',
+     'Bright blue-white zinc plating of screws and brackets.',
+     Metal_Color=ZINC, Roughness=0.2, Color_Variation=0.08, Scratches=0.1)
+_add('zinc_yellow', 'Yellow Zinc Chromate', 'METAL',
+     'Gold-green iridescent passivated zinc of bolts and brackets.',
+     Metal_Color=(0.78, 0.66, 0.30), Roughness=0.2, Heat_Tint=0.45, Heat_Tint_Scale=3.0,
+     Color_Variation=0.25, Variation_Scale=5.0, Scratches=0.08)
+_add('bismuth', 'Bismuth Crystal', 'METAL',
+     'Iridescent oxide colors of a bismuth crystal.',
+     Metal_Color=(0.65, 0.6, 0.62), Roughness=0.12, Heat_Tint=1.0, Heat_Tint_Scale=1.6, Scratches=0.0)
+# aluminium
+_add('aluminium_polished', 'Polished Aluminium', 'METAL',
+     'Bright mirror-polished aluminium.',
+     Metal_Color=ALUMINIUM, Roughness=0.05, Scratches=0.1, Smudges=0.1)
+_add('aluminium_cast', 'Cast Aluminium', 'METAL',
+     'Grainy, matte sand-cast aluminium.',
+     Metal_Color=(0.8, 0.81, 0.82), Roughness=0.5, Grain=1.0, Pitting=0.3, Pit_Scale=120.0,
+     Color_Variation=0.15, Dirt=0.2)
+_add('aluminium_oxidized', 'Oxidized Aluminium', 'METAL',
+     'Old aluminium: dull, with white powdery corrosion.',
+     Metal_Color=(0.7, 0.71, 0.72), Roughness=0.5, Rust=0.4, Rust_Color=(0.75, 0.75, 0.74),
+     Rust_Color_2=(0.45, 0.45, 0.45), Rust_Scale=5.0, Pitting=0.3, Dirt=0.3)
+_add('aluminium_machined', 'Machined Aluminium', 'METAL',
+     'Freshly milled aluminium with fine tool marks.',
+     Metal_Color=ALUMINIUM, Roughness=0.18, Brushed=0.6, Brush_Scale=500.0, Scratches=0.05)
+for _key, _name, _color in (('gold', 'Gold', (0.75, 0.48, 0.10)), ('green', 'Green', (0.06, 0.40, 0.10)),
+                            ('purple', 'Purple', (0.30, 0.06, 0.55)), ('orange', 'Orange', (0.85, 0.25, 0.03)),
+                            ('teal', 'Teal', (0.03, 0.42, 0.45)), ('pink', 'Pink', (0.85, 0.22, 0.42)),
+                            ('champagne', 'Champagne', CHAMPAGNE), ('titanium', 'Grey', (0.32, 0.33, 0.35))):
+    _add('aluminium_anodized_' + _key, 'Anodized Aluminium ' + _name, 'METAL',
+         '%s anodized aluminium with worn, bare edges.' % _name,
+         Metal_Color=_color, Roughness=0.3, Brushed=0.35, Scratches=0.1, Edge_Polish=0.6, Edge_Color=ALUMINIUM)
+del _key, _name, _color
+# titanium
+_add('titanium_brushed', 'Brushed Titanium', 'METAL',
+     'Warm grey satin titanium.',
+     Metal_Color=TITANIUM, Roughness=0.28, Brushed=0.9, Scratches=0.06)
+_add('titanium_bead', 'Bead-Blasted Titanium', 'METAL',
+     'Soft matte grey titanium of watch cases and tools.',
+     Metal_Color=TITANIUM, Roughness=0.48, Grain=1.0, Pit_Scale=450.0, Scratches=0.04)
+_add('titanium_anodized_blue', 'Anodized Titanium Blue', 'METAL',
+     'Deep electric blue anodized titanium.',
+     Metal_Color=(0.10, 0.22, 0.75), Roughness=0.18, Heat_Tint=0.2, Heat_Tint_Scale=1.0, Scratches=0.06,
+     Edge_Polish=0.3, Edge_Color=TITANIUM)
+_add('titanium_anodized_purple', 'Anodized Titanium Purple', 'METAL',
+     'Purple anodized titanium.',
+     Metal_Color=(0.42, 0.12, 0.62), Roughness=0.18, Heat_Tint=0.2, Heat_Tint_Scale=1.0, Scratches=0.06,
+     Edge_Polish=0.3, Edge_Color=TITANIUM)
+_add('titanium_anodized_gold', 'Anodized Titanium Gold', 'METAL',
+     'Gold anodized titanium.',
+     Metal_Color=(0.85, 0.62, 0.22), Roughness=0.18, Heat_Tint=0.2, Heat_Tint_Scale=1.0, Scratches=0.06,
+     Edge_Polish=0.3, Edge_Color=TITANIUM)
+
 # --------------------------------------------------------------- painted metal
 _add('paint_industrial_yellow', 'Chipped Industrial Yellow', 'PAINT',
      'Machinery yellow, chipped on the edges, a bit rusty.',
@@ -904,6 +1179,113 @@ _grad('grad_bronze_patina', 'Bronze Patina', 'Dark statue bronze with green pati
 _grad('grad_conic_chrome', 'Conic Chrome', 'Spun-metal highlights sweeping around the center.',
       ['#4a4a4a', '#f0f0f0'], Type=ANGULAR, Repeat=4, Repeat_Mode=PING_PONG, Interpolation=SMOOTH,
       Metallic=1.0, Metallic_End=1.0, Roughness=0.15, Roughness_End=0.15)
+# -- more metals (all metallic unless noted)
+
+
+def _metal(pid, name, desc, colors, positions=None, rough=0.2, rough_end=None, **values):
+    values.setdefault('Metallic', 1.0)
+    values.setdefault('Metallic_End', 1.0)
+    _grad(pid, name, desc, colors, positions, Roughness=rough,
+          Roughness_End=rough if rough_end is None else rough_end, **values)
+
+
+# precious
+_metal('grad_gold_shine', 'Gold Shine', 'Deep old gold rising into bright polished yellow gold.',
+       ['#8a5a12', '#c89520', '#f5c84c', '#fff0b0'], rough=0.15)
+_metal('grad_rose_gold', 'Rose Gold', 'Soft pink rose gold shading from coppery to pale blush.',
+       ['#b0705a', '#e0a08a', '#f6cdbd'], rough=0.15)
+_metal('grad_white_gold', 'White Gold', 'Warm white gold with a faint champagne tint.',
+       ['#a69c88', '#ddd5c3', '#f4efe4'], rough=0.12)
+_metal('grad_platinum', 'Platinum', 'Cool, slightly grey platinum from shadow to sheen.',
+       ['#7d7f83', '#c4c6c9', '#e9eaec'], rough=0.15)
+_metal('grad_silver_sheen', 'Silver Sheen', 'Bright sterling silver with soft bands of sheen.',
+       ['#9aa0a6', '#f4f6f8'], Repeat=3, Repeat_Mode=PING_PONG, Interpolation=SMOOTH, rough=0.1)
+_metal('grad_silver_to_gold', 'Silver to Gold', 'Sterling silver warming into yellow gold.',
+       ['#d6d9dc', '#e9d9a8', '#f2c14e'], rough=0.15)
+_metal('grad_gold_to_rose', 'Gold to Rose Gold', 'Yellow gold blushing into pink rose gold.',
+       ['#f2c14e', '#eab08a', '#d98c78'], Angle=H, rough=0.15)
+_metal('grad_gold_fresnel', 'Gold Fresnel', 'Rich orange gold in the middle, pale bright gold at the edges.',
+       ['#fff0b8', '#f0b93a', '#a8700f'], Type=FACING, rough=0.12)
+_metal('grad_tarnished_silver', 'Tarnishing Silver', 'Clean silver at the top, tarnish creeping up dark and '
+       'golden-brown from below.', ['#2e2620', '#6e5a3e', '#a69c88', '#e6e8ea'],
+       positions=(0.0, 0.25, 0.5, 0.8), Noise=0.35, Noise_Size=0.15, rough=0.55, rough_end=0.12)
+# chrome and steel
+_metal('grad_chrome_bands', 'Chrome Bands', 'Mirror chrome reflections: hard bands of black and white.',
+       ['#141414', '#f8f8f8', '#5a5a5a', '#ffffff'], positions=(0.0, 0.45, 0.55, 1.0), Repeat=2,
+       Repeat_Mode=PING_PONG, rough=0.04)
+_metal('grad_chrome_fresnel', 'Chrome Fresnel', 'Dark chrome face with bright mirror edges.',
+       ['#f0f0f0', '#8a8a8a', '#3a3a3a'], Type=FACING, rough=0.05)
+_metal('grad_black_chrome', 'Black Chrome', 'Smoky, dark mirror finish fading to plain chrome.',
+       ['#121316', '#3a3c40', '#9a9ca0'], rough=0.06)
+_metal('grad_polished_steel', 'Polished Steel', 'Cool blue-grey steel from shadow to bright polish.',
+       ['#55606b', '#a7b0b8', '#e2e6ea'], rough=0.15)
+_metal('grad_gunmetal', 'Gunmetal', 'Dark blued gunmetal grey, almost black at the bottom.',
+       ['#1a1d22', '#3a3f47', '#6a7079'], rough=0.3)
+_metal('grad_gunmetal_chrome', 'Gunmetal to Chrome', 'Dark satin gunmetal brightening into polished chrome.',
+       ['#2a2e34', '#6d737b', '#eef0f2'], Angle=H, rough=0.35, rough_end=0.06)
+_metal('grad_liquid_metal', 'Liquid Metal', 'Mercury-like flowing chrome with soft wobbling reflections.',
+       ['#2a2c30', '#d8dadc', '#6e7076', '#f6f6f6'], Repeat=2, Repeat_Mode=PING_PONG, Interpolation=SMOOTH,
+       Noise=0.6, Noise_Size=0.35, rough=0.03)
+_metal('grad_spun_disc', 'Spun Metal Disc', 'Turned metal: fine highlights sweeping around the center like '
+       'a spun hubcap.', ['#7a7d82', '#e8eaec'], Type=ANGULAR, Repeat=12, Repeat_Mode=PING_PONG,
+       Interpolation=SMOOTH, rough=0.2)
+_metal('grad_brushed_rings', 'Machined Rings', 'Concentric lathe rings on bare aluminium.',
+       ['#9a9ea3', '#d8dbde'], Type=RADIAL, Repeat=30, Repeat_Mode=PING_PONG, rough=0.25)
+_metal('grad_aluminium', 'Aluminium Sheen', 'Soft, bright aluminium with a satin sheen.',
+       ['#8f959b', '#c9cdd1', '#eceef0'], rough=0.3)
+# copper, brass and bronze
+_metal('grad_bright_copper', 'Bright Copper', 'Freshly polished copper, deep red-orange to pink highlights.',
+       ['#7a2e14', '#c4602f', '#f2a684'], rough=0.15)
+_metal('grad_copper_tarnish', 'Copper Tarnishing', 'Bright copper darkening to brown and nearly black.',
+       ['#f2a684', '#a85a34', '#5a2e1a', '#2a1810'], Angle=H, Noise=0.3, Noise_Size=0.2, rough=0.15,
+       rough_end=0.5)
+_metal('grad_brass', 'Polished Brass', 'Warm yellow brass from shadow to bright polish.',
+       ['#6e5414', '#c8a03c', '#f2dc8a'], rough=0.15)
+_metal('grad_antique_brass', 'Antique Brass', 'Dark, mellowed brass with a muted golden glow.',
+       ['#3a2a10', '#7a5e26', '#b08f4a'], Noise=0.2, Noise_Size=0.2, rough=0.4)
+_metal('grad_brass_to_copper', 'Brass to Copper', 'Yellow brass turning into red copper.',
+       ['#e0c068', '#d8925a', '#c4602f'], Angle=H, rough=0.2)
+_metal('grad_bronze', 'Bronze', 'Rich brown-gold bronze from dark to warm highlights.',
+       ['#4a2e14', '#8a5a2a', '#c8945a'], rough=0.25)
+_metal('grad_oil_rubbed_bronze', 'Oil-Rubbed Bronze', 'Near-black bronze with copper glints showing through.',
+       ['#1a120c', '#3a2618', '#7a4a2a'], Noise=0.3, Noise_Size=0.1, rough=0.35)
+_metal('grad_champagne', 'Champagne Metal', 'Pale champagne gold, like a modern faucet finish.',
+       ['#9a8a6a', '#d8c8a2', '#f0e6cc'], rough=0.25)
+# heat and color
+_metal('grad_temper_colors', 'Temper Colors', 'The colors steel takes as it is heated, in bands: straw, '
+       'bronze, purple, blue, grey.', ['#e0c88a', '#b07a3c', '#7a3a8a', '#2e4fb0', '#8a9298'], Steps=5,
+       Angle=H, rough=0.25)
+_metal('grad_weld_heat', 'Weld Heat Tint', 'Rainbow heat tint on both sides of a weld line, fading to bare '
+       'steel.', ['#3a4a6a', '#6a3a7a', '#b07a3c', '#d8c890', '#a7adb2'], Type=MIRRORED, Size=0.5,
+       Noise=0.25, Noise_Size=0.05, rough=0.3)
+_metal('grad_exhaust_heat', 'Exhaust Pipe Heat', 'Burnt pipe: blue and purple near the engine, golden '
+       'further out, bare steel at the tip.', ['#2a3a7a', '#6a2a7a', '#b0783a', '#d8c8a0', '#b0b4b8'],
+       Angle=H, Noise=0.3, Noise_Size=0.25, rough=0.25)
+_metal('grad_case_hardened', 'Case Hardened', 'Mottled blue, purple and straw colors of case-hardened '
+       'steel.', ['#2a3a6a', '#7a5a9a', '#c8a060', '#3a5a8a', '#b8bcc0'], Noise=1.0, Noise_Size=0.08,
+       Repeat=3, Repeat_Mode=PING_PONG, rough=0.15)
+_metal('grad_bismuth', 'Bismuth Crystal', 'Stepped iridescent bands like a bismuth crystal: gold, pink, '
+       'blue, green.', ['#e8c040', '#d0508a', '#4060d0', '#30b0a0', '#e8c040'], Type=SQUARE, Steps=10,
+       Repeat=2, rough=0.08)
+_metal('grad_oil_slick', 'Oil Slick', 'Iridescent oil-on-steel film shifting color with the viewing angle.',
+       ['#2a1a4a', '#3a6ab0', '#3aa070', '#d0a030', '#a03a8a'], Type=FACING, Repeat=2,
+       Repeat_Mode=PING_PONG, rough=0.1)
+_metal('grad_anodized_fade', 'Anodized Fade', 'Anodized aluminium fading from deep blue to purple.',
+       ['#1a3aa0', '#5a2ab0', '#a02a9a'], rough=0.3)
+_metal('grad_anodized_sunset', 'Anodized Sunset', 'Anodized fade from red through orange into gold.',
+       ['#b0182a', '#e0602a', '#e8b83a'], Angle=H, rough=0.3)
+_metal('grad_aluminium_anodized', 'Bare to Anodized', 'Bare aluminium dipping into teal anodizing at the '
+       'bottom.', ['#1a8a8a', '#1a8a8a', '#c9cdd1'], positions=(0.0, 0.4, 0.6), Interpolation=SMOOTH,
+       rough=0.3)
+# candy and flake
+_metal('grad_candy_red', 'Candy Apple Red', 'Deep metallic candy red, almost black in the shadows.',
+       ['#2a0408', '#8a0a14', '#e8202a'], rough=0.15)
+_metal('grad_candy_blue', 'Candy Blue', 'Deep metallic candy blue brightening to electric blue.',
+       ['#040a2a', '#0a2a9a', '#2a7aff'], rough=0.15)
+_metal('grad_candy_purple', 'Candy Purple', 'Metallic candy purple fading into magenta.',
+       ['#14042a', '#5a0a9a', '#d02ab0'], rough=0.15)
+_metal('grad_candy_green', 'Candy Green', 'Metallic lime green deepening to emerald.',
+       ['#022a10', '#0a8a3a', '#7ae83a'], rough=0.15)
 # -- rust and oxides
 STEEL_HEX = '#8c9196'
 _grad('grad_rust_bleed', 'Rust Bleed', 'Rust spreading down over bare steel from the top, with a ragged edge.',

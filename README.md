@@ -1,10 +1,11 @@
 # BPM – Procedural Materials for Blender
 
-435 ready-made materials for Blender — **bare metal, painted metal (with 40 tractor paints, from
+551 ready-made materials for Blender — **106 bare metals (gold, rose gold, platinum, silver, copper, brass,
+bronze, steel, chrome, titanium, anodized aluminium…), painted metal (with 40 tractor paints, from
 showroom new to rusty field relic), porcelain enamel
 (1950s fridges, stoves, bathtubs, graniteware, enamel signs), military paint and
 camouflage, concrete, terrain (cratered moons, asteroids, Mars) and glowing lava and magma,
-100 gradients (linear, radial, angular, spiral… projected from any side; plenty of rust and
+140 gradients (linear, radial, angular, spiral… projected from any side; plenty of metal, rust and
 earth tones), glowing lights
 (neon, fluorescent tubes, light panels, LEDs, screens — clean, dusty, bug-filled or burnt
 out), wood, plastic (from showroom new to cracked, burnt and trashed), glass,
@@ -47,7 +48,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.9.0.zip`](dist/bpm_procedural_metals-1.9.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.10.0.zip`](dist/bpm_procedural_metals-1.10.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
@@ -423,12 +424,25 @@ Files (for an object called `Crate`):
 
 ## 4. The materials
 
-**Bare metal (30):** polished chrome, steel, brushed stainless steel, brushed and
+**Bare metal (106):** polished chrome, steel, brushed stainless steel, brushed and
 sandblasted aluminium, anodized aluminium (blue, red, black), polished and brushed
 gold, tarnished silver, polished, hammered and verdigris copper, polished and aged
 brass, antique bronze, heat-tinted titanium, burnt exhaust steel, gunmetal, blued
 steel, cast iron, hammered wrought iron, galvanized steel, weathered zinc, lightly
-rusted steel, heavily rusted iron, Corten weathering steel, satin nickel, pewter.
+rusted steel, heavily rusted iron, Corten weathering steel, satin nickel, pewter;
+precious: polished and brushed platinum, palladium, rhodium plating, rose gold (polished
+and brushed), white gold, 24 and 14 karat gold, gold leaf, antique and satin gold,
+polished, brushed and oxidized sterling silver, electrum; copper, brass and bronze:
+brushed, aged brown, pipe, antique and flame-painted copper, heavy verdigris, brushed,
+champagne and lacquered brass, brass shell casing, brass with patina, polished,
+oil-rubbed, statue (verdigris) and bell bronze, polished nickel, nickel silver; steel and
+iron: mirror stainless, hot-rolled (mill scale), cold-rolled, machined, sandblasted,
+case-hardened, heat-affected (weld), parkerized, scratched sheet, tea-stained stainless,
+rusting ship steel, black forged iron, rusty iron, meteorite iron; chrome: satin, black
+and pitted old chrome; others: tungsten, cobalt chrome, magnesium, weathered lead, tin,
+tinplate, zinc plating, yellow zinc chromate, bismuth crystal; aluminium: polished,
+cast, oxidized, machined, anodized (gold, green, purple, orange, teal, pink, champagne,
+grey); titanium: brushed, bead-blasted, anodized (blue, purple, gold).
 
 **Painted metal (62):** chipped industrial yellow, military olive drab, desert tan,
 worn fire-engine red, metallic car paint (blue, candy red), black powder coat,
@@ -501,7 +515,7 @@ lava: molten lava, lava lake, cooling lava crust, glowing cracks, magma, churnin
 pahoehoe (hot and cooled), aa lava (advancing and cooled), cooled basalt, obsidian,
 sulfur vent rock, ash-covered lava field.
 
-**Gradients (100):** black to white, sunset, daylight and night skies, ocean depths,
+**Gradients (140):** black to white, sunset, daylight and night skies, ocean depths,
 fire, rainbow, thermal camera, viridis, magma, turbo, teal & orange, cyan to magenta,
 pastel dream, mint & peach, hand-dyed ombre, retro stepped sunset, diagonal stripes,
 soft bands, neon tube, horizon glow, heat-tinted titanium, chrome to gold, copper to
@@ -517,7 +531,14 @@ dunes, sand and soil on top, canyon strata, sandstone bands, red rock mesa, badl
 soil layers, river sediment, peat bog, garden loam, adobe wall, brick dust, volcanic
 soil, Martian dust, desert dusk, earth palette, sun-baked clay; plants and browns:
 autumn leaves, forest floor, savanna grass, wheat field, olive to khaki, tobacco leaf,
-saddle tan, coffee & cream, cinnamon spice, honey amber.
+saddle tan, coffee & cream, cinnamon spice, honey amber; more metals: gold shine, rose
+gold, white gold, platinum, silver sheen, silver to gold, gold to rose gold, gold
+fresnel, tarnishing silver, chrome bands, chrome fresnel, black chrome, polished steel,
+gunmetal, gunmetal to chrome, liquid metal, spun metal disc, machined rings, aluminium
+sheen, bright copper, copper tarnishing, polished and antique brass, brass to copper,
+bronze, oil-rubbed bronze, champagne metal, temper colors, weld heat tint, exhaust pipe
+heat, case hardened, bismuth crystal, oil slick, anodized fade and sunset, bare to
+anodized, candy apple red, candy blue, purple and green.
 
 **Lights & neon (24):** red neon, dirty pink neon, dusty blue neon, failing green neon,
 old diner neon, abandoned neon, argon purple neon, white neon, unlit neon tube,
@@ -735,7 +756,7 @@ bpm_procedural_metals/   the add-on (Blender extension)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 473 presets: 435 materials + 38 overlays
+  presets.py             the 589 presets: 551 materials + 38 overlays
   user_presets.py        your own saved presets (a JSON file outside the add-on)
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
