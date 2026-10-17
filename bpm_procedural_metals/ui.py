@@ -110,6 +110,11 @@ class BPM_PT_library(bpy.types.Panel):
             _wrap(box, context, preset['desc'])
             if overlay:
                 _wrap(box, context, 'Goes on top of the material the object already has.', 'INFO')
+            elif preset.get('overlays'):
+                labels = [extra.get('label') for extra in preset.get('overlay_extras') or ()]
+                labels += [None] * (len(preset['overlays']) - len(labels))
+                names = [label or G.GENERATORS[gen]['label'] for (gen, _v), label in zip(preset['overlays'], labels)]
+                _wrap(box, context, 'Comes with overlays: ' + ', '.join(names), 'MOD_OCEAN')
             if preset.get('user'):
                 row = box.row(align=True)
                 row.label(text='Your own preset', icon='USER')
@@ -239,6 +244,8 @@ class BPM_PT_overlays(bpy.types.Panel):
             return
         for index in reversed(range(len(stack))):  # top layer first
             self._draw_overlay(context, layout, stack[index], index, len(stack))
+        if L.find_bpm_node(mat) is not None:
+            layout.operator('bpm.save_preset', text='Save Material + Overlays as Preset', icon='FILE_TICK')
 
     def _draw_overlay(self, context, layout, node, index, count):
         box = layout.box()

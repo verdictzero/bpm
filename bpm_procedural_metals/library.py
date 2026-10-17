@@ -350,9 +350,15 @@ def create_material(preset_id, name=None):
 
 
 def _add_preset_overlays(mat, preset):
-    for generator, values in preset.get('overlays', ()):
+    extras = preset.get('overlay_extras') or ()
+    for index, (generator, values) in enumerate(preset.get('overlays', ())):
         node = add_overlay(mat, generator, values)
         node[PRESET_OVERLAY_TAG] = True
+        extra = extras[index] if index < len(extras) else {}  # your presets: the name and hidden state
+        if extra.get('label'):
+            node.label = extra['label']
+        if extra.get('hidden'):
+            toggle_overlay(node)
 
 
 def load_preset_into(mat, preset_id, keep_pattern=True):

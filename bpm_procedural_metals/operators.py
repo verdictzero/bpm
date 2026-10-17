@@ -240,8 +240,9 @@ class BPM_OT_save_preset(bpy.types.Operator):
 
     name: StringProperty(name='Name', description='Name of your preset (an existing name is replaced)')
     description: StringProperty(name='Description', description='A short note shown in the gallery')
-    include_overlays: BoolProperty(name='Include Overlays', default=True,
-                                   description='Save the dirt, dust, moss, wear and scratch overlays too')
+    include_overlays: BoolProperty(name='Include Overlay Stack', default=True,
+                                   description='Save the whole stack of overlays on top of the material too '
+                                               '(dirt, dust, moss, wear, scratches), in order')
 
     @classmethod
     def poll(cls, context):
@@ -260,6 +261,19 @@ class BPM_OT_save_preset(bpy.types.Operator):
         layout.prop(self, 'name')
         layout.prop(self, 'description')
         layout.prop(self, 'include_overlays')
+        obj, mat, node = L.active_bpm_material(context)
+        if mat is not None:
+            col = layout.box().column(align=True)
+            col.label(text=mat.name, icon='MATERIAL')
+            if self.include_overlays:
+                kept = U.savable_overlays(mat)
+                for ov_node in reversed(L.overlay_stack(mat)):  # top layer first, as in the Overlays panel
+                    text = ov_node.label or ov_node.node_tree.name
+                    if ov_node not in kept:
+                        col.label(text='%s (decals are not saved)' % text, icon='X')
+                    else:
+                        col.label(text='+ ' + text + (' (hidden)' if L.overlay_hidden(ov_node) else ''),
+                                  icon='MOD_OCEAN')
         if self.name.strip() and U.find_by_name(self.name) is not None:
             layout.label(text='Replaces your preset of the same name.', icon='INFO')
 

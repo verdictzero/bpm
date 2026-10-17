@@ -2120,6 +2120,57 @@ def user_presets_save_load_delete():
 
 
 @test
+def user_presets_keep_the_whole_stack():
+    """A preset saves the material and its whole overlay stack: order, names and hidden ones (not decals)."""
+    import json
+    from bpm_procedural_metals import decals as D, user_presets as U
+    fresh_scene()
+    scene = bpy.context.scene
+    obj = add_cube('Stacked')
+    mat = L.create_material('steel_polished', 'Stack')
+    obj.data.materials.append(mat)
+    L.add_overlay(mat, 'DIRT', {'Amount': 0.4})
+    L.add_overlay(mat, 'MOSS', {'Opacity': 0.6})
+    wear = L.add_overlay(mat, 'WEAR')
+    wear.label = 'Chipped Edges'
+    L.toggle_overlay(L.overlay_stack(mat)[1])  # moss: hidden
+    box = D.create(scene, decal_image(), D.box_matrix(Vector((1.0, 0.0, 0.0)), (0, 1, 0), (1, 0, 0), 1.2, 1.2, 0.3))
+    D.refresh(box, scene)
+    assert len(L.overlay_stack(mat)) == 4
+    preset = U.save(mat, 'Full Stack')
+    assert [g for g, _v in preset['overlays']] == ['DIRT', 'MOSS', 'WEAR'], 'no decal'
+    assert [e['hidden'] for e in preset['overlay_extras']] == [False, True, False]
+    assert preset['overlay_extras'][2]['label'] == 'Chipped Edges'
+    with open(U.file_path(), encoding='utf-8') as f:
+        entry = next(e for e in json.load(f)['presets'] if e['id'] == 'user_full_stack')
+    assert all(len(item) == 2 for item in entry['overlays']), 'older versions still read the overlays'
+    # a new material, then after a restart
+    for _round in range(2):
+        copy = L.create_material('user_full_stack')
+        stack = L.overlay_stack(copy)
+        assert [n.node_tree['bpm_generator'] for n in stack] == ['DIRT', 'MOSS', 'WEAR']
+        assert abs(stack[0].inputs['Amount'].default_value - 0.4) < 1e-6
+        assert L.overlay_hidden(stack[1]) and stack[1].inputs['Opacity'].default_value == 0.0
+        L.toggle_overlay(stack[1])
+        assert abs(stack[1].inputs['Opacity'].default_value - 0.6) < 1e-6, 'shown again at its own opacity'
+        assert stack[2].label == 'Chipped Edges' and not L.overlay_hidden(stack[2])
+        assert all(n.get(L.PRESET_OVERLAY_TAG) for n in stack)
+        addon.unregister()
+        addon.register()
+    # loading it into another material replaces the overlays that came with that one's preset
+    other = L.create_material('paint_tractor_red' if P.find('paint_tractor_red') else 'steel_polished')
+    L.load_preset_into(other, 'user_full_stack')
+    assert [n.node_tree['bpm_generator'] for n in L.overlay_stack(other)] == ['DIRT', 'MOSS', 'WEAR']
+    # Reset on the saved material keeps one stack, its decal included
+    obj.active_material_index = 0
+    bpy.context.view_layer.objects.active = obj
+    bpy.ops.bpm.reset_material()
+    gens = [n.node_tree['bpm_generator'] for n in L.overlay_stack(mat)]
+    assert sorted(gens) == sorted(['DIRT', 'MOSS', 'WEAR', D.GENERATOR]), gens
+    assert U.delete('user_full_stack')
+
+
+@test
 def enamel_and_lights_tile_and_glow():
     """Enamel and lights tile seamlessly; a light bakes its glow, a switched-off one doesn't."""
     fresh_scene()

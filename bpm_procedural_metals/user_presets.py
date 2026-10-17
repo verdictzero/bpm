@@ -79,8 +79,10 @@ def _to_preset(entry):
         return None
     names = {p.name for p in G.params_for(generator)}
     values = {k: _from_json(v) for k, v in entry.get('values', {}).items() if k in names}
-    overlays = []
-    for item in entry.get('overlays', []):
+    overlays, extras = [], []
+    saved_extras = entry.get('overlay_extras')
+    saved_extras = saved_extras if isinstance(saved_extras, list) else []
+    for index, item in enumerate(entry.get('overlays', [])):
         try:
             gen, ov_values = item
         except (TypeError, ValueError):
@@ -88,9 +90,12 @@ def _to_preset(entry):
         if gen in G.GENERATORS and G.is_overlay(gen) and not G.GENERATORS[gen]['custom']:
             ov_names = {p.name for p in G.params_for(gen)}
             overlays.append((gen, {k: _from_json(v) for k, v in ov_values.items() if k in ov_names}))
+            extra = saved_extras[index] if index < len(saved_extras) else None
+            extra = extra if isinstance(extra, dict) else {}
+            extras.append(dict(label=str(extra.get('label') or ''), hidden=bool(extra.get('hidden'))))
     return dict(id=entry['id'], name=str(entry.get('name') or entry['id']), generator=generator,
                 category=P.USER_CATEGORY, desc=str(entry.get('desc') or 'Your own preset.'),
-                values=values, overlays=overlays, thumb={}, user=True)
+                values=values, overlays=overlays, overlay_extras=extras, thumb={}, user=True)
 
 
 def load():
@@ -116,8 +121,15 @@ def find_by_name(name):
     return next((p for p in user_presets() if p['name'].lower() == key), None)
 
 
+def savable_overlays(mat):
+    """The overlays a preset of `mat` keeps (all but decals, which project images onto one object)."""
+    from . import library as L
+    return [n for n in L.overlay_stack(mat) if not G.GENERATORS[n.node_tree['bpm_generator']]['custom']]
+
+
 def save(mat, name, desc='', include_overlays=True):
-    """Save the settings of BPM material `mat` as your preset `name` (same name: replaced)."""
+    """Save the settings of BPM material `mat` as your preset `name` (same name: replaced): the
+    material and, with `include_overlays`, its whole overlay stack (names and hidden ones too)."""
     from . import library as L
     node = L.find_bpm_node(mat)
     if node is None:
@@ -134,15 +146,18 @@ def save(mat, name, desc='', include_overlays=True):
     generator = node.node_tree['bpm_generator']
     names = {p.name for p in G.params_for(generator)}
     values = {k: _jsonable(v) for k, v in L.read_values(node).items() if k in names}
-    overlays = []
-    saved_nodes = []
-    if include_overlays:
-        for ov_node in L.overlay_stack(mat):
-            state = L.OverlayState(ov_node)
-            if state.tree is None and state.hidden_opacity is None:  # decals and hidden overlays stay out
-                overlays.append([state.generator, {k: _jsonable(v) for k, v in state.values.items()}])
-                saved_nodes.append(ov_node)
-    entry = dict(id=pid, name=name, generator=generator, desc=desc.strip(), values=values, overlays=overlays)
+    overlays, extras = [], []
+    saved_nodes = savable_overlays(mat) if include_overlays else []
+    for ov_node in saved_nodes:
+        state = L.OverlayState(ov_node)
+        ov_values = {k: _jsonable(v) for k, v in state.values.items()}
+        if state.hidden_opacity is not None:  # hidden: keep the opacity it comes back with
+            ov_values['Opacity'] = float(state.hidden_opacity)
+        overlays.append([state.generator, ov_values])
+        extras.append(dict(label=state.label, hidden=state.hidden_opacity is not None))
+    # (the names and hidden states sit apart, so older versions still read the overlays)
+    entry = dict(id=pid, name=name, generator=generator, desc=desc.strip(), values=values, overlays=overlays,
+                 overlay_extras=extras)
     entries = [e for e in _read() if e['id'] != pid]
     entries.append(entry)
     _write(entries)
