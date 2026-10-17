@@ -2204,6 +2204,21 @@ def enamel_and_lights_tile_and_glow():
     baked = L.find_principled(lit.active_material.node_tree)
     strength = L.preset_values(P.get('light_panel_bugs'))['Emission Strength']
     assert abs(baked.inputs['Emission Strength'].default_value - strength) < 1e-5, 'glow strength kept'
+    # no glow baked, no glow: Blender's default emission color is white, so it would wash everything out
+    assert L.find_principled(off.active_material.node_tree).inputs['Emission Strength'].default_value == 0.0
+    grad = add_cube('Gradient', location=(0, 5, 0))
+    grad.data.materials.append(L.create_material('grad_black_white'))
+    bright = add_cube('Bright', location=(5, 5, 0))
+    bright.data.materials.append(L.create_material('light_panel_bugs', 'Bright'))
+    job = B.ObjectBakeJob(bpy.context, [grad, bright], settings(resolution=64, maps={'BASE_COLOR'}))
+    B.run_to_end(job)
+    for obj in (grad, bright):  # a gradient's Emission Strength slider; a glow not ticked for baking
+        assert L.is_baked_material(obj.active_material)
+        assert L.find_principled(obj.active_material.node_tree).inputs['Emission Strength'].default_value == 0.0
+    job = B.TileBakeJob(bpy.context, [L.create_material('grad_sunset')], settings(resolution=64))
+    B.run_to_end(job)
+    tiled = bpy.data.materials['Sunset Sky Tiled']
+    assert L.find_principled(tiled.node_tree).inputs['Emission Strength'].default_value == 0.0
 
 
 @test

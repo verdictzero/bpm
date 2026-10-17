@@ -820,6 +820,8 @@ def build_baked_material(name, images, uv_name, directx=False, tag_value=True, k
         links.new(tex('ROUGHNESS', y).outputs['Color'], bsdf.inputs['Roughness'])
     y -= 300
     for input_name, value in (kept or {}).items():
+        if input_name == 'Emission Strength' and 'EMISSION' not in images:
+            continue  # no glow baked: the strength alone would light it up white (the default color)
         if input_name in bsdf.inputs:
             bsdf.inputs[input_name].default_value = value
     if 'TRANSMISSION' in images:
