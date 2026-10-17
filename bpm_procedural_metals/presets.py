@@ -306,19 +306,19 @@ _add('electrum', 'Electrum', 'METAL',
 # copper, brass, bronze
 _add('copper_brushed', 'Brushed Copper', 'METAL',
      'Satin brushed copper sheet.',
-     Metal_Color=COPPER, Roughness=0.26, Brushed=0.9, Scratches=0.08, Tarnish=0.1,
+     Metal_Color=(0.93, 0.56, 0.42), Roughness=0.26, Brushed=0.9, Scratches=0.08, Tarnish=0.1,
      Tarnish_Color=(0.55, 0.35, 0.28))
 _add('copper_aged_brown', 'Aged Copper (Brown)', 'METAL',
      'Copper a few years outdoors: dark chocolate brown before it turns green.',
-     Metal_Color=COPPER, Roughness=0.4, Tarnish=0.95, Tarnish_Color=COPPER_BROWN, Tarnish_Scale=2.0,
+     Metal_Color=(0.42, 0.2, 0.12), Roughness=0.4, Tarnish=0.95, Tarnish_Color=COPPER_BROWN, Tarnish_Scale=2.0,
      Color_Variation=0.3, Dirt=0.2, Scratches=0.05)
 _add('copper_pipe', 'Copper Pipe', 'METAL',
      'Plumbing copper: dull, slightly tarnished, fingerprinted.',
-     Metal_Color=COPPER, Roughness=0.3, Tarnish=0.35, Tarnish_Color=(0.45, 0.25, 0.18), Smudges=0.3,
+     Metal_Color=(0.9, 0.5, 0.36), Roughness=0.3, Tarnish=0.35, Tarnish_Color=(0.45, 0.25, 0.18), Smudges=0.3,
      Scratches=0.15, Brushed=0.2)
 _add('copper_antique', 'Antique Copper', 'METAL',
      'Darkened copper with bright worn edges, like an old kettle.',
-     Metal_Color=COPPER, Roughness=0.3, Tarnish=0.8, Tarnish_Color=(0.2, 0.09, 0.05), Edge_Polish=0.9,
+     Metal_Color=(0.5, 0.25, 0.15), Roughness=0.3, Tarnish=0.8, Tarnish_Color=(0.2, 0.09, 0.05), Edge_Polish=0.9,
      Edge_Color=COPPER, Dirt=0.25, Scratches=0.2)
 _add('copper_heat', 'Flame-Painted Copper', 'METAL',
      'Copper torched into reds, purples and blues.',
