@@ -84,15 +84,18 @@ In Edit Mode, *Apply* puts the material only on the **selected faces**.
 ### Save your own presets
 
 Set up a material the way you like it (sliders, colors and the overlays on top of it),
-then click **Save Preset** in *Adjust Material*, type a name (and a description if you
-like) and click OK. It shows up in the library under **My Presets** and in the category of
+then click **Save Preset** in *Adjust Material* (or **Save Material + Overlays as Preset**
+under the overlays), type a name (and a description if you like) and click OK. It shows up in the library under **My Presets** and in the category of
 its material (a saved gradient is listed with the gradients too), with a thumbnail of
 how it looks. Apply it like any other preset; **Load Preset** and ↶ (reset) work with
 it too.
 
 * Saving under a name you already used **replaces** that preset (handy to update it).
-* *Include Overlays* (on by default) saves the dirt, dust and wear layers with it.
-  Decals stay with the model, and hidden layers are left out.
+* *Include Overlay Stack* (on by default) saves the whole stack with it: every dirt,
+  dust, moss, wear and scratch layer, in order, with its name, and hidden layers stay
+  hidden. The dialog lists what will be saved. Applying the preset brings the material
+  and its stack back in one click (the library says which overlays a preset comes with).
+  Decals stay with the model.
 * To delete one, pick it in the library and click the 🗑 button next to *Your own preset*.
   Materials you made from it stay as they are.
 * Your presets are kept in a file outside the add-on, so updating or reinstalling BPM
