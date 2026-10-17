@@ -13,7 +13,7 @@ Find it in: 3D Viewport > Sidebar (press N) > BPM tab.
 bl_info = {
     "name": "BPM - Procedural Materials",
     "author": "verdictzero",
-    "version": (1, 8, 0),
+    "version": (1, 8, 1),
     "blender": (4, 2, 0),
     "location": "3D Viewport > Sidebar (N) > BPM",
     "description": "Procedural metal, paint, porcelain enamel, camouflage, concrete, lights and neon, wood, "
