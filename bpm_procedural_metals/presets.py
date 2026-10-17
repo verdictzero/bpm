@@ -1208,7 +1208,7 @@ _metal('grad_gold_fresnel', 'Gold Fresnel', 'Rich orange gold in the middle, pal
        ['#fff0b8', '#f0b93a', '#a8700f'], Type=FACING, rough=0.12)
 _metal('grad_tarnished_silver', 'Tarnishing Silver', 'Clean silver at the top, tarnish creeping up dark and '
        'golden-brown from below.', ['#2e2620', '#6e5a3e', '#a69c88', '#e6e8ea'],
-       positions=(0.0, 0.25, 0.5, 0.8), Noise=0.35, Noise_Size=0.15, rough=0.55, rough_end=0.12)
+       positions=(0.0, 0.4, 0.62, 0.85), Noise=0.35, Noise_Size=0.15, rough=0.55, rough_end=0.12)
 # chrome and steel
 _metal('grad_chrome_bands', 'Chrome Bands', 'Mirror chrome reflections: hard bands of black and white.',
        ['#141414', '#f8f8f8', '#5a5a5a', '#ffffff'], positions=(0.0, 0.45, 0.55, 1.0), Repeat=2,
@@ -1254,7 +1254,7 @@ _metal('grad_champagne', 'Champagne Metal', 'Pale champagne gold, like a modern 
 # heat and color
 _metal('grad_temper_colors', 'Temper Colors', 'The colors steel takes as it is heated, in bands: straw, '
        'bronze, purple, blue, grey.', ['#e0c88a', '#b07a3c', '#7a3a8a', '#2e4fb0', '#8a9298'], Steps=5,
-       Angle=H, rough=0.25)
+       rough=0.25)
 _metal('grad_weld_heat', 'Weld Heat Tint', 'Rainbow heat tint on both sides of a weld line, fading to bare '
        'steel.', ['#3a4a6a', '#6a3a7a', '#b07a3c', '#d8c890', '#a7adb2'], Type=MIRRORED, Size=0.5,
        Noise=0.25, Noise_Size=0.05, rough=0.3)
@@ -1266,7 +1266,7 @@ _metal('grad_case_hardened', 'Case Hardened', 'Mottled blue, purple and straw co
        Repeat=3, Repeat_Mode=PING_PONG, rough=0.15)
 _metal('grad_bismuth', 'Bismuth Crystal', 'Stepped iridescent bands like a bismuth crystal: gold, pink, '
        'blue, green.', ['#e8c040', '#d0508a', '#4060d0', '#30b0a0', '#e8c040'], Type=SQUARE, Steps=10,
-       Repeat=2, rough=0.08)
+       Repeat=3, Repeat_Mode=REPEAT, rough=0.08)
 _metal('grad_oil_slick', 'Oil Slick', 'Iridescent oil-on-steel film shifting color with the viewing angle.',
        ['#2a1a4a', '#3a6ab0', '#3aa070', '#d0a030', '#a03a8a'], Type=FACING, Repeat=2,
        Repeat_Mode=PING_PONG, rough=0.1)
