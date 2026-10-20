@@ -1084,7 +1084,7 @@ TILE_THUMB = dict(zoom=0.4)
 RUNNING, ENGLISH, FLEMISH, HERRINGBONE, BASKETWEAVE, STONES, HEXAGON = range(7)
 CMU = dict(Unit_Width=0.39, Unit_Height=0.19, Unit_Color=(0.32, 0.31, 0.29), Unit_Color_2=(0.26, 0.25, 0.24),
            Color_Variation=0.4, Brightness_Variation=0.1, Mottling=0.3, Face_Texture=1.0, Pores=0.6, Speckles=0.3,
-           Edge_Rounding=0.05, Mortar_Color=(0.30, 0.29, 0.27), Mortar_Depth=0.15, Mortar_Texture=0.6,
+           Edge_Rounding=0.05, Mortar_Color=(0.22, 0.21, 0.20), Mortar_Depth=0.3, Mortar_Texture=0.6,
            Chipped_Edges=0.1)
 SANDSTONE = dict(Unit_Color=(0.45, 0.29, 0.16), Unit_Color_2=(0.37, 0.22, 0.12))
 LIMESTONE = dict(Unit_Color=(0.55, 0.50, 0.40), Unit_Color_2=(0.47, 0.42, 0.33), Mortar_Color=(0.50, 0.47, 0.40))
@@ -1112,11 +1112,11 @@ _add('brick_london_stock', 'London Yellow Stock', 'MASONRY',
      'Yellow-brown London stock bricks in Flemish bond, darkened by a century of soot.',
      thumb=BRICK_THUMB, Layout=FLEMISH, Unit_Color=(0.42, 0.30, 0.15), Unit_Color_2=(0.26, 0.17, 0.09),
      Color_Variation=0.8, Dark_Units=0.1, Mottling=0.6, Speckles=0.3, Mortar_Color=(0.45, 0.43, 0.38),
-     Soot=0.3, Dirt=0.3)
+     Soot=0.15, Dirt=0.3)
 _add('brick_buff', 'Buff Brick', 'MASONRY',
      'Pale tan-yellow bricks, crisp and even.',
-     thumb=BRICK_THUMB, Unit_Color=(0.52, 0.39, 0.24), Unit_Color_2=(0.42, 0.30, 0.17), Color_Variation=0.4,
-     Mortar_Color=(0.48, 0.46, 0.41), Edge_Rounding=0.1, Dirt=0.1)
+     thumb=BRICK_THUMB, Unit_Color=(0.40, 0.29, 0.16), Unit_Color_2=(0.33, 0.23, 0.12), Color_Variation=0.4,
+     Mortar_Color=(0.50, 0.49, 0.46), Mortar_Depth=0.45, Edge_Rounding=0.1, Dirt=0.1)
 _add('brick_chicago_common', 'Chicago Common Brick', 'MASONRY',
      'Salmon, red, brown and grey bricks all mixed up, soft and a little worn.',
      thumb=BRICK_THUMB, Unit_Color=(0.40, 0.21, 0.11), Unit_Color_2=(0.27, 0.19, 0.14), Color_Variation=1.0,
@@ -1130,10 +1130,10 @@ _add('brick_clinker', 'Clinker Brick', 'MASONRY',
      thumb=BRICK_THUMB, Unit_Color=(0.16, 0.06, 0.03), Unit_Color_2=(0.08, 0.04, 0.03), Color_Variation=0.8,
      Dark_Units=0.35, Glaze=0.25, Split_Face=0.25, Mortar_Color=(0.36, 0.34, 0.30))
 _add('brick_modern_charcoal', 'Modern Charcoal Brick', 'MASONRY',
-     'Long, thin charcoal bricks in stack bond with dark recessed joints.',
+     'Long, thin charcoal bricks in stack bond with grey recessed joints.',
      thumb=BRICK_THUMB, Unit_Width=0.44, Unit_Height=0.05, Row_Offset=0.0, Unit_Color=(0.05, 0.05, 0.05),
      Unit_Color_2=(0.08, 0.07, 0.06), Color_Variation=0.6, Brightness_Variation=0.2, Mottling=0.2,
-     Edge_Rounding=0.05, Chipped_Edges=0.03, Mortar_Color=(0.09, 0.09, 0.09), Mortar_Depth=0.6, Dirt=0.05,
+     Edge_Rounding=0.05, Chipped_Edges=0.03, Mortar_Color=(0.20, 0.19, 0.18), Mortar_Depth=0.7, Dirt=0.05,
      Water_Stains=0.0, Roughness=0.75)
 _add('brick_glazed', 'Glazed Green Brick', 'MASONRY',
      'Shiny glazed bricks, as on old subway stations and pubs.',
@@ -1142,7 +1142,8 @@ _add('brick_glazed', 'Glazed Green Brick', 'MASONRY',
      Edge_Rounding=0.35, Mortar_Color=(0.55, 0.54, 0.50), Mortar_Depth=0.1, Chipped_Edges=0.05, Dirt=0.1)
 _add('brick_white_painted', 'White Painted Brick', 'MASONRY',
      'Brick painted white, mortar and all: lofts and cafés.',
-     thumb=BRICK_THUMB, Paint=1.0, Paint_Color=(0.78, 0.77, 0.74), Mortar_Depth=0.25, Dirt=0.1, Water_Stains=0.05)
+     thumb=BRICK_THUMB, Paint=1.0, Paint_Color=(0.78, 0.77, 0.74), Mortar_Depth=0.5, Edge_Rounding=0.35, Dirt=0.1,
+     Water_Stains=0.05)
 _add('brick_peeling_paint', 'Peeling Painted Brick', 'MASONRY',
      'An old painted wall, the paint flaking off to show the red brick.',
      thumb=BRICK_THUMB, Paint=1.0, Peeling=0.45, Paint_Color=(0.52, 0.62, 0.55), Mortar_Erosion=0.2, Dirt=0.35,
@@ -1163,13 +1164,13 @@ _add('brick_wet', 'Rain-Soaked Brick', 'MASONRY',
      thumb=BRICK_THUMB, Wetness=0.8, Water_Stains=0.4, Dirt=0.3)
 _add('brick_efflorescence', 'Salt-Stained Brick', 'MASONRY',
      'White salt blooming out of the joints and running down the wall.',
-     thumb=BRICK_THUMB, Efflorescence=0.7, Water_Stains=0.4, Mortar_Erosion=0.2)
+     thumb=BRICK_THUMB, Efflorescence=0.45, Water_Stains=0.3, Mortar_Erosion=0.2)
 _add('brick_mossy', 'Mossy Brick', 'MASONRY',
      'A damp, shady wall with moss growing in the joints.',
      thumb=BRICK_THUMB, Moss=0.6, Water_Stains=0.5, Dirt=0.35, Mortar_Erosion=0.3)
 _add('brick_alley', 'Dirty Alley Brick', 'MASONRY',
      'Back-alley wall: grime, soot, damp and salt.',
-     thumb=BRICK_THUMB, Dirt=0.75, Water_Stains=0.6, Soot=0.2, Efflorescence=0.2, Moss=0.1, Chipped_Edges=0.35,
+     thumb=BRICK_THUMB, Dirt=0.75, Water_Stains=0.6, Soot=0.1, Efflorescence=0.2, Moss=0.1, Chipped_Edges=0.35,
      Mortar_Erosion=0.3)
 _add('brick_crumbling', 'Crumbling Brick', 'MASONRY',
      'Washed-out mortar, broken faces and the odd brick fallen out.',
@@ -1177,16 +1178,16 @@ _add('brick_crumbling', 'Crumbling Brick', 'MASONRY',
      Chipped_Edges=0.6, Weathering=0.5, Moss=0.2, Dirt=0.4, Water_Stains=0.4)
 _add('brick_ruined', 'Ruined Brick Wall', 'MASONRY',
      'Bombed-out ruin: cracked, broken and missing bricks, soot and dirt.',
-     thumb=BRICK_THUMB, Broken_Units=0.4, Missing_Units=0.12, Cracks=0.4, Soot=0.3, Dirt=0.5, Chipped_Edges=0.8,
+     thumb=BRICK_THUMB, Broken_Units=0.4, Missing_Units=0.12, Cracks=0.4, Soot=0.15, Dirt=0.5, Chipped_Edges=0.8,
      Mortar_Erosion=0.6, Mortar_Depth=0.6, Weathering=0.3)
 _add('brick_burnt', 'Fire-Damaged Brick', 'MASONRY',
      'Blackened by a fire, cracked by the heat.',
      thumb=BRICK_THUMB, Soot=0.8, Cracks=0.3, Chipped_Edges=0.4, Dirt=0.3)
 _add('brick_firebrick', 'Firebrick', 'MASONRY',
      'Pale refractory bricks with thin joints, sooty from the furnace.',
-     thumb=BRICK_THUMB, Unit_Width=0.23, Unit_Height=0.114, Mortar_Width=0.003, Unit_Color=(0.62, 0.50, 0.33),
-     Unit_Color_2=(0.55, 0.42, 0.28), Color_Variation=0.5, Speckles=0.4, Mortar_Color=(0.55, 0.52, 0.45),
-     Mortar_Depth=0.1, Edge_Rounding=0.1, Soot=0.45, Dirt=0.2, Water_Stains=0.0)
+     thumb=BRICK_THUMB, Unit_Width=0.23, Unit_Height=0.114, Mortar_Width=0.004, Unit_Color=(0.46, 0.35, 0.22),
+     Unit_Color_2=(0.38, 0.28, 0.17), Color_Variation=0.5, Speckles=0.4, Mortar_Color=(0.30, 0.28, 0.25),
+     Mortar_Depth=0.3, Edge_Rounding=0.1, Soot=0.2, Dirt=0.2, Water_Stains=0.0)
 
 # concrete blocks
 _add('cinder_block', 'Cinder Block Wall', 'MASONRY',
@@ -1250,7 +1251,7 @@ _add('stone_fieldstone', 'Fieldstone Wall', 'MASONRY',
      'Rounded field stones of every color set in deep mortar.',
      thumb=STONE_THUMB, Layout=STONES, Unit_Width=0.3, Unit_Height=0.22, Mortar_Width=0.025, Irregularity=0.6,
      Bulge=0.6, Edge_Rounding=0.6, Unit_Color=(0.36, 0.33, 0.29), Unit_Color_2=(0.24, 0.21, 0.18),
-     Color_Variation=0.9, Brightness_Variation=0.5, Mortar_Color=(0.42, 0.40, 0.36), Mortar_Depth=0.5,
+     Color_Variation=0.9, Brightness_Variation=0.5, Mortar_Color=(0.27, 0.26, 0.23), Mortar_Depth=0.5,
      Chipped_Edges=0.05)
 _add('stone_rubble_mossy', 'Mossy Rubble Wall', 'MASONRY',
      'Rough rubble stones, crumbling mortar, moss and damp.',
@@ -1273,7 +1274,7 @@ _add('stone_castle', 'Castle Wall', 'MASONRY',
 _add('stone_gothic', 'Gothic Church Stone', 'MASONRY',
      'Pale cut stone blackened by centuries of city smoke.',
      thumb=STONE_THUMB, **dict(LIMESTONE, Unit_Width=0.45, Unit_Height=0.3, Mortar_Width=0.006,
-                               Length_Variation=0.3, Layers=0.2, Weathering=0.4, Soot=0.45, Water_Stains=0.6,
+                               Length_Variation=0.3, Layers=0.2, Weathering=0.4, Soot=0.3, Water_Stains=0.6,
                                Dirt=0.3))
 _add('stone_ancient_sandstone', 'Eroded Ancient Sandstone', 'MASONRY',
      'Desert ruins: soft sandstone worn round and pitted by wind and sand.',

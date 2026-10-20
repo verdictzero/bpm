@@ -308,9 +308,6 @@ def build_masonry(b, I, gout, tile):
     dome = b.one_minus(b.mul(b.one_minus(dome), b.one_minus(dome)))
 
     face_level = 0.6
-    split_z = S.znoise(b.div(2.5, H), 35, detail=6.0, roughness=0.7, jitter=jitter, label='Split Face')
-    h_face = b.madd(b.sub(dome, 1.0), b.mul(I['Bulge'], 0.3), face_level)
-    h_face = b.madd(I['Split Face'], b.madd(split_z, 0.06, 0.05), h_face)
     # mortar: flush to raked, sandy, crumbling
     mz = S.znoise(b.div(1.0, b.maximum(m, 0.002)), 37, detail=4.0, roughness=0.6, label='Mortar')
     erosion = I['Mortar Erosion']
@@ -318,12 +315,17 @@ def build_masonry(b, I, gout, tile):
     h_mortar = b.madd(mz, b.madd(I['Mortar Texture'], 0.02, b.mul(erosion, 0.05)),
                       b.madd(erosion, -0.15, h_mortar))
 
+    split_z = S.znoise(b.div(2.5, H), 35, detail=6.0, roughness=0.7, jitter=jitter, label='Split Face')
+    h_face = b.madd(b.sub(dome, 1.0), b.mul(I['Bulge'], 0.3), face_level)
+    h_face = b.maximum(h_face, b.add(h_mortar, 0.04))  # domed stones still rise out of the mortar at the edge
+    h_face = b.madd(I['Split Face'], b.madd(split_z, 0.06, 0.05), h_face)
+
     broken_z = S.znoise(b.div(1.5, H), 36, detail=5.0, roughness=0.7, jitter=jitter, label='Broken Face')
     broken = b.mul(b.math('LESS_THAN', r5, I['Broken Units']), b.smoothstep(-0.8, 0.2, broken_z))
     broken = b.maximum(broken, chip)
     # (broken faces stay just above the mortar, so they still show the unit)
     h_face = b.mix(broken, h_face, b.maximum(b.madd(broken_z, 0.05, face_level - 0.18), b.add(h_mortar, 0.02)))
-    h_unit = b.mix(prof, b.sub(h_mortar, 0.2), h_face)
+    h_unit = b.mix(prof, b.sub(h_mortar, 0.06), h_face)  # rounded edges run down into the mortar
     h = b.maximum(h_mortar, h_unit)
     unit = b.smoothstep(-0.006, 0.006, b.sub(h_unit, h_mortar))  # 1 on the units, 0 on the mortar
 
@@ -468,8 +470,9 @@ def build_masonry(b, I, gout, tile):
     hm = b.madd(moss_mask, b.madd(sand, 1.5, 0.5), hm)
     h = b.madd(moss_mask, b.mul(joints, 0.1), h)
 
-    soot_where = b.madd(dz, 0.9, b.mul(b.one_minus(height_obj), 1.4)) if has_geo else dz
-    soot = F.cover(b, b.madd(joints, 0.4, soot_where), b.mul(I['Soot'], 0.55), 0.9)
+    soot_where = b.madd(dz, 0.9, b.mul(b.one_minus(height_obj), 0.7)) if has_geo else dz
+    soot = F.cover(b, b.madd(joints, 0.4, soot_where), b.mul(I['Soot'], 0.5), 0.9)
+    soot = b.mul(soot, b.clamp01(b.madd(I['Soot'], 0.45, b.madd(mottle, 0.15, 0.5))))  # light soot stays a film
     col = b.mix_color(soot, col, b.color_scale(SOOT, b.madd(mottle, 0.3, 1.2)))
     rough = b.mix(soot, rough, 0.95)
 

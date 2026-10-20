@@ -1,10 +1,10 @@
 # BPM – Procedural Materials for Blender
 
-551 ready-made materials for Blender — **106 bare metals (gold, rose gold, platinum, silver, copper, brass,
+605 ready-made materials for Blender — **106 bare metals (gold, rose gold, platinum, silver, copper, brass,
 bronze, steel, chrome, titanium, anodized aluminium…), painted metal (with 40 tractor paints, from
 showroom new to rusty field relic), porcelain enamel
 (1950s fridges, stoves, bathtubs, graniteware, enamel signs), military paint and
-camouflage, concrete, 53 brick, cinder block, stone and tile walls and floors (running,
+camouflage, concrete, 54 brick, cinder block, stone and tile walls and floors (running,
 English and Flemish bond, herringbone, basketweave, ashlar, fieldstone, cobbles, hexagon pavers…), terrain (cratered moons, asteroids, Mars) and glowing lava and magma,
 140 gradients (linear, radial, angular, spiral… projected from any side; plenty of metal, rust and
 earth tones), glowing lights
@@ -50,7 +50,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.10.1.zip`](dist/bpm_procedural_metals-1.10.1.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.11.0.zip`](dist/bpm_procedural_metals-1.11.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
@@ -480,7 +480,7 @@ block wall — and the worn and damaged ones: weathered, cracked, spalled with r
 ruined, bullet-riddled, military bunker, mossy, salt-stained, garage floor (oil), wet,
 fire-damaged, dirty underpass, bridge pier.
 
-**Brick & stone (53):** bricks — red running bond, old red brick, English bond, Flemish
+**Brick & stone (54):** bricks — red running bond, old red brick, English bond, Flemish
 bond with dark headers, London yellow stock, buff, Chicago common, reclaimed, clinker,
 long modern charcoal, glazed green, white painted, peeling paint, limewashed,
 herringbone and basketweave paving, rain-soaked, salt-stained, mossy, dirty alley,
@@ -783,7 +783,7 @@ bpm_procedural_metals/   the add-on (Blender extension)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 589 presets: 551 materials + 38 overlays
+  presets.py             the 643 presets: 605 materials + 38 overlays
   user_presets.py        your own saved presets (a JSON file outside the add-on)
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)
