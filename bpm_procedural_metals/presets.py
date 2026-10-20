@@ -18,6 +18,8 @@ CATEGORIES = (
     ('MILITARY', 'Military', 'Military paint and camouflage with mud, dust and edge wear built in', 'Military', 10),
     ('CONCRETE', 'Concrete', 'Cast, board-formed, polished, slab and block concrete, from fresh to ruined',
      'Concrete', 13),
+    ('MASONRY', 'Brick & Stone', 'Brick, cinder block, cut stone, fieldstone, cobbles, pavers and tiles for walls '
+     'and floors, from new to crumbling', 'Masonry', 19),
     ('TERRAIN', 'Terrain & Lava', 'Cratered ground, lunar and asteroid surfaces, molten, crusting and cooled lava',
      'Terrain', 14),
     ('GRADIENT', 'Gradients', 'Linear, radial, angular, diamond, spiral and more: color ramps projected from any '
@@ -44,7 +46,8 @@ OVERLAY_CATEGORIES = ('OVERLAY', 'WEAR')  # presets of these categories go on to
 
 # generator -> gallery category
 GENERATOR_CATEGORY = {
-    'METAL': 'METAL', 'PAINT': 'PAINT', 'ENAMEL': 'ENAMEL', 'LIGHT': 'LIGHT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'TERRAIN': 'TERRAIN',
+    'METAL': 'METAL', 'PAINT': 'PAINT', 'ENAMEL': 'ENAMEL', 'LIGHT': 'LIGHT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'MASONRY': 'MASONRY',
+    'TERRAIN': 'TERRAIN',
     'LAVA': 'TERRAIN', 'GRADIENT': 'GRADIENT', 'WOOD': 'WOOD',
     'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS', 'LENS': 'LENS', 'LEATHER': 'LEATHER', 'FABRIC': 'FABRIC',
     'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY', 'MOSS': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
@@ -1073,6 +1076,277 @@ _add('lava_sulfur', 'Sulfur Vent Rock', 'LAVA',
 _add('lava_ash_field', 'Ash-Covered Lava Field', 'LAVA',
      'Old lava flow dusted with gray volcanic ash.',
      thumb=LAVA_THUMB, Heat=0.0, Crust=1.0, Ash=0.6, Clinker=0.4, Crack_Width=0.08)
+# ---------------------------------------------------------------------- masonry
+BRICK_THUMB = dict(zoom=0.6)
+BLOCK_THUMB = dict(zoom=0.9)
+STONE_THUMB = dict(zoom=1.0)
+TILE_THUMB = dict(zoom=0.4)
+RUNNING, ENGLISH, FLEMISH, HERRINGBONE, BASKETWEAVE, STONES, HEXAGON = range(7)
+CMU = dict(Unit_Width=0.39, Unit_Height=0.19, Unit_Color=(0.32, 0.31, 0.29), Unit_Color_2=(0.26, 0.25, 0.24),
+           Color_Variation=0.4, Brightness_Variation=0.1, Mottling=0.3, Face_Texture=1.0, Pores=0.6, Speckles=0.3,
+           Edge_Rounding=0.05, Mortar_Color=(0.30, 0.29, 0.27), Mortar_Depth=0.15, Mortar_Texture=0.6,
+           Chipped_Edges=0.1)
+SANDSTONE = dict(Unit_Color=(0.45, 0.29, 0.16), Unit_Color_2=(0.37, 0.22, 0.12))
+LIMESTONE = dict(Unit_Color=(0.55, 0.50, 0.40), Unit_Color_2=(0.47, 0.42, 0.33), Mortar_Color=(0.50, 0.47, 0.40))
+CERAMIC = dict(Unit_Color=(0.80, 0.80, 0.78), Unit_Color_2=(0.76, 0.76, 0.74), Color_Variation=0.2,
+               Brightness_Variation=0.05, Mottling=0.05, Face_Texture=0.0, Speckles=0.0, Glaze=1.0, Edge_Rounding=0.4,
+               Chipped_Edges=0.02, Mortar_Color=(0.62, 0.61, 0.57), Mortar_Depth=0.1, Mortar_Texture=0.2,
+               Dirt=0.05, Water_Stains=0.0)
+
+# bricks
+_add('brick_red', 'Red Brick Wall', 'MASONRY',
+     'Classic red bricks in running bond with grey mortar.',
+     thumb=BRICK_THUMB)
+_add('brick_old_red', 'Old Red Brick', 'MASONRY',
+     'A century-old wall: worn bricks, washed-out mortar, rain streaks.',
+     thumb=BRICK_THUMB, Weathering=0.3, Mortar_Erosion=0.4, Mortar_Depth=0.5, Chipped_Edges=0.4, Dirt=0.4,
+     Water_Stains=0.35, Brightness_Variation=0.45)
+_add('brick_english_bond', 'English Bond', 'MASONRY',
+     'Rows of long sides and rows of brick ends, as in old load-bearing walls.',
+     thumb=BRICK_THUMB, Layout=ENGLISH, Dirt=0.3)
+_add('brick_flemish_bond', 'Flemish Bond, Dark Headers', 'MASONRY',
+     'Long sides and dark glazed ends taking turns in every row: a Georgian wall.',
+     thumb=BRICK_THUMB, Layout=FLEMISH, Dark_Headers=0.8, Unit_Color=(0.34, 0.09, 0.04),
+     Mortar_Color=(0.52, 0.50, 0.45), Mortar_Depth=0.15)
+_add('brick_london_stock', 'London Yellow Stock', 'MASONRY',
+     'Yellow-brown London stock bricks in Flemish bond, darkened by a century of soot.',
+     thumb=BRICK_THUMB, Layout=FLEMISH, Unit_Color=(0.42, 0.30, 0.15), Unit_Color_2=(0.26, 0.17, 0.09),
+     Color_Variation=0.8, Dark_Units=0.1, Mottling=0.6, Speckles=0.3, Mortar_Color=(0.45, 0.43, 0.38),
+     Soot=0.3, Dirt=0.3)
+_add('brick_buff', 'Buff Brick', 'MASONRY',
+     'Pale tan-yellow bricks, crisp and even.',
+     thumb=BRICK_THUMB, Unit_Color=(0.52, 0.39, 0.24), Unit_Color_2=(0.42, 0.30, 0.17), Color_Variation=0.4,
+     Mortar_Color=(0.48, 0.46, 0.41), Edge_Rounding=0.1, Dirt=0.1)
+_add('brick_chicago_common', 'Chicago Common Brick', 'MASONRY',
+     'Salmon, red, brown and grey bricks all mixed up, soft and a little worn.',
+     thumb=BRICK_THUMB, Unit_Color=(0.40, 0.21, 0.11), Unit_Color_2=(0.27, 0.19, 0.14), Color_Variation=1.0,
+     Brightness_Variation=0.55, Dark_Units=0.08, Mottling=0.6, Mortar_Erosion=0.3, Chipped_Edges=0.3, Dirt=0.3)
+_add('brick_reclaimed', 'Reclaimed Brick', 'MASONRY',
+     'Salvaged bricks of every shade with bits of old lime mortar still stuck on.',
+     thumb=BRICK_THUMB, Unit_Color=(0.36, 0.12, 0.06), Unit_Color_2=(0.20, 0.11, 0.08), Color_Variation=1.0,
+     Brightness_Variation=0.6, Dark_Units=0.15, Mottling=0.7, Limewash=0.2, Chipped_Edges=0.45, Dirt=0.25)
+_add('brick_clinker', 'Clinker Brick', 'MASONRY',
+     'Dark, overfired bricks with a glassy sheen: Arts and Crafts walls.',
+     thumb=BRICK_THUMB, Unit_Color=(0.16, 0.06, 0.03), Unit_Color_2=(0.08, 0.04, 0.03), Color_Variation=0.8,
+     Dark_Units=0.35, Glaze=0.25, Split_Face=0.25, Mortar_Color=(0.36, 0.34, 0.30))
+_add('brick_modern_charcoal', 'Modern Charcoal Brick', 'MASONRY',
+     'Long, thin charcoal bricks in stack bond with dark recessed joints.',
+     thumb=BRICK_THUMB, Unit_Width=0.44, Unit_Height=0.05, Row_Offset=0.0, Unit_Color=(0.05, 0.05, 0.05),
+     Unit_Color_2=(0.08, 0.07, 0.06), Color_Variation=0.6, Brightness_Variation=0.2, Mottling=0.2,
+     Edge_Rounding=0.05, Chipped_Edges=0.03, Mortar_Color=(0.09, 0.09, 0.09), Mortar_Depth=0.6, Dirt=0.05,
+     Water_Stains=0.0, Roughness=0.75)
+_add('brick_glazed', 'Glazed Green Brick', 'MASONRY',
+     'Shiny glazed bricks, as on old subway stations and pubs.',
+     thumb=BRICK_THUMB, Glaze=1.0, Unit_Color=(0.03, 0.13, 0.07), Unit_Color_2=(0.02, 0.09, 0.05),
+     Color_Variation=0.4, Brightness_Variation=0.15, Mottling=0.15, Face_Texture=0.0, Speckles=0.0,
+     Edge_Rounding=0.35, Mortar_Color=(0.55, 0.54, 0.50), Mortar_Depth=0.1, Chipped_Edges=0.05, Dirt=0.1)
+_add('brick_white_painted', 'White Painted Brick', 'MASONRY',
+     'Brick painted white, mortar and all: lofts and cafés.',
+     thumb=BRICK_THUMB, Paint=1.0, Paint_Color=(0.78, 0.77, 0.74), Mortar_Depth=0.25, Dirt=0.1, Water_Stains=0.05)
+_add('brick_peeling_paint', 'Peeling Painted Brick', 'MASONRY',
+     'An old painted wall, the paint flaking off to show the red brick.',
+     thumb=BRICK_THUMB, Paint=1.0, Peeling=0.45, Paint_Color=(0.52, 0.62, 0.55), Mortar_Erosion=0.2, Dirt=0.35,
+     Water_Stains=0.3)
+_add('brick_limewashed', 'Limewashed Brick', 'MASONRY',
+     'A thin, patchy white limewash with the brick showing through.',
+     thumb=BRICK_THUMB, Limewash=0.75, Mortar_Color=(0.55, 0.53, 0.48), Dirt=0.15)
+_add('brick_herringbone', 'Herringbone Brick Paving', 'MASONRY',
+     'Brick pavers in a herringbone pattern with sandy joints: paths and patios.',
+     thumb=BRICK_THUMB, Layout=HERRINGBONE, Unit_Width=0.2, Unit_Height=0.1, Mortar_Width=0.005,
+     Mortar_Color=(0.36, 0.32, 0.25), Mortar_Depth=0.2, Edge_Rounding=0.3, Dirt=0.35, Moss=0.1)
+_add('brick_basketweave', 'Basketweave Brick Paving', 'MASONRY',
+     'Pairs of brick pavers turned every other square.',
+     thumb=BRICK_THUMB, Layout=BASKETWEAVE, Unit_Width=0.2, Unit_Height=0.1, Mortar_Width=0.005,
+     Mortar_Color=(0.36, 0.32, 0.25), Mortar_Depth=0.2, Edge_Rounding=0.3, Dirt=0.3)
+_add('brick_wet', 'Rain-Soaked Brick', 'MASONRY',
+     'Bricks dark and shiny with rain.',
+     thumb=BRICK_THUMB, Wetness=0.8, Water_Stains=0.4, Dirt=0.3)
+_add('brick_efflorescence', 'Salt-Stained Brick', 'MASONRY',
+     'White salt blooming out of the joints and running down the wall.',
+     thumb=BRICK_THUMB, Efflorescence=0.7, Water_Stains=0.4, Mortar_Erosion=0.2)
+_add('brick_mossy', 'Mossy Brick', 'MASONRY',
+     'A damp, shady wall with moss growing in the joints.',
+     thumb=BRICK_THUMB, Moss=0.6, Water_Stains=0.5, Dirt=0.35, Mortar_Erosion=0.3)
+_add('brick_alley', 'Dirty Alley Brick', 'MASONRY',
+     'Back-alley wall: grime, soot, damp and salt.',
+     thumb=BRICK_THUMB, Dirt=0.75, Water_Stains=0.6, Soot=0.2, Efflorescence=0.2, Moss=0.1, Chipped_Edges=0.35,
+     Mortar_Erosion=0.3)
+_add('brick_crumbling', 'Crumbling Brick', 'MASONRY',
+     'Washed-out mortar, broken faces and the odd brick fallen out.',
+     thumb=BRICK_THUMB, Mortar_Erosion=0.8, Mortar_Depth=0.6, Broken_Units=0.2, Missing_Units=0.03,
+     Chipped_Edges=0.6, Weathering=0.5, Moss=0.2, Dirt=0.4, Water_Stains=0.4)
+_add('brick_ruined', 'Ruined Brick Wall', 'MASONRY',
+     'Bombed-out ruin: cracked, broken and missing bricks, soot and dirt.',
+     thumb=BRICK_THUMB, Broken_Units=0.4, Missing_Units=0.12, Cracks=0.4, Soot=0.3, Dirt=0.5, Chipped_Edges=0.8,
+     Mortar_Erosion=0.6, Mortar_Depth=0.6, Weathering=0.3)
+_add('brick_burnt', 'Fire-Damaged Brick', 'MASONRY',
+     'Blackened by a fire, cracked by the heat.',
+     thumb=BRICK_THUMB, Soot=0.8, Cracks=0.3, Chipped_Edges=0.4, Dirt=0.3)
+_add('brick_firebrick', 'Firebrick', 'MASONRY',
+     'Pale refractory bricks with thin joints, sooty from the furnace.',
+     thumb=BRICK_THUMB, Unit_Width=0.23, Unit_Height=0.114, Mortar_Width=0.003, Unit_Color=(0.62, 0.50, 0.33),
+     Unit_Color_2=(0.55, 0.42, 0.28), Color_Variation=0.5, Speckles=0.4, Mortar_Color=(0.55, 0.52, 0.45),
+     Mortar_Depth=0.1, Edge_Rounding=0.1, Soot=0.45, Dirt=0.2, Water_Stains=0.0)
+
+# concrete blocks
+_add('cinder_block', 'Cinder Block Wall', 'MASONRY',
+     'Plain grey concrete masonry units: rough, porous and a little chipped.',
+     thumb=BLOCK_THUMB, **CMU)
+_add('cinder_painted', 'Painted Block Wall', 'MASONRY',
+     'Glossy cream paint over cinder blocks: school hallways and basements.',
+     thumb=BLOCK_THUMB, **dict(CMU, Paint=1.0, Paint_Color=(0.72, 0.69, 0.58), Dirt=0.15, Water_Stains=0.0))
+_add('cinder_stack', 'Stack Bond Blocks', 'MASONRY',
+     'Blocks laid with straight, lined-up joints.',
+     thumb=BLOCK_THUMB, **dict(CMU, Row_Offset=0.0, Mortar_Depth=0.35))
+_add('cinder_split_face', 'Split-Face Block', 'MASONRY',
+     'Tan blocks with a rough, rock-like split face.',
+     thumb=BLOCK_THUMB, **dict(CMU, Split_Face=1.0, Unit_Color=(0.42, 0.36, 0.28), Unit_Color_2=(0.36, 0.31, 0.24),
+                               Mortar_Color=(0.40, 0.37, 0.32), Pores=0.2))
+_add('cinder_weathered', 'Weathered Block Wall', 'MASONRY',
+     'Old block wall: cracked, stained, chipped and a bit mossy.',
+     thumb=BLOCK_THUMB, **dict(CMU, Water_Stains=0.6, Dirt=0.5, Cracks=0.3, Chipped_Edges=0.4, Moss=0.2,
+                               Efflorescence=0.2, Mortar_Erosion=0.3))
+_add('cinder_basement', 'Damp Basement Wall', 'MASONRY',
+     'Painted blocks with the paint flaking off, white salt and damp creeping up.',
+     thumb=BLOCK_THUMB, **dict(CMU, Paint=0.9, Peeling=0.35, Paint_Color=(0.62, 0.62, 0.60), Efflorescence=0.5,
+                               Water_Stains=0.6, Dirt=0.4))
+
+# stone
+_add('stone_limestone_ashlar', 'Limestone Ashlar', 'MASONRY',
+     'Cut limestone blocks of random lengths with fine joints.',
+     thumb=STONE_THUMB, **dict(LIMESTONE, Unit_Width=0.6, Unit_Height=0.3, Mortar_Width=0.008, Color_Variation=0.4,
+                               Brightness_Variation=0.15, Mottling=0.5, Face_Texture=0.6, Pores=0.2, Speckles=0.05,
+                               Edge_Rounding=0.15, Length_Variation=0.6, Random_Offset=0.6, Mortar_Depth=0.15,
+                               Layers=0.2))
+_add('stone_sandstone_ashlar', 'Sandstone Ashlar', 'MASONRY',
+     'Warm sandstone blocks showing their sediment layers.',
+     thumb=STONE_THUMB, **dict(SANDSTONE, Unit_Width=0.5, Unit_Height=0.25, Mortar_Width=0.008, Layers=0.7,
+                               Color_Variation=0.5, Mottling=0.4, Length_Variation=0.4, Random_Offset=0.5,
+                               Weathering=0.2, Mortar_Color=(0.48, 0.40, 0.30), Mortar_Depth=0.2, Speckles=0.05))
+_add('stone_granite_blocks', 'Granite Blocks', 'MASONRY',
+     'Speckled grey granite blocks with rock-faced fronts.',
+     thumb=STONE_THUMB, Unit_Width=0.7, Unit_Height=0.35, Mortar_Width=0.012, Unit_Color=(0.38, 0.36, 0.35),
+     Unit_Color_2=(0.31, 0.29, 0.29), Color_Variation=0.5, Crystals=0.8, Mottling=0.2, Split_Face=0.35,
+     Mortar_Color=(0.32, 0.31, 0.29), Speckles=0.0, Length_Variation=0.3, Random_Offset=0.4)
+_add('stone_marble', 'Polished Marble Slabs', 'MASONRY',
+     'Glossy white marble slabs with grey veins.',
+     thumb=STONE_THUMB, Unit_Width=0.6, Unit_Height=0.6, Row_Offset=0.0, Mortar_Width=0.002,
+     Unit_Color=(0.80, 0.79, 0.76), Unit_Color_2=(0.73, 0.72, 0.69), Color_Variation=0.4, Brightness_Variation=0.05,
+     Mottling=0.2, Veins=0.8, Vein_Color=(0.30, 0.30, 0.32), Roughness=0.1, Face_Texture=0.0, Speckles=0.0,
+     Edge_Rounding=0.02, Chipped_Edges=0.02, Mortar_Color=(0.70, 0.70, 0.68), Mortar_Depth=0.05, Dirt=0.0,
+     Water_Stains=0.0)
+_add('stone_travertine', 'Travertine', 'MASONRY',
+     'Creamy travertine with its typical pores and bands.',
+     thumb=STONE_THUMB, Unit_Width=0.6, Unit_Height=0.3, Mortar_Width=0.003, Unit_Color=(0.62, 0.55, 0.44),
+     Unit_Color_2=(0.55, 0.47, 0.36), Pores=0.8, Layers=0.4, Mortar_Color=(0.60, 0.55, 0.45), Mortar_Depth=0.05,
+     Roughness=0.5, Speckles=0.0, Edge_Rounding=0.05, Chipped_Edges=0.05, Dirt=0.05, Water_Stains=0.0)
+_add('stone_slate', 'Slate Tiles', 'MASONRY',
+     'Dark, layered slate tiles with a riven face.',
+     thumb=STONE_THUMB, Unit_Width=0.4, Unit_Height=0.4, Row_Offset=0.0, Mortar_Width=0.004,
+     Unit_Color=(0.08, 0.09, 0.10), Unit_Color_2=(0.12, 0.11, 0.10), Color_Variation=0.6, Layers=0.6,
+     Split_Face=0.25, Roughness=0.7, Speckles=0.0, Edge_Rounding=0.05, Mortar_Color=(0.12, 0.12, 0.12),
+     Mortar_Depth=0.1, Dirt=0.1)
+_add('stone_fieldstone', 'Fieldstone Wall', 'MASONRY',
+     'Rounded field stones of every color set in deep mortar.',
+     thumb=STONE_THUMB, Layout=STONES, Unit_Width=0.3, Unit_Height=0.22, Mortar_Width=0.025, Irregularity=0.6,
+     Bulge=0.6, Edge_Rounding=0.6, Unit_Color=(0.36, 0.33, 0.29), Unit_Color_2=(0.24, 0.21, 0.18),
+     Color_Variation=0.9, Brightness_Variation=0.5, Mortar_Color=(0.42, 0.40, 0.36), Mortar_Depth=0.5,
+     Chipped_Edges=0.05)
+_add('stone_rubble_mossy', 'Mossy Rubble Wall', 'MASONRY',
+     'Rough rubble stones, crumbling mortar, moss and damp.',
+     thumb=STONE_THUMB, Layout=STONES, Unit_Width=0.28, Unit_Height=0.2, Mortar_Width=0.03, Irregularity=0.8,
+     Bulge=0.3, Edge_Rounding=0.3, Split_Face=0.4, Unit_Color=(0.30, 0.29, 0.26), Unit_Color_2=(0.22, 0.21, 0.18),
+     Color_Variation=0.8, Brightness_Variation=0.4, Mortar_Color=(0.36, 0.34, 0.30), Mortar_Depth=0.6,
+     Mortar_Erosion=0.5, Moss=0.6, Water_Stains=0.5, Dirt=0.4)
+_add('stone_drystone', 'Dry Stone Wall', 'MASONRY',
+     'Flat stones stacked without mortar, dark gaps between them.',
+     thumb=STONE_THUMB, Layout=STONES, Unit_Width=0.32, Unit_Height=0.12, Mortar_Width=0.012, Irregularity=0.5,
+     Bulge=0.2, Edge_Rounding=0.3, Split_Face=0.3, Unit_Color=(0.31, 0.30, 0.27), Unit_Color_2=(0.23, 0.22, 0.19),
+     Color_Variation=0.8, Brightness_Variation=0.4, Layers=0.3, Mortar_Color=(0.02, 0.02, 0.018),
+     Mortar_Depth=1.0, Mortar_Texture=0.0, Moss=0.2, Dirt=0.2)
+_add('stone_castle', 'Castle Wall', 'MASONRY',
+     'Massive weathered stone blocks: chipped, mossy and streaked.',
+     thumb=STONE_THUMB, Unit_Width=0.55, Unit_Height=0.35, Mortar_Width=0.015, Random_Offset=0.6,
+     Length_Variation=0.5, Irregularity=0.25, Unit_Color=(0.36, 0.34, 0.30), Unit_Color_2=(0.28, 0.26, 0.23),
+     Color_Variation=0.7, Brightness_Variation=0.35, Weathering=0.5, Chipped_Edges=0.5, Bulge=0.15, Split_Face=0.2,
+     Mortar_Color=(0.40, 0.38, 0.34), Mortar_Erosion=0.4, Mortar_Depth=0.5, Moss=0.2, Water_Stains=0.5, Dirt=0.4)
+_add('stone_gothic', 'Gothic Church Stone', 'MASONRY',
+     'Pale cut stone blackened by centuries of city smoke.',
+     thumb=STONE_THUMB, **dict(LIMESTONE, Unit_Width=0.45, Unit_Height=0.3, Mortar_Width=0.006,
+                               Length_Variation=0.3, Layers=0.2, Weathering=0.4, Soot=0.45, Water_Stains=0.6,
+                               Dirt=0.3))
+_add('stone_ancient_sandstone', 'Eroded Ancient Sandstone', 'MASONRY',
+     'Desert ruins: soft sandstone worn round and pitted by wind and sand.',
+     thumb=STONE_THUMB, **dict(SANDSTONE, Unit_Width=0.8, Unit_Height=0.4, Mortar_Width=0.004, Weathering=1.0,
+                               Layers=0.6, Mortar_Erosion=0.6, Chipped_Edges=0.6, Cracks=0.3, Broken_Units=0.15,
+                               Length_Variation=0.4, Random_Offset=0.5, Dirt=0.2, Water_Stains=0.0))
+_add('stone_lava', 'Lava Stone', 'MASONRY',
+     'Black, bubbly volcanic stone blocks.',
+     thumb=STONE_THUMB, Unit_Width=0.4, Unit_Height=0.2, Unit_Color=(0.07, 0.07, 0.07),
+     Unit_Color_2=(0.10, 0.08, 0.07), Color_Variation=0.6, Pores=1.0, Face_Texture=1.0, Split_Face=0.4,
+     Speckles=0.0, Mortar_Color=(0.16, 0.16, 0.15), Mortar_Width=0.008, Dirt=0.1)
+_add('stone_adobe', 'Adobe Mud Brick', 'MASONRY',
+     'Sun-dried mud bricks laid in mud: soft, cracked and worn.',
+     thumb=BRICK_THUMB, Unit_Width=0.4, Unit_Height=0.1, Mortar_Width=0.02, Irregularity=0.4,
+     Unit_Color=(0.42, 0.30, 0.20), Unit_Color_2=(0.37, 0.27, 0.18), Color_Variation=0.4, Mottling=0.5,
+     Face_Texture=1.0, Speckles=0.1, Edge_Rounding=0.8, Weathering=0.6, Cracks=0.4, Crack_Scale=3.0,
+     Mortar_Color=(0.40, 0.30, 0.21), Mortar_Depth=0.2, Mortar_Texture=1.0, Mortar_Erosion=0.3, Dirt=0.2,
+     Water_Stains=0.0)
+
+# paving and tiles
+_add('stone_setts', 'Granite Setts', 'MASONRY',
+     'Old town street of squared granite setts with dirty joints.',
+     thumb=BRICK_THUMB, Unit_Width=0.14, Unit_Height=0.1, Mortar_Width=0.012, Random_Offset=0.3,
+     Length_Variation=0.3, Irregularity=0.3, Unit_Color=(0.33, 0.32, 0.31), Unit_Color_2=(0.25, 0.23, 0.22),
+     Color_Variation=0.7, Crystals=0.6, Bulge=0.25, Split_Face=0.3, Edge_Rounding=0.4, Speckles=0.0,
+     Mortar_Color=(0.24, 0.22, 0.19), Mortar_Depth=0.5, Dirt=0.4)
+_add('stone_cobbles', 'Round Cobblestones', 'MASONRY',
+     'Rounded cobbles polished by feet and wheels.',
+     thumb=BRICK_THUMB, Layout=STONES, Unit_Width=0.13, Unit_Height=0.13, Mortar_Width=0.02, Irregularity=0.3,
+     Bulge=1.0, Edge_Rounding=1.0, Unit_Color=(0.31, 0.29, 0.27), Unit_Color_2=(0.20, 0.18, 0.17),
+     Color_Variation=0.8, Brightness_Variation=0.4, Roughness=0.55, Mortar_Color=(0.20, 0.18, 0.15),
+     Mortar_Depth=0.6, Chipped_Edges=0.05, Dirt=0.5)
+_add('stone_river_rock', 'River Rock', 'MASONRY',
+     'Smooth, colorful river pebbles set in mortar.',
+     thumb=BRICK_THUMB, Layout=STONES, Unit_Width=0.15, Unit_Height=0.1, Mortar_Width=0.025, Irregularity=0.2,
+     Bulge=1.0, Edge_Rounding=1.0, Unit_Color=(0.40, 0.35, 0.30), Unit_Color_2=(0.17, 0.16, 0.16),
+     Color_Variation=1.0, Brightness_Variation=0.6, Glaze=0.2, Speckles=0.1, Mortar_Color=(0.45, 0.43, 0.38),
+     Mortar_Depth=0.7, Chipped_Edges=0.0, Dirt=0.15)
+_add('stone_flagstone', 'Flagstone Paving', 'MASONRY',
+     'Irregular flat stones in grey and rust tones, a little mossy.',
+     thumb=STONE_THUMB, Layout=STONES, Unit_Width=0.5, Unit_Height=0.5, Mortar_Width=0.02, Irregularity=0.4,
+     Bulge=0.05, Layers=0.4, Unit_Color=(0.32, 0.30, 0.26), Unit_Color_2=(0.40, 0.31, 0.23), Color_Variation=0.8,
+     Mortar_Color=(0.38, 0.36, 0.32), Mortar_Depth=0.2, Edge_Rounding=0.2, Moss=0.15, Dirt=0.3)
+_add('pavers_concrete', 'Concrete Pavers', 'MASONRY',
+     'Grey concrete paving blocks with sand-filled joints.',
+     thumb=BRICK_THUMB, Unit_Width=0.2, Unit_Height=0.1, Mortar_Width=0.004, Unit_Color=(0.36, 0.35, 0.33),
+     Unit_Color_2=(0.30, 0.29, 0.27), Color_Variation=0.4, Brightness_Variation=0.15, Face_Texture=0.8,
+     Speckles=0.3, Pores=0.2, Edge_Rounding=0.35, Mortar_Color=(0.40, 0.36, 0.28), Mortar_Depth=0.25, Dirt=0.35,
+     Moss=0.1)
+_add('pavers_hex', 'Hexagon Pavers', 'MASONRY',
+     'Hexagonal concrete paving stones.',
+     thumb=BLOCK_THUMB, Layout=HEXAGON, Unit_Width=0.2, Mortar_Width=0.008, Unit_Color=(0.37, 0.36, 0.34),
+     Unit_Color_2=(0.31, 0.30, 0.28), Color_Variation=0.4, Brightness_Variation=0.15, Face_Texture=0.8,
+     Speckles=0.3, Pores=0.3, Edge_Rounding=0.3, Mortar_Color=(0.38, 0.35, 0.28), Mortar_Depth=0.3, Dirt=0.4,
+     Moss=0.2)
+_add('tiles_terracotta', 'Terracotta Floor Tiles', 'MASONRY',
+     'Square, hand-made terracotta tiles with cloudy color.',
+     thumb=STONE_THUMB, Unit_Width=0.3, Unit_Height=0.3, Row_Offset=0.0, Mortar_Width=0.008,
+     Unit_Color=(0.40, 0.15, 0.06), Unit_Color_2=(0.33, 0.11, 0.04), Mottling=0.6, Roughness=0.6, Glaze=0.1,
+     Speckles=0.05, Edge_Rounding=0.25, Mortar_Color=(0.40, 0.37, 0.32), Mortar_Depth=0.15, Dirt=0.15,
+     Water_Stains=0.0)
+_add('tiles_subway', 'White Subway Tiles', 'MASONRY',
+     'Glossy white beveled wall tiles in running bond.',
+     thumb=TILE_THUMB, **dict(CERAMIC, Unit_Width=0.15, Unit_Height=0.075, Mortar_Width=0.003))
+_add('tiles_hex_ceramic', 'Hexagon Ceramic Tiles', 'MASONRY',
+     'Small white hexagonal floor tiles: old bathrooms.',
+     thumb=dict(zoom=0.25), **dict(CERAMIC, Layout=HEXAGON, Unit_Width=0.05, Mortar_Width=0.003, Edge_Rounding=0.2))
+_add('tiles_grimy', 'Grimy Bathroom Tiles', 'MASONRY',
+     'Neglected white tiles: dark grout, grime, cracks and chips.',
+     thumb=TILE_THUMB, **dict(CERAMIC, Unit_Width=0.15, Unit_Height=0.15, Row_Offset=0.0, Mortar_Width=0.003,
+                              Mortar_Color=(0.18, 0.16, 0.12), Dirt=0.6, Cracks=0.25, Chipped_Edges=0.2,
+                              Water_Stains=0.4, Moss=0.05, Brightness_Variation=0.15))
+
 # ------------------------------------------------------------------- gradients
 def _hex(code):
     """sRGB hex color ('#ff8800') -> linear RGB."""

@@ -590,6 +590,33 @@ def overlay_menu_lists_every_overlay():
 
 
 @test
+def masonry_layouts():
+    """Brick & stone: every layout stays seamless as a tile and makes its own pattern; walls show the bricks."""
+    fresh_scene()
+    ids = ('brick_red', 'brick_english_bond', 'brick_flemish_bond', 'brick_herringbone', 'brick_basketweave',
+           'stone_fieldstone', 'pavers_hex')
+    mats = [L.create_material(pid) for pid in ids]
+    job = B.TileBakeJob(bpy.context, mats, settings(resolution=128, maps={'HEIGHT'}))
+    B.run_to_end(job)
+    assert len(job.written) == len(ids), job.written
+    heights = []
+    for path in job.written:
+        a = read_png(path)[..., :3].astype(np.float64)
+        assert seam_ok(a), 'visible seam in ' + os.path.basename(path)
+        assert a.std() > 0.01, 'no joints in ' + os.path.basename(path)
+        heights.append(a[..., 0])
+    for path, h in zip(job.written[1:], heights[1:]):
+        assert np.abs(h - heights[0]).mean() > 0.005, 'same pattern as running bond: ' + os.path.basename(path)
+    out = os.path.join(TMP, 'masonry')
+    wall = add_cube('Wall')
+    wall.data.materials.append(L.create_material('brick_red'))
+    B.run_to_end(B.ObjectBakeJob(bpy.context, [wall], settings(maps={'BASE_COLOR'}, output_dir=out,
+                                                               assign_baked=False, resolution=128)))
+    color = read_png(os.path.join(out, 'Wall_BaseColor.png'))[..., :3]
+    assert color.std() > 0.03, 'no bricks on the wall'
+
+
+@test
 def concrete_finishes_and_damage():
     """Concrete: block, slab and board patterns stay seamless as tiles; rebar is metal; fresh concrete isn't."""
     fresh_scene()

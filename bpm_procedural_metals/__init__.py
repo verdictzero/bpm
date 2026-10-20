@@ -23,8 +23,8 @@ bl_info = {
     "category": "Material",
 }
 
-_SUBMODULES = ('nodebuilder', 'features', 'gencommon', 'mat_metal', 'mat_paint', 'mat_camo', 'mat_concrete', 'mat_wood',
-               'mat_plastic', 'mat_glass', 'mat_lens', 'mat_leather', 'mat_fabric', 'mat_organic', 'mat_terrain',
+_SUBMODULES = ('nodebuilder', 'features', 'gencommon', 'mat_metal', 'mat_paint', 'mat_camo', 'mat_concrete',
+               'mat_masonry', 'mat_wood', 'mat_plastic', 'mat_glass', 'mat_lens', 'mat_leather', 'mat_fabric', 'mat_organic', 'mat_terrain',
                'mat_gradient', 'mat_enamel', 'mat_light', 'overlays', 'generators', 'presets', 'user_presets',
                'library', 'decals', 'bake', 'meshmaps', 'mapsview', 'props', 'previews', 'operators', 'ui')
 
@@ -39,7 +39,7 @@ import bpy  # noqa: E402,F401
 from . import nodebuilder, features, gencommon  # noqa: E402,F401
 from . import mat_metal, mat_paint, mat_camo, mat_concrete, mat_wood, mat_plastic  # noqa: E402,F401
 from . import mat_glass, mat_lens, mat_leather, mat_fabric, mat_organic  # noqa: E402,F401
-from . import mat_terrain, mat_gradient, mat_enamel, mat_light  # noqa: E402,F401
+from . import mat_terrain, mat_gradient, mat_enamel, mat_light, mat_masonry  # noqa: E402,F401
 from . import overlays, generators, presets, library, decals, bake, meshmaps, mapsview  # noqa: E402,F401
 from . import user_presets, props, previews, operators, ui  # noqa: E402
 

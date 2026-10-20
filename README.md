@@ -4,7 +4,8 @@
 bronze, steel, chrome, titanium, anodized aluminium…), painted metal (with 40 tractor paints, from
 showroom new to rusty field relic), porcelain enamel
 (1950s fridges, stoves, bathtubs, graniteware, enamel signs), military paint and
-camouflage, concrete, terrain (cratered moons, asteroids, Mars) and glowing lava and magma,
+camouflage, concrete, 53 brick, cinder block, stone and tile walls and floors (running,
+English and Flemish bond, herringbone, basketweave, ashlar, fieldstone, cobbles, hexagon pavers…), terrain (cratered moons, asteroids, Mars) and glowing lava and magma,
 140 gradients (linear, radial, angular, spiral… projected from any side; plenty of metal, rust and
 earth tones), glowing lights
 (neon, fluorescent tubes, light panels, LEDs, screens — clean, dusty, bug-filled or burnt
@@ -28,6 +29,7 @@ material, click **Apply**, move some sliders, click **Auto Texture**. Liked what
 ![Porcelain enamel](docs/gallery_enamel.png)
 ![Military paint and camouflage](docs/gallery_military.png)
 ![Concrete](docs/gallery_concrete.png)
+![Brick and stone](docs/gallery_masonry.png)
 ![Terrain and lava](docs/gallery_terrain.png)
 ![Gradients](docs/gallery_gradient.png)
 ![Lights and neon](docs/gallery_light.png)
@@ -478,6 +480,18 @@ block wall — and the worn and damaged ones: weathered, cracked, spalled with r
 ruined, bullet-riddled, military bunker, mossy, salt-stained, garage floor (oil), wet,
 fire-damaged, dirty underpass, bridge pier.
 
+**Brick & stone (53):** bricks — red running bond, old red brick, English bond, Flemish
+bond with dark headers, London yellow stock, buff, Chicago common, reclaimed, clinker,
+long modern charcoal, glazed green, white painted, peeling paint, limewashed,
+herringbone and basketweave paving, rain-soaked, salt-stained, mossy, dirty alley,
+crumbling, ruined, fire-damaged, firebrick; cinder blocks — plain, painted (school
+hallway), stack bond, split-face, weathered, damp basement; stone — limestone and
+sandstone ashlar, granite blocks, polished marble, travertine, slate tiles, fieldstone,
+mossy rubble, dry stone wall, castle wall, gothic church stone, eroded ancient
+sandstone, lava stone, adobe mud brick; paving and tiles — granite setts, round
+cobblestones, river rock, flagstone, concrete pavers, hexagon pavers, terracotta floor
+tiles, white subway tiles, hexagon ceramic tiles, grimy bathroom tiles.
+
 **Wood (15):** oak floorboards, varnished walnut, knotty pine, curly maple, cherry,
 polished mahogany, ebony, teak boat deck, shipping pallet, peeling barn red, white
 painted planks, weathered grey wood, driftwood, charred wood (shou sugi ban),
@@ -581,6 +595,15 @@ a family has the full set of sliders. A few examples:
   broom grooves, cut joints, blocks with mortar; damage: cracks, chipped edges, spalling
   with rusty reinforcing bars, erosion, impact craters; stains: rust streaks, water
   stains, white salt (efflorescence), dirt, moss, oil, soot, wetness.
+* **Brick & stone** – the layout (running bond with any row offset, English and Flemish
+  bond, herringbone, basketweave, random stones, hexagons), unit size, random row
+  offsets and lengths (ashlar) and a hand-laid wobble; every unit with its own color
+  between two colors, dark overfired units and headers, mottling, sandy face, specks,
+  pores, rounded or rock-faced (split) faces, domes for cobbles, glaze, and stone faces
+  (marble veins, sediment layers, granite crystals); mortar width, color, depth (flush to
+  raked) and erosion; chipped edges, cracks, broken and missing units, weathering; paint
+  that peels and limewash; salt, rain streaks, dirt, moss, soot, wetness. Walls get
+  bricks on their sides, floors on their tops, and seamless tiles always hold whole bricks.
 * **Lenses** – lens color, roughness, IOR, the colored reflections of lens coatings
   (*Coating* buttons: amber, purple, blue, green, magenta), mirror coatings (gold,
   silver, blue…), fake inner depth, Fresnel lens rings, hexagonal reflector prisms,
@@ -749,8 +772,9 @@ blender -b model.blend -P bpm_cli.py -- maps --objects all --images ./mesh_maps
 bpm_procedural_metals/   the add-on (Blender extension)
   generators.py          registry of all generators
   mat_*.py               one generator per family: metal, paint, enamel, camo
-                         (military), concrete, terrain (terrain + lava), gradient,
-                         light, wood, plastic, glass, lens, leather, fabric, organic
+                         (military), concrete, masonry (brick and stone), terrain
+                         (terrain + lava), gradient, light, wood, plastic, glass, lens,
+                         leather, fabric, organic
                          (sliders + node tree)
   overlays.py            dirt, dust, moss, edge wear and scratch overlays (layer on any
                          material)
