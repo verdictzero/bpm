@@ -110,7 +110,8 @@ MASONRY_PARAMS = [
     C.fac('Moss', 0.0, 'Stains', 'Green moss in the joints and on damp tops'),
     C.fac('Soot', 0.0, 'Stains', 'Blackened by smoke and fire'),
     C.fac('Wetness', 0.0, 'Stains', 'Wet: darker and shiny'),
-] + C.PATTERN_PARAMS + [C.DISPLACE_PARAM]
+    C.DISPLACE_PARAM,
+] + C.PATTERN_PARAMS
 
 
 def build_masonry(b, I, gout, tile):
@@ -254,7 +255,7 @@ def build_masonry(b, I, gout, tile):
         cells = space.voronoi(freq, 32, aniso=aniso, base=base, label='Stones')
         sides = space.voronoi(freq, 32, feature='DISTANCE_TO_EDGE', aniso=aniso, base=base, label='Stone Joints')
         d = b.div(sides.outputs['Distance'], freq)
-        return d, d, cells.outputs['Color'], b.mul(W, 0.4), 0.0
+        return d, d, b.combine(*b.separate_color(cells.outputs['Color'])), b.mul(W, 0.4), 0.0
 
     def hexagons():
         s, t, nw, nh = grid(W, b.mul(W, SQRT3))
