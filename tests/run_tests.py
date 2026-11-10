@@ -1883,6 +1883,40 @@ def mesh_maps_storage_and_sharing():
 
 
 @test
+def mesh_maps_sizes():
+    fresh_scene()
+    a = add_cube('Small', uv=False)
+    b = add_cube('Hero', uv=False, location=(5, 0, 0))
+    props = bpy.context.scene.bpm
+    assert props.maps_resolution == '1024'
+    assert [item.identifier for item in props.bl_rna.properties['maps_resolution'].enum_items] == \
+        ['256', '512', '1024', '2048', '4096']
+    props.bake_scope = 'ACTIVE'
+    props.maps_quality = 'FAST'
+    props.maps_other_objects = False
+
+    def analyze(obj, size):
+        props.maps_resolution = size
+        for o in bpy.context.scene.objects:
+            o.select_set(o == obj)
+        bpy.context.view_layer.objects.active = obj
+        assert bpy.ops.bpm.analyze_shape() == {'FINISHED'}, props.last_report
+
+    analyze(a, '256')
+    analyze(b, '512')
+    assert (M.map_size(a), M.map_size(b)) == (256, 512)
+    assert maps_tile(a.data).shape[:2] == (256, 256)
+    assert maps_tile(b.data).shape[:2] == (512, 512)  # each object keeps its own size in the one image
+    assert M.status(a) == M.status(b) == 'OK'
+    # analyzing again at another size replaces the maps
+    analyze(a, '512')
+    assert M.map_size(a) == 512 and maps_tile(a.data).shape[:2] == (512, 512)
+    assert maps_tile(b.data).shape[:2] == (512, 512) and M.status(b) == 'OK'
+    assert M.size_label(256) == '256' and M.size_label(2048) == '2K'
+    M.remove([a.data, b.data])
+
+
+@test
 def mesh_maps_and_baking():
     fresh_scene()
     obj = add_cube('Crate', uv=False)

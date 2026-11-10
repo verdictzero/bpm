@@ -230,6 +230,17 @@ def status(obj):
     return 'OK'
 
 
+def map_size(obj):
+    """Size in pixels of the mesh maps an object has (0: none)."""
+    if obj is None or obj.type != 'MESH' or not obj.data.get(FLAG):
+        return 0
+    return int(obj.data.get(RESOLUTION, 0) or 0)
+
+
+def size_label(size):
+    return '%dK' % (size // 1024) if size >= 1024 and size % 1024 == 0 else str(size)
+
+
 def tile_offset(tile):
     index = int(tile) - 1001
     return float(index % 10), float(index // 10)
@@ -1055,7 +1066,7 @@ class MapsJob(B.Job):
             edge_px = edge * texels_per_unit(obj, size)
             if 0.0 < edge_px < 2.5:
                 self.warn('"%s": its edge reach (%.1f mm) is only %.1f pixels wide in its maps: the edges come out '
-                          'blurry. Raise the Resolution (or the Edge Reach).' % (obj.name, edge * 1000.0, edge_px))
+                          'blurry. Raise the Map Size (or the Edge Reach).' % (obj.name, edge * 1000.0, edge_px))
 
             images = []
             for label in ('Occlusion', 'Edges'):

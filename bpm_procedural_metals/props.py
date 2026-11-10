@@ -34,6 +34,14 @@ RESOLUTIONS = [
     ('4096', '4K', '4096 x 4096 pixels: high detail, slower'),
     ('8192', '8K', '8192 x 8192 pixels: very slow and uses a lot of memory'),
 ]
+# mesh map sizes: numbered so files saved before 256 was added keep their size
+MAPS_RESOLUTIONS = [
+    ('256', '256', '256 x 256 pixels: quickest, for small, simple or distant objects', 4),
+    ('512', '512', '512 x 512 pixels: fast, for small or distant objects', 0),
+    ('1024', '1K', '1024 x 1024 pixels: plenty for most objects', 1),
+    ('2048', '2K', '2048 x 2048 pixels: crisper edges on big or detailed objects', 2),
+    ('4096', '4K', '4096 x 4096 pixels: hero objects in close-ups, slow', 3),
+]
 
 
 class BPM_Settings(bpy.types.PropertyGroup):
@@ -129,8 +137,9 @@ class BPM_Settings(bpy.types.PropertyGroup):
 
     # --- mesh maps
     maps_resolution: EnumProperty(
-        name='Map Size', items=RESOLUTIONS[:4], default='1024',
-        description='Size of each object\'s mesh maps in pixels (1K is plenty for most objects)')
+        name='Map Size', items=MAPS_RESOLUTIONS, default='1024',
+        description='Size of the mesh maps made by the next analysis, in pixels. Bigger maps give crisper '
+                    'edge wear on big or detailed objects; analyze an object again to change its maps')
     maps_quality: EnumProperty(
         name='Quality',
         items=[('FAST', 'Fast', 'Quick analysis (slightly rough bands)'),

@@ -382,10 +382,20 @@ class BPM_PT_mesh_maps(bpy.types.Panel):
                                '(also in Material Preview).')
         obj = context.active_object
         if obj is not None and obj.type == 'MESH':
-            text, icon = self.STATUS[M.status(obj)]
-            _wrap(layout.box(), context, '%s: %s' % (obj.name, text), icon)
+            state = M.status(obj)
+            text, icon = self.STATUS[state]
+            box = layout.box()
+            size = M.map_size(obj) if state == 'OK' else 0
+            if size:
+                text = text.replace('Analyzed:', 'Analyzed (%s maps):' % M.size_label(size), 1)
+            _wrap(box, context, '%s: %s' % (obj.name, text), icon)
+            wanted = int(props.maps_resolution)
+            if size and size != wanted:
+                _wrap(box, context, 'Analyze it again to change its maps to %s.' % M.size_label(wanted), 'INFO')
         layout.label(text='Objects')
         layout.row().prop(props, 'bake_scope', expand=True)
+        layout.label(text='Map Size')
+        layout.row().prop(props, 'maps_resolution', expand=True)
         objs = B.scope_objects(context, props.bake_scope)
         count = len([o for o in objs if M.skip_reason(context, o) is None])
         col = layout.column()
@@ -406,7 +416,6 @@ class BPM_PT_mesh_maps(bpy.types.Panel):
         header.label(text='Options')
         if body is not None:
             col = body.column()
-            col.prop(props, 'maps_resolution')
             col.row().prop(props, 'maps_quality', expand=True)
             col.prop(props, 'maps_edge_reach')
             col.prop(props, 'maps_cavity_reach')

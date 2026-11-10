@@ -50,7 +50,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.11.0.zip`](dist/bpm_procedural_metals-1.11.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.11.1.zip`](dist/bpm_procedural_metals-1.11.1.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
@@ -173,11 +173,18 @@ Every edge wear overlay, dirt overlay and built-in grime reads them automaticall
 They also work in **EEVEE** and Material Preview, where the live edges don't.
 
 1. Pick the **Objects** (Active, Selected or Scene).
-2. Click **Analyze Shape** (about 10 s per object at the 1K default).
-3. The panel says *Analyzed* for the active object. After you edit the mesh it says
-   *the mesh changed*: click Analyze Shape again.
+2. Pick the **Map Size**: 256, 512, 1K (the default, plenty for most objects), 2K or
+   4K. Bigger maps give crisper edge wear on big or detailed objects and take longer.
+3. Click **Analyze Shape** (about 10 s per object at 1K).
+4. The panel says *Analyzed (1K maps)* for the active object. After you edit the mesh
+   it says *the mesh changed*: click Analyze Shape again.
 
-**Options**: *Map Size*, *Quality*, *Edge Reach* (the widest edge wear can get),
+**Changing the map size** of an object: pick another Map Size, select the object and
+click Analyze Shape again (the panel reminds you when the object's maps have another
+size). Each object keeps its own size, so a hero object can have 4K maps while the
+props around it have 512. Auto Texture leaves up-to-date maps as they are.
+
+**Options**: *Quality*, *Edge Reach* (the widest edge wear can get),
 *Corner Reach* (how far dirt can build up out of a corner), *Occlusion Reach* (how far
 away a surface still counts as enclosing), *Include Other Objects* (off: each object is
 analyzed on its own, without the floor or its neighbours), *Device* (the same as for
