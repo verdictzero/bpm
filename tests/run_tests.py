@@ -1520,6 +1520,77 @@ def mesh_maps_handle_awkward_meshes():
     assert any('"Big"' in w and 'pixels wide' in w for w in job.warnings()), job.messages
 
 
+@test
+def mesh_maps_objects_made_of_parts():
+    """Each part of an object built from many parts gets the maps it would get on its own: parts
+    sticking into each other make no false edges, one inside-out part does not turn the others
+    inside out, and small parts far away do not change the reaches."""
+    import bmesh
+    fresh_scene()
+    alone = grid_box('Alone')
+    kit = grid_box('Kit', location=(0, 6, 0))
+    n = len(kit.data.vertices)
+    bm = bmesh.new()
+    bm.from_mesh(kit.data)
+
+    def box(size, offset, flip=False):
+        made = bmesh.ops.create_cube(bm, size=1.0)['verts']
+        for v in made:
+            v.co = [c * s + o for c, s, o in zip(v.co, size, offset)]
+        faces = list({f for v in made for f in v.link_faces})
+        bmesh.ops.recalc_face_normals(bm, faces=faces)
+        if flip:
+            bmesh.ops.reverse_faces(bm, faces=faces)
+
+    box((0.1, 0.1, 0.6), (0.0, 0.0, 0.5))           # a post through the top
+    box((0.3, 0.3, 0.3), (2.0, 0.0, 0.0), flip=True)  # an inside-out part
+    for i in range(6):
+        box((0.03, 0.03, 0.03), (-1.0 + 0.4 * i, 3.0, 0.0))  # small bolts that make the object bigger
+    bm.to_mesh(kit.data)
+    bm.free()
+    kit.data.update()
+    bpy.context.view_layer.update()
+    job = M.analyze(bpy.context, [alone, kit], M.MapsSettings(resolution=512, quality='GOOD', other_objects=False))
+    assert sorted(job.analyzed) == ['Alone', 'Kit'], job.messages
+    assert any(level == 'INFO' and '1 of its 9 parts' in text and 'inward' in text for level, text in job.messages), \
+        job.messages
+    assert not job.warnings(), job.warnings()
+    assert not [o for o in bpy.data.objects if o.name.startswith('BPM_tmp')]
+    assert abs(kit.data[M.EDGE] - alone.data[M.EDGE]) < 1e-6, (kit.data[M.EDGE], alone.data[M.EDGE])
+
+    def top_rows(obj):
+        mesh = obj.data
+        values = maps_at_loops(mesh)
+        co = np.array([mesh.vertices[l.vertex_index].co[:] for l in mesh.loops])
+        normal = np.array([mesh.polygons[i].normal[:] for i, p in enumerate(mesh.polygons) for _ in p.loop_indices])
+        index = np.array([l.vertex_index for l in mesh.loops])
+        top = (index < n) & (np.abs(co[:, 2] - 0.5) < 1e-6) & (normal[:, 2] > 0.99)
+        return values, co, top
+
+    a, a_co, a_top = top_rows(alone)
+    k, k_co, k_top = top_rows(kit)
+    for d in (0.01, 0.03, 0.06, 0.25):  # the box's free edge: as on its own
+        at = [top & (np.abs(co[:, 1]) < 0.2) & (np.abs((0.5 - co[:, 0]) - d) < 1e-6)
+              for co, top in ((a_co, a_top), (k_co, k_top))]
+        assert abs(a[at[0], 0].mean() - k[at[1], 0].mean()) < 0.12, (d, a[at[0], 0].mean(), k[at[1], 0].mean())
+    # around the post: an inner corner, not an outer edge
+    near = k_top & (np.abs(k_co[:, 0] - 0.06) < 1e-6) & (np.abs(k_co[:, 1]) < 0.045)
+    assert near.any() and k[near, 0].max() < 0.15 and k[near, 1].min() > 0.5, k[near, :2]
+    # the inside-out part: edges on its edges, nothing in the middle of its faces
+    mesh = kit.data
+    du, dv = M.tile_offset(mesh[M.TILE])
+    px = maps_tile(mesh)
+    uv = uv_array(mesh, M.UV_NAME) - (du, dv)
+    faces = [p for p in mesh.polygons if all(n + 8 <= v < n + 16 for v in p.vertices)]
+    assert len(faces) == 6
+    mid = np.array([uv[p.loop_start:p.loop_start + 4].mean(axis=0) for p in faces])
+    corner = np.concatenate([uv[p.loop_start:p.loop_start + 4] + (m - uv[p.loop_start:p.loop_start + 4]) * 0.05
+                             for p, m in zip(faces, mid)])
+    centers, corners = sample(px, mid), sample(px, corner)
+    assert centers[:, :2].max() < 0.1, centers[:, :2].max()
+    assert corners[:, 0].min() > 0.6 and corners[:, 1].max() < 0.1, (corners[:, 0].min(), corners[:, 1].max())
+
+
 def bm_flip(mesh, all_faces):
     """Flip every face of a mesh (inside out), or only one of them (mixed normals)."""
     import bmesh
@@ -1548,15 +1619,15 @@ def mesh_maps_survive_a_gpu_failure():
     def fake_gpu(preference):
         return 'CPU' if preference == 'CPU' or B.gpu_failure() is not None else 'GPU'
 
-    def bake(context, obj, image, reach, other_objects):
+    def bake(context, obj, image, reach, other_objects, copies=()):
         calls.append((obj.name, context.scene.cycles.device, context.scene.cycles.samples))
-        real_bake(context, obj, image, reach, other_objects)  # without a GPU set up, Cycles uses the CPU
+        real_bake(context, obj, image, reach, other_objects, copies)  # without a GPU set up, Cycles uses the CPU
 
-    def failing_gpu(context, obj, image, reach, other_objects):
+    def failing_gpu(context, obj, image, reach, other_objects, copies=()):
         if context.scene.cycles.device == 'GPU':
             calls.append((obj.name, 'GPU', 'failed'))
             raise B.GpuFailure('The GPU could not analyze "%s".' % obj.name, 'UR_RESULT_ERROR_DEVICE_LOST')
-        bake(context, obj, image, reach, other_objects)
+        bake(context, obj, image, reach, other_objects, copies)
 
     scene_device = bpy.context.scene.cycles.device
     try:

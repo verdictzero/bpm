@@ -28,9 +28,15 @@ Making it hold up on real meshes:
 * Smooth-shaded low-poly meshes: the rays leave along a normal blended
   towards the true face normal where the shading bends far from it, so a
   smooth cube does not read as a crease everywhere.
-* Inside-out meshes (normals pointing in) are measured from the other side;
-  mixed normals, modifiers that repeat the UVs (Array, Mirror, ...) and edge
-  reaches only a few pixels wide in the maps are reported.
+* Objects made of many loose parts: every part gets the maps it would get on
+  its own (see Parts).  Parts that stick into or sit next to each other are
+  measured on separate copies, so they don't fake edges or thin walls on each
+  other (they still make corners and occlusion); closed parts whose faces point
+  inward, or every which way, are turned around for the analysis, part by part;
+  the reaches follow the size of the main parts, not of the whole assembly.
+* Inside-out open shapes are measured from the other side; mixed normals,
+  modifiers that repeat the UVs (Array, Mirror, ...) and edge reaches only a
+  few pixels wide in the maps are reported.
 * The maps are marked out of date when the mesh or its modifiers change.
 
 Storage (survives saving, works with materials shared by many objects):
@@ -134,10 +140,11 @@ def object_scale(obj):
     return max(sum(m.col[i].length for i in range(3)) / 3.0, 1e-9)
 
 
-def reaches(obj, settings):
-    """(edge, cavity, occlusion) ray lengths in meters for `obj`."""
-    dims = sorted(obj.dimensions)
-    size = dims[1] if dims[1] > 1e-6 else dims[2]
+def reaches(obj, settings, size=None):
+    """(edge, cavity, occlusion) ray lengths in meters for `obj`, or for parts of `size` meters."""
+    if size is None:
+        dims = sorted(obj.dimensions)
+        size = dims[1] if dims[1] > 1e-6 else dims[2]
     shares = (settings.edge_reach, settings.cavity_reach, settings.occlusion_reach)
     return tuple(min(max(share * size, lo), hi) for share, lo, hi in zip(shares, REACH_MIN, REACH_MAX))
 
@@ -723,29 +730,208 @@ def areas(mesh, uv_name, matrix=None):
     return float(surface), float(0.5 * np.abs(e1[:, 0] * e2[:, 1] - e1[:, 1] * e2[:, 0]).sum())
 
 
-def orientation(mesh):
-    """(share of the faces' shared edges where neighbors point opposite ways, inside-out
-    measure: -1 every face points inward .. 1 every face points outward; 0 for open shapes)."""
-    nl, ne = len(mesh.loops), len(mesh.edges)
-    if not nl or not ne:
-        return 0.0, 1.0
-    lv = np.empty(nl, dtype=np.int64)
-    le = np.empty(nl, dtype=np.int64)
-    mesh.loops.foreach_get('vertex_index', lv)
-    mesh.loops.foreach_get('edge_index', le)
-    ev = np.empty(ne * 2, dtype=np.int64)
-    mesh.edges.foreach_get('vertices', ev)
-    forward = (lv == ev.reshape(-1, 2)[le, 0]).astype(np.float64)
-    uses = np.bincount(le, minlength=ne)
-    ahead = np.bincount(le, weights=forward, minlength=ne)
-    shared = uses == 2  # an edge between two faces runs opposite ways in them
-    flipped = float((ahead[shared] != 1).sum()) / max(int(shared.sum()), 1)
-    _loops, verts = _triangles(mesh)
-    co = _coordinates(mesh)
-    p = co[verts] - co.mean(axis=0)
-    volumes = np.einsum('ij,ij->i', p[:, 0], np.cross(p[:, 1], p[:, 2]))
-    total = np.abs(volumes).sum()
-    return flipped, float(volumes.sum() / total) if total > 0 else 1.0
+def _components(count, a, b):
+    """Label of the connected component of each of `count` nodes joined by the pairs a[i]-b[i]
+    (every node of a component gets the lowest node number in it)."""
+    parent = np.arange(count)
+    while len(a):
+        pa, pb = parent[a], parent[b]
+        low, high = np.minimum(pa, pb), np.maximum(pa, pb)
+        apart = low != high
+        if not apart.any():
+            break
+        np.minimum.at(parent, high[apart], low[apart])
+        while True:  # point every node straight at the lowest node of its component so far
+            up = parent[parent]
+            if np.array_equal(up, parent):
+                break
+            parent = up
+    return parent
+
+
+MAX_GROUPS = 16  # parts that come close to each other are measured in up to this many groups
+
+
+class Parts:
+    """The loose parts of an object's mesh (with its modifiers), as the analysis sees them.
+
+    An object built from many parts must give each part the maps it would get on its own:
+    * a part that sticks into another one, or sits right next to it, must not make it look
+      thinner or give it false edges: parts that come within reach of each other are measured
+      in different groups (the other parts still make corners and occlusion),
+    * a part whose faces point inward is measured as if they pointed outward, whatever the
+      other parts do (one inside-out part must not turn the whole object inside out),
+    * the reaches follow the size of the main parts, not the size of the whole assembly.
+    """
+
+    def __init__(self, mesh, matrix):
+        nv, nl, ne, nf = len(mesh.vertices), len(mesh.loops), len(mesh.edges), len(mesh.polygons)
+        loop_vert = np.empty(nl, dtype=np.int64)
+        loop_edge = np.empty(nl, dtype=np.int64)
+        mesh.loops.foreach_get('vertex_index', loop_vert)
+        mesh.loops.foreach_get('edge_index', loop_edge)
+        starts = np.empty(nf, dtype=np.int64)
+        totals = np.empty(nf, dtype=np.int64)
+        mesh.polygons.foreach_get('loop_start', starts)
+        mesh.polygons.foreach_get('loop_total', totals)
+        first = loop_vert[np.repeat(starts, totals)]  # every corner joins its face's first vertex
+        label = _components(nv, loop_vert, first)
+        ids, self.face_part = np.unique(label[loop_vert[starts]], return_inverse=True)
+        self.face_part = self.face_part.reshape(-1)
+        k = self.count = len(ids)
+        lut = np.full(nv, -1, dtype=np.int64)
+        lut[ids] = np.arange(k)
+        vertex_part = lut[label]
+
+        co = _coordinates(mesh)
+        m = np.array(matrix)
+        used = vertex_part >= 0
+        world = co[used] @ m[:3, :3].T + m[:3, 3]
+        self.low = np.full((k, 3), np.inf)
+        self.high = np.full((k, 3), -np.inf)
+        np.minimum.at(self.low, vertex_part[used], world)
+        np.maximum.at(self.high, vertex_part[used], world)
+        # size like Blender's dimensions: the part's box in object space, scaled
+        local_low = np.full((k, 3), np.inf)
+        local_high = np.full((k, 3), -np.inf)
+        np.minimum.at(local_low, vertex_part[used], co[used])
+        np.maximum.at(local_high, vertex_part[used], co[used])
+        dims = np.sort((local_high - local_low) * np.linalg.norm(m[:3, :3], axis=0), axis=1)
+        sizes = np.where(dims[:, 1] > 1e-6, dims[:, 1], dims[:, 2])
+
+        tri_loops, tri_verts = _triangles(mesh)
+        tri_face = np.empty(len(tri_loops), dtype=np.int64)
+        mesh.loop_triangles.foreach_get('polygon_index', tri_face)
+        tri_part = self.face_part[tri_face]
+        p = co[tri_verts] @ m[:3, :3].T
+        area = 0.5 * np.linalg.norm(np.cross(p[:, 1] - p[:, 0], p[:, 2] - p[:, 0]), axis=1)
+        self.area = np.bincount(tri_part, weights=area, minlength=k)
+        # the size of the main parts: half of the surface is on parts at least this big
+        order = np.argsort(sizes)
+        cumulative = np.cumsum(self.area[order])
+        middle = np.searchsorted(cumulative, 0.5 * cumulative[-1]) if k and cumulative[-1] > 0 else k // 2
+        self.size = float(sizes[order[min(middle, k - 1)]]) if k else 0.0
+
+        # which way each part faces: signed volume around its own center
+        center = np.zeros((k, 3))
+        np.add.at(center, vertex_part[used], co[used])
+        center /= np.maximum(np.bincount(vertex_part[used], minlength=k), 1)[:, None]
+        q = co[tri_verts] - center[tri_part][:, None, :]
+        volumes = np.einsum('ij,ij->i', q[:, 0], np.cross(q[:, 1], q[:, 2]))
+        total = np.bincount(tri_part, weights=np.abs(volumes), minlength=k)
+        outward = np.bincount(tri_part, weights=volumes, minlength=k) / np.maximum(total, 1e-30)
+        # closed parts (every edge between two faces) and neighbors pointing opposite ways
+        ev = np.empty(ne * 2, dtype=np.int64)
+        mesh.edges.foreach_get('vertices', ev)
+        ev = ev.reshape(-1, 2)
+        forward = (loop_vert == ev[loop_edge, 0]).astype(np.float64)
+        uses = np.bincount(loop_edge, minlength=ne)
+        ahead = np.bincount(loop_edge, weights=forward, minlength=ne)
+        edge_part = vertex_part[ev[:, 0]]
+        open_edge = (uses > 0) & (uses != 2)
+        self.closed = np.bincount(edge_part[open_edge], minlength=k)[:k] == 0 if k else np.zeros(0, bool)
+        shared = uses == 2
+        flipped = shared & (ahead != 1)
+        self.flipped = np.bincount(edge_part[flipped], minlength=k)[:k] if k else np.zeros(0, int)
+        self.shared = np.bincount(edge_part[shared], minlength=k)[:k] if k else np.zeros(0, int)
+        self.inward = self.closed & (outward < 0.0)
+        # closed parts: Blender can point their faces outward reliably
+        self.fix_closed = self.closed & (self.inward | (self.flipped > 0))
+        # open shapes (sheets, shells with holes) have no inside: turned around only when they
+        # point inward as a whole, as before
+        open_parts = ~self.closed
+        open_total = total[open_parts].sum()
+        self.flip_open = bool(open_total > 0 and
+                              (outward[open_parts] * total[open_parts]).sum() / open_total < -0.3)
+
+    @property
+    def needs_fixing(self):
+        return bool(self.fix_closed.any() or self.flip_open)
+
+    def groups(self, grow):
+        """Part numbers in groups whose parts stay more than `grow` (meters) apart."""
+        if self.count <= 1:
+            return [np.arange(self.count)]
+        low, high = self.low - 0.5 * grow, self.high + 0.5 * grow
+        order = np.argsort(-(self.high - self.low).max(axis=1), kind='stable')
+        boxes = []  # per group: (lows, highs, count)
+        assign = np.empty(self.count, dtype=np.int64)
+        for part in order:
+            hits = []
+            for g, (g_low, g_high, n) in enumerate(boxes):
+                hit = np.all(g_low[:n] <= high[part], axis=1) & np.all(g_high[:n] >= low[part], axis=1)
+                hits.append(int(hit.sum()))
+                if not hits[-1]:
+                    break
+            if hits and not hits[-1]:
+                g = len(hits) - 1
+            elif len(boxes) < MAX_GROUPS:
+                g = len(boxes)
+                boxes.append((np.empty((self.count, 3)), np.empty((self.count, 3)), 0))
+            else:
+                g = int(np.argmin(hits))  # too many: where it disturbs the fewest
+            g_low, g_high, n = boxes[g]
+            g_low[n], g_high[n] = low[part], high[part]
+            boxes[g] = (g_low, g_high, n + 1)
+            assign[part] = g
+        return [np.flatnonzero(assign == g) for g in range(len(boxes))]
+
+
+def _analysis_copies(context, obj, parts, groups):
+    """Copies of `obj` (with its modifiers) to measure instead of it: one per group of parts,
+    with the faces of inside-out parts turned around.  They have one material slot."""
+    import bmesh
+    depsgraph = context.evaluated_depsgraph_get()
+    evaluated = obj.evaluated_get(depsgraph)
+    bm = bmesh.new()
+    try:
+        bm.from_mesh(evaluated.to_mesh())
+    finally:
+        evaluated.to_mesh_clear()
+    copies = []
+    try:
+        bm.faces.ensure_lookup_table()
+        fix = np.flatnonzero(parts.fix_closed[parts.face_part])
+        if len(fix):
+            bmesh.ops.recalc_face_normals(bm, faces=[bm.faces[i] for i in fix])
+        if parts.flip_open:
+            flip = np.flatnonzero(~parts.closed[parts.face_part])
+            bmesh.ops.reverse_faces(bm, faces=[bm.faces[i] for i in flip])
+        for group in groups:
+            drop = np.flatnonzero(~np.isin(parts.face_part, group))
+            part = bm.copy() if len(drop) else bm
+            try:
+                if len(drop):
+                    part.faces.ensure_lookup_table()
+                    bmesh.ops.delete(part, geom=[part.faces[i] for i in drop], context='FACES')
+                data = bpy.data.meshes.new('BPM_tmp_parts')
+                part.to_mesh(data)
+            finally:
+                if part is not bm:
+                    part.free()
+            data.materials.clear()
+            data.materials.append(None)
+            data.polygons.foreach_set('material_index', np.zeros(len(data.polygons), dtype=np.int32))
+            copy = bpy.data.objects.new('BPM_tmp_parts', data)
+            copies.append(copy)
+            copy.matrix_world = obj.matrix_world.copy()
+            context.scene.collection.objects.link(copy)
+    except Exception:
+        _remove_copies(copies)
+        raise
+    finally:
+        bm.free()
+    return copies
+
+
+def _remove_copies(copies):
+    for copy in copies:
+        try:
+            data = copy.data
+            bpy.data.objects.remove(copy)
+            bpy.data.meshes.remove(data)
+        except ReferenceError:
+            pass
 
 
 _REPEATING = {'ARRAY': 'Array', 'MIRROR': 'Mirror', 'SOLIDIFY': 'Solidify', 'SCREW': 'Screw',
@@ -753,25 +939,34 @@ _REPEATING = {'ARRAY': 'Array', 'MIRROR': 'Mirror', 'SOLIDIFY': 'Solidify', 'SCR
 
 
 def check_mesh(context, obj):
-    """Problems of an object for the analysis: (probe sign, [(level, text)])."""
+    """The loose parts of an object and its problems for the analysis: (Parts, [(level, text)])."""
     notes = []
     depsgraph = context.evaluated_depsgraph_get()
     evaluated = obj.evaluated_get(depsgraph)
     mesh = evaluated.to_mesh()
     try:
-        flipped, outward = orientation(mesh)
-        sign = 1.0
-        if outward < -0.3:
-            sign = -1.0
-            notes.append(('INFO', '"%s": its faces point inward; it was analyzed as if they pointed outward. '
-                          'Recalculate the normals (Edit Mode, Shift+N) to fix its shading too.' % obj.name))
-        if flipped > 0.02:
-            notes.append(('WARNING', '"%s": %d%% of its faces point the other way than their neighbors: edges '
-                          'and corners are swapped there. Fix: Edit Mode, select all, Mesh > Normals > '
-                          'Recalculate Outside (Shift+N).' % (obj.name, round(100 * flipped))))
+        parts = Parts(mesh, obj.matrix_world)
         _surface, repeated = areas(mesh, UV_NAME)
     finally:
         evaluated.to_mesh_clear()
+    turned = parts.inward | (parts.flip_open & ~parts.closed)
+    if turned.all():
+        notes.append(('INFO', '"%s": its faces point inward; it was analyzed as if they pointed outward. '
+                      'Recalculate the normals (Edit Mode, Shift+N) to fix its shading too.' % obj.name))
+    elif turned.any():
+        notes.append(('INFO', '"%s": %d of its %d parts have faces pointing inward; they were analyzed as if they '
+                      'pointed outward. Recalculate the normals (Edit Mode, Shift+N) to fix their shading too.'
+                      % (obj.name, int(turned.sum()), parts.count)))
+    flipped = float(parts.flipped.sum()) / max(int(parts.shared.sum()), 1)
+    if flipped > 0.02:
+        if (parts.flipped[~parts.closed] > 0).any():
+            notes.append(('WARNING', '"%s": %d%% of its faces point the other way than their neighbors: edges '
+                          'and corners are swapped there. Fix: Edit Mode, select all, Mesh > Normals > '
+                          'Recalculate Outside (Shift+N).' % (obj.name, round(100 * flipped))))
+        else:
+            notes.append(('WARNING', '"%s": %d%% of its faces point the other way than their neighbors. The '
+                          'analysis turned them around, but they still shade wrongly. Fix: Edit Mode, select all, '
+                          'Mesh > Normals > Recalculate Outside (Shift+N).' % (obj.name, round(100 * flipped))))
     _surface, own = areas(obj.data, UV_NAME)
     if own > 0 and repeated > 1.15 * own:
         kinds = sorted({_REPEATING[m.type] for m in obj.modifiers if m.show_viewport and m.type in _REPEATING})
@@ -779,7 +974,7 @@ def check_mesh(context, obj):
         notes.append(('WARNING', '"%s": %s repeats faces with the same UVs, so the copies share one analysis '
                       '(their edges and corners mix). Apply the modifier (Ctrl+A) before analyzing for exact '
                       'maps.' % (obj.name, what)))
-    return sign, notes
+    return parts, notes
 
 
 def texels_per_unit(obj, size):
@@ -825,7 +1020,7 @@ def _seen_by(obj, other, low, high):
     return bool(np.all(other_low <= high) and np.all(other_high >= low))
 
 
-def _hide_unseen(context, obj, reach, other_objects):
+def _hide_unseen(context, obj, reach, other_objects, keep=()):
     """Hide from rendering what the analysis of `obj` cannot see: everything else without
     Include Other Objects, else what is beyond the reach.  Less to load onto the GPU (and less
     for the rays to search).  Returns the objects to show again."""
@@ -834,7 +1029,7 @@ def _hide_unseen(context, obj, reach, other_objects):
         low, high = low - reach, high + reach
     hidden = []
     for other in context.view_layer.objects:
-        if other == obj or other.hide_render:
+        if other == obj or other in keep or other.hide_render:
             continue
         if other_objects and _seen_by(obj, other, low, high):
             continue
@@ -854,12 +1049,18 @@ def _show_again(hidden):
             pass
 
 
-def _bake(context, obj, image, reach, other_objects):
-    """Bake the analysis material of `obj` into `image`.  Raises B.GpuFailure if the GPU failed
-    (an error, or nothing baked: its pixels start transparent)."""
+def _bake(context, obj, image, reach, other_objects, copies=()):
+    """Bake the analysis material of `obj` into `image`, or of its `copies` (its parts, see
+    Parts) in its place.  Raises B.GpuFailure if the GPU failed (an error, or nothing baked:
+    its pixels start transparent)."""
     on_gpu = context.scene.cycles.device == 'GPU'
-    override = dict(active_object=obj, object=obj, selected_objects=[obj], selected_editable_objects=[obj])
-    hidden = _hide_unseen(context, obj, reach, other_objects)
+    targets = list(copies) or [obj]
+    override = dict(active_object=targets[0], object=targets[0], selected_objects=targets,
+                    selected_editable_objects=targets)
+    hidden = _hide_unseen(context, obj, reach, other_objects, keep=targets)
+    if copies:
+        obj.hide_render = True
+        hidden.append(obj)
     try:
         with context.temp_override(**override):
             result = bpy.ops.object.bake(type='EMIT', margin=0, use_clear=False, use_selected_to_active=False,
@@ -1027,7 +1228,6 @@ class MapsJob(B.Job):
         context = self.context
         mesh = obj.data
         size = int(s.resolution)
-        edge, cavity, far = reaches(obj, s)
         layers = mesh.uv_layers
         previous = layers.active.name if layers.active is not None else None
         render = next((layer.name for layer in layers if layer.active_render), None)
@@ -1048,6 +1248,7 @@ class MapsJob(B.Job):
         added_slot = False
         hidden = obj.hide_render
         finished = False
+        copies = []
         try:
             obj.hide_render = False
             yield 'Unwrapping %s for its mesh maps' % obj.name
@@ -1060,9 +1261,14 @@ class MapsJob(B.Job):
                 layers[render].active_render = True
             self.done_steps += 1
             context.view_layer.update()
-            sign, notes = check_mesh(context, obj)
+            parts, notes = check_mesh(context, obj)
             for level, text in notes:
                 (self.warn if level == 'WARNING' else self.info)(text)
+            edge, cavity, far = reaches(obj, s, parts.size or None)
+            # parts within reach of each other are measured apart; inside-out ones turned around
+            groups = parts.groups(2.0 * edge)
+            if len(groups) > 1 or parts.needs_fixing:
+                copies = _analysis_copies(context, obj, parts, groups)
             edge_px = edge * texels_per_unit(obj, size)
             if 0.0 < edge_px < 2.5:
                 self.warn('"%s": its edge reach (%.1f mm) is only %.1f pixels wide in its maps: the edges come out '
@@ -1075,8 +1281,9 @@ class MapsJob(B.Job):
                 img.pixels.foreach_set(np.zeros(size * size * 4, dtype=np.float32))  # alpha 0 = not baked
                 self._temp_images.append(img)
                 images.append(img)
-            occ_mat = occlusion_material(images[0], edge, cavity, far, rays, s.other_objects, sign)
-            edge_mat = bevel_material(images[1], edge, rays, sign)
+            # the other parts are other objects now: they count even without Include Other Objects
+            occ_mat = occlusion_material(images[0], edge, cavity, far, rays, s.other_objects or bool(copies))
+            edge_mat = bevel_material(images[1], edge, rays)
             self._materials += [occ_mat, edge_mat]
             if not obj.material_slots:
                 mesh.materials.append(None)
@@ -1086,7 +1293,9 @@ class MapsJob(B.Job):
                 yield 'Measuring %s of %s' % (label, obj.name)
                 for slot in obj.material_slots:
                     slot.material = mat
-                _bake(context, obj, image, far + edge, s.other_objects)
+                for copy in copies:
+                    copy.data.materials[0] = mat
+                _bake(context, obj, image, far + edge, s.other_objects, copies)
                 self.done_steps += 0.5
             yield 'Processing the mesh maps of %s' % obj.name
             pixels = process(B._pixels(images[0]), B._pixels(images[1]), size, edge_px or 16.0)
@@ -1110,6 +1319,7 @@ class MapsJob(B.Job):
             self.done_steps += 1
             finished = True
         finally:
+            _remove_copies(copies)
             if added_slot:
                 mesh.materials.clear()  # it had none; pop() would leave the object's slot behind
             else:

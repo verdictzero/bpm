@@ -161,7 +161,7 @@ class BPM_Settings(bpy.types.PropertyGroup):
     maps_other_objects: BoolProperty(
         name='Include Other Objects', default=True,
         description='Other objects nearby (the floor, parts touching each other) also make corners and '
-                    'shade the object. Off: each object is analyzed on its own')
+                    'shade the object. Off: each object is analyzed on its own (with all of its own parts)')
     analysis_view: EnumProperty(
         name='View Maps',
         items=V.MODES,

@@ -50,7 +50,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.11.1.zip`](dist/bpm_procedural_metals-1.11.1.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.12.0.zip`](dist/bpm_procedural_metals-1.12.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
@@ -193,6 +193,13 @@ Reaches are a share of the object's size, so they suit small and big objects ali
 
 **Auto Texture** analyzes every object without up-to-date maps first (*Analyze
 Shape First*, on by default), so the baked textures get the precise version.
+
+**Objects made of many parts** (kitbashed models, joined assemblies, bolts and
+panels in one mesh) get the same maps on every part as that part would get on its
+own: parts that stick into each other or touch don't fake edges on each other (the
+seams between them still collect dirt), a part whose faces point inward is turned
+around for the analysis without affecting the others, and the reaches follow the
+size of the main parts, so a few small bolts far away don't change them.
 
 **It checks your mesh.** Thin plates and sheet metal get edges as wide as on solid
 parts, smooth (shade smooth) low-poly surfaces don't turn into fake creases, and
