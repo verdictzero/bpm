@@ -1591,6 +1591,34 @@ def mesh_maps_objects_made_of_parts():
     assert corners[:, 0].min() > 0.6 and corners[:, 1].max() < 0.1, (corners[:, 0].min(), corners[:, 1].max())
 
 
+@test
+def mesh_maps_fit_many_small_islands():
+    """Greebled hard-surface meshes unwrap into thousands of tiny UV islands (every 90 degree step
+    is a cut): the margins between them must stay small, or the islands get no room at all."""
+    import bmesh
+    fresh_scene()
+    bm = bmesh.new()
+    bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=1.0)  # a 2 m plate
+    rng = np.random.default_rng(7)
+    for x, y in rng.uniform(-1.0, 1.0, (5000, 2)):  # and 5000 loose 1 cm tiles above it: 5000 islands
+        tile = bmesh.ops.create_grid(bm, x_segments=1, y_segments=1, size=0.005)['verts']
+        bmesh.ops.translate(bm, verts=tile, vec=(x, y, 0.3))
+    mesh = bpy.data.meshes.new('Greebles')
+    bm.to_mesh(mesh)
+    bm.free()
+    obj = bpy.data.objects.new('Greebles', mesh)
+    bpy.context.scene.collection.objects.link(obj)
+    bpy.context.view_layer.update()
+    job = M.analyze(bpy.context, [obj], M.MapsSettings(resolution=1024, quality='FAST'))
+    assert job.analyzed == ['Greebles'], job.messages
+    _surface, used = M.areas(mesh, M.UV_NAME)
+    assert used > 0.5, used  # margins growing with the map size (before 1.12.1) left under 0.01
+    # the warning for blurry edges names the Map Size that fixes them
+    assert 'Map Size of 2K' in M.blurry_text('A', 0.01, 1.7, 1024)
+    assert 'Map Size of 4K' in M.blurry_text('A', 0.01, 1.0, 1024)
+    assert 'split the object' in M.blurry_text('A', 0.01, 0.5, 1024)
+
+
 def bm_flip(mesh, all_faces):
     """Flip every face of a mesh (inside out), or only one of them (mixed normals)."""
     import bmesh

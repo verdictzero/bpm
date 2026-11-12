@@ -50,7 +50,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.12.0.zip`](dist/bpm_procedural_metals-1.12.0.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.12.1.zip`](dist/bpm_procedural_metals-1.12.1.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
@@ -175,6 +175,9 @@ They also work in **EEVEE** and Material Preview, where the live edges don't.
 1. Pick the **Objects** (Active, Selected or Scene).
 2. Pick the **Map Size**: 256, 512, 1K (the default, plenty for most objects), 2K or
    4K. Bigger maps give crisper edge wear on big or detailed objects and take longer.
+   Large, heavily detailed hard-surface objects (hundreds of square meters of panels,
+   insets and rivets) need 2K or 4K: when the edges would come out blurry, the analysis
+   says so and names the size that fixes it.
 3. Click **Analyze Shape** (about 10 s per object at 1K).
 4. The panel says *Analyzed (1K maps)* for the active object. After you edit the mesh
    it says *the mesh changed*: click Analyze Shape again.

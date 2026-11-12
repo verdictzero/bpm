@@ -90,6 +90,8 @@ GPU_RAYS = 4
 REACH_MIN = (0.002, 0.004, 0.01)
 REACH_MAX = (0.2, 0.4, 2.0)
 DILATE = 8  # pixels the maps are extended around the UV islands
+MARGIN_PX = 1.5  # pixels between the UV islands and the map border (twice that between islands)
+SIZES = (256, 512, 1024, 2048, 4096)  # the map sizes offered
 
 
 class MapsSettings:
@@ -128,9 +130,12 @@ class MapsSettings:
 
     @property
     def uv_margin(self):
-        """Room around the UV islands: blurring and extending the maps must not mix islands."""
-        size = max(int(self.resolution), 1)
-        return max(6, size // 128) / size
+        """Room around the UV islands, as a fraction of the map: 1.5 pixels, so islands are 3
+        pixels apart and the 2-pixel blur of `process` never mixes two of them (extending the
+        maps fills the gaps from both sides).  It must not grow with the map size: detailed
+        hard-surface meshes unwrap into many thousands of tiny islands, and wide margins
+        leave no room for the islands themselves."""
+        return MARGIN_PX / max(int(self.resolution), 1)
 
 
 # ----------------------------------------------------------------- per mesh
@@ -977,6 +982,17 @@ def check_mesh(context, obj):
     return parts, notes
 
 
+def blurry_text(name, edge, edge_px, size):
+    """Warning for an edge reach only `edge_px` pixels wide in maps of `size` pixels."""
+    text = ('"%s": its edge reach (%.1f mm) is only %.1f pixels wide in its maps: the edges come out blurry.'
+            % (name, edge * 1000.0, edge_px))
+    wanted = next((s for s in SIZES if s > size and edge_px * s / size >= 3.0), None)
+    if wanted is not None:
+        return text + ' Analyze it with a Map Size of %s (or raise the Edge Reach).' % size_label(wanted)
+    return text + (' Even the largest Map Size is not enough for this much surface: raise the Edge Reach, or '
+                   'split the object into a few objects (Edit Mode, P > By Loose Parts) and analyze those.')
+
+
 def texels_per_unit(obj, size):
     """Map pixels per meter on the object's surface (BPM_Maps UVs)."""
     surface, uv_area = areas(obj.data, UV_NAME, obj.matrix_world)
@@ -1271,8 +1287,7 @@ class MapsJob(B.Job):
                 copies = _analysis_copies(context, obj, parts, groups)
             edge_px = edge * texels_per_unit(obj, size)
             if 0.0 < edge_px < 2.5:
-                self.warn('"%s": its edge reach (%.1f mm) is only %.1f pixels wide in its maps: the edges come out '
-                          'blurry. Raise the Map Size (or the Edge Reach).' % (obj.name, edge * 1000.0, edge_px))
+                self.warn(blurry_text(obj.name, edge, edge_px, size))
 
             images = []
             for label in ('Occlusion', 'Edges'):
