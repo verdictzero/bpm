@@ -617,6 +617,57 @@ def masonry_layouts():
 
 
 @test
+def hulls_roads_walls_ground_and_rubber():
+    """Sci-fi hulls, roads, plaster, ground and rubber: their laid-out patterns (plates, road markings,
+    wallpaper, bricks behind the plaster, tracks, treads) stay seamless as tiles; hull lights glow."""
+    fresh_scene()
+    ids = ('scifi_hull_white', 'scifi_hex_armor', 'scifi_greeble_city',
+           'road_double_yellow', 'road_crosswalk', 'road_parking', 'road_hatching', 'road_potholes',
+           'plaster_crumbling_brick', 'plaster_lath', 'wallpaper_quatrefoil', 'wallpaper_trellis',
+           'ground_cracked_mud', 'ground_sand_ripples', 'ground_snow_tracks', 'ground_autumn_leaves',
+           'ground_frozen_lake', 'rubber_tire_tread', 'rubber_tire_tractor', 'rubber_mat_diamond',
+           'rubber_mat_coin', 'rubber_sponge')
+    mats = [L.create_material(pid) for pid in ids]
+    job = B.TileBakeJob(bpy.context, mats, settings(resolution=128, maps={'BASE_COLOR', 'HEIGHT'}))
+    B.run_to_end(job)
+    assert len(job.written) == 2 * len(ids), job.written
+    for path in job.written:
+        a = read_png(path)[..., :3].astype(np.float64)
+        assert seam_ok(a), 'visible seam in ' + os.path.basename(path)
+        assert a.std() > 0.004, 'flat texture: ' + os.path.basename(path)
+    # every rubber pattern is molded into the height
+    rubber = L.create_material('rubber_black')
+    node = L.find_bpm_node(rubber)
+    node.inputs['Depth'].default_value = 1.0
+    heights = []
+    for pattern in range(8):
+        node.inputs['Pattern'].default_value = float(pattern)
+        job = B.TileBakeJob(bpy.context, [rubber], settings(resolution=64, maps={'HEIGHT'}))
+        B.run_to_end(job)
+        heights.append(read_png(job.written[0])[..., 0].astype(np.float64))
+    assert heights[0].std() < 0.03, heights[0].std()  # smooth
+    for index, h in enumerate(heights[1:], 1):
+        assert h.std() > 0.05, (index, h.std())
+        assert all(np.abs(h - other).mean() > 0.02 for other in heights[:index]), index
+    # hull lights: an emission map only when something glows
+    out = os.path.join(TMP, 'scifi')
+    grid = add_cube('Grid')
+    grid.data.materials.append(L.create_material('scifi_glowing_grid'))
+    plain = add_cube('Plain', location=(5, 0, 0))
+    plain.data.materials.append(L.create_material('scifi_hull_white'))
+    bsdf = L.find_principled(grid.active_material.node_tree)
+    assert bsdf.inputs['Emission Color'].is_linked and bsdf.inputs['Emission Strength'].is_linked
+    job = B.ObjectBakeJob(bpy.context, [grid, plain], settings(resolution=128, output_dir=out, assign_baked=False))
+    B.run_to_end(job)
+    names = sorted(os.path.basename(p) for p in job.written)
+    assert 'Grid_Emission.png' in names and 'Plain_Emission.png' not in names, names
+    glow = read_png(os.path.join(out, 'Grid_Emission.png'))[..., :3]
+    assert glow[..., 2].max() > 0.5 and glow[..., 2].mean() > 2.0 * glow[..., 0].mean(), 'the seams glow cyan'
+    metal = read_png(os.path.join(out, 'Plain_Metallic.png'))[..., 0]
+    assert 0.0 < metal.mean() < 0.3 and metal.max() > 0.9, 'paint worn to bare metal on the plate edges'
+
+
+@test
 def concrete_finishes_and_damage():
     """Concrete: block, slab and board patterns stay seamless as tiles; rebar is metal; fresh concrete isn't."""
     fresh_scene()

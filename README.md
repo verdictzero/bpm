@@ -1,15 +1,21 @@
 # BPM – Procedural Materials for Blender
 
-605 ready-made materials for Blender — **106 bare metals (gold, rose gold, platinum, silver, copper, brass,
+729 ready-made materials for Blender — **106 bare metals (gold, rose gold, platinum, silver, copper, brass,
 bronze, steel, chrome, titanium, anodized aluminium…), painted metal (with 40 tractor paints, from
 showroom new to rusty field relic), porcelain enamel
 (1950s fridges, stoves, bathtubs, graniteware, enamel signs), military paint and
 camouflage, concrete, 54 brick, cinder block, stone and tile walls and floors (running,
-English and Flemish bond, herringbone, basketweave, ashlar, fieldstone, cobbles, hexagon pavers…), terrain (cratered moons, asteroids, Mars) and glowing lava and magma,
+English and Flemish bond, herringbone, basketweave, ashlar, fieldstone, cobbles, hexagon pavers…),
+plaster and wallpaper (stucco, Venetian plaster, peeling paint, mold, plaster crumbling off brick
+and lath), asphalt and roads (cracks, potholes, road markings, puddles, gravel and dirt roads),
+sci-fi hull plating (rivets, vents, greebles, glowing windows and seams), natural ground (soil,
+mud, sand, gravel, rock, forest floor, snow and ice), terrain (cratered moons, asteroids, Mars)
+and glowing lava and magma,
 140 gradients (linear, radial, angular, spiral… projected from any side; plenty of metal, rust and
 earth tones), glowing lights
 (neon, fluorescent tubes, light panels, LEDs, screens — clean, dusty, bug-filled or burnt
-out), wood, plastic (from showroom new to cracked, burnt and trashed), glass,
+out), wood, plastic (from showroom new to cracked, burnt and trashed), rubber and tires (treads,
+mats, flooring, foam and sponge), glass,
 lenses and visors, leather, fabric & composites (carbon fiber, kevlar, ballistic nylon…), and
 H.R. Giger-style biomechanical surfaces** — plus 38
 **overlays (dirt, dust, moss, edge wear and scratches)** that you can stack on top of *any*
@@ -28,13 +34,18 @@ material, click **Apply**, move some sliders, click **Auto Texture**. Liked what
 ![Painted metal materials](docs/gallery_paint.png)
 ![Porcelain enamel](docs/gallery_enamel.png)
 ![Military paint and camouflage](docs/gallery_military.png)
+![Sci-fi hulls](docs/gallery_scifi.png)
 ![Concrete](docs/gallery_concrete.png)
 ![Brick and stone](docs/gallery_masonry.png)
+![Plaster and wallpaper](docs/gallery_plaster.png)
+![Asphalt and roads](docs/gallery_road.png)
+![Ground, snow and rock](docs/gallery_ground.png)
 ![Terrain and lava](docs/gallery_terrain.png)
 ![Gradients](docs/gallery_gradient.png)
 ![Lights and neon](docs/gallery_light.png)
 ![Wood materials](docs/gallery_wood.png)
 ![Plastic materials](docs/gallery_plastic.png)
+![Rubber and tires](docs/gallery_rubber.png)
 ![Glass materials](docs/gallery_glass.png)
 ![Lenses and visors](docs/gallery_lens.png)
 ![Leather materials](docs/gallery_leather.png)
@@ -50,7 +61,7 @@ on Linux; it is pure Python, so Windows and macOS work the same way.
 
 ## 1. Install (once)
 
-1. Download **[`dist/bpm_procedural_metals-1.12.1.zip`](dist/bpm_procedural_metals-1.12.1.zip)**
+1. Download **[`dist/bpm_procedural_metals-1.13.0.zip`](dist/bpm_procedural_metals-1.13.0.zip)**
    (on GitHub, click the file, then the download button). **Don't unzip it.**
 2. Open Blender and go to **Edit › Preferences › Get Extensions**.
 3. Click the small **⌄ arrow** in the top-right corner and pick **Install from Disk…**
@@ -509,6 +520,38 @@ sandstone, lava stone, adobe mud brick; paving and tiles — granite setts, roun
 cobblestones, river rock, flagstone, concrete pavers, hexagon pavers, terracotta floor
 tiles, white subway tiles, hexagon ceramic tiles, grimy bathroom tiles.
 
+**Sci-fi hulls (21):** white starship hull, battleship grey plating, stealth black, red
+squadron, space station blue, dropship olive drab, industrial yellow machinery, bare
+steel plating, riveted copper plates, cargo bay floor, corridor wall panels, clean lab
+panels, greeble city, engine bay machinery, reactor core plating, glowing grid, hex
+armor tiles, alien hex hull, battle-scorched armor, rusty freighter, derelict ship hull.
+
+**Plaster & wallpaper (28):** smooth white plaster, sand finish stucco, roughcast,
+Spanish trowel stucco, knockdown, orange peel, pink stucco, adobe mud plaster, Venetian
+plaster (ochre, grey), tadelakt, blue limewash, cracked old plaster, plaster crumbling
+off brick, broken lath and plaster, peeling hospital green, flaking ceiling paint,
+water-damaged, moldy bathroom, rising damp, smoke-stained, derelict room; wallpaper —
+stripes, quatrefoil, polka dots, harlequin, trellis, peeling old wallpaper.
+
+**Asphalt & roads (23):** fresh asphalt, asphalt road, old grey, cracked, alligator
+cracking, tar-sealed cracks, patched, potholed; markings — double yellow line, dashed
+center line, faded line, zebra crossing, car park bays, yellow hatching, red cycle lane,
+airport runway; racetrack tarmac, oil-stained, rain-soaked, puddled, dusty desert road,
+gravel road, dirt track.
+
+**Ground, snow & rock (29):** garden topsoil, dry dirt, rocky soil, cracked dry mud,
+red desert earth, red clay, salt flat, wet mud, muddy tire tracks, puddled dirt yard,
+beach sand, wet beach sand, rippled desert sand, black volcanic sand, gravel, river
+pebbles, forest floor, autumn leaves, mossy ground, layered cliff rock, grey rock face,
+red sandstone, dark slate, mossy rock, fresh snow, tire tracks in snow, melting snow,
+frozen lake, frozen puddles.
+
+**Rubber & tires (23):** black rubber, car tire tread, worn tire, dry-rotted tire,
+tractor tire lugs, muddy off-road tire, mountain bike tire, racing slick, old inner
+tube, worn conveyor belt, ribbed mat, coin stud flooring, diamond plate mat,
+anti-fatigue mat, gum boot sole, speckled gym flooring, playground safety surface, red
+silicone, blue nitrile, pink eraser, neoprene, grey foam rubber, yellow sponge.
+
 **Wood (15):** oak floorboards, varnished walnut, knotty pine, curly maple, cherry,
 polished mahogany, ebony, teak boat deck, shipping pallet, peeling barn red, white
 painted planks, weathered grey wood, driftwood, charred wood (shou sugi ban),
@@ -621,6 +664,30 @@ a family has the full set of sliders. A few examples:
   raked) and erosion; chipped edges, cracks, broken and missing units, weathering; paint
   that peels and limewash; salt, rain streaks, dirt, moss, soot, wetness. Walls get
   bricks on their sides, floors on their tops, and seamless tiles always hold whole bricks.
+* **Sci-fi hulls** – plates of mixed sizes or hexagons, their seams, chamfers and
+  height steps; hull color, bare metal or paint, dark and accent plates, hazard
+  stripes; rows of rivets, louvered vents, trays of greebles, fine panel lines; glowing
+  windows and glowing seams (color and brightness); paint worn to bare metal on the
+  plate edges, scratches, grime, leak streaks, rust and scorch marks.
+* **Plaster & wallpaper** – wall color and a cloudy second color (Venetian plaster,
+  limewash), sand, orange peel, roughcast, trowel marks and knockdown textures; paint
+  or wallpaper on top (plain, stripes, dots, diamonds, trellis, quatrefoil) that can
+  peel; cracks; plaster crumbling off to show brick, wooden lath or concrete; water
+  stains with tide lines, rising damp with salt, mold, dirt and soot.
+* **Asphalt & roads** – binder color, age (black and oily to grey and stony), the stones
+  in the asphalt, loose gravel and dirt (up to a gravel or dirt road); long cracks,
+  alligator cracking, tar sealant, potholes and repair patches; painted markings (solid,
+  dashed and double lines, crosswalks, parking bays, hatching) with their color, sizes
+  and wear; oil stains, tire marks, puddles and wetness.
+* **Ground, snow & rock** – soil color, clods, grain and gentle hills; pebbles up to a
+  gravel bed (rough or river-smooth); bare rock with strata and cracks; wind ripples,
+  dried mud cracks and vehicle tracks; moss, fallen leaves, snow (hollows first) and ice
+  with cracks and bubbles; puddles and wetness. It can move the surface itself (*Real
+  Displacement*), like the terrain.
+* **Rubber & tires** – rubber color and gloss, molded grain, colored granules (gym
+  flooring), foam pores; a molded pattern (ribs, tire blocks with sipes, tractor
+  chevrons, knobs, coin studs, diamond plate, waffle) with its size, groove width, depth
+  and rounding; tread wear, dry-rot cracks, chalking, scuffs, dust and mud in the grooves.
 * **Lenses** – lens color, roughness, IOR, the colored reflections of lens coatings
   (*Coating* buttons: amber, purple, blue, green, magenta), mirror coatings (gold,
   silver, blue…), fake inner depth, Fresnel lens rings, hexagonal reflector prisms,
@@ -789,9 +856,10 @@ blender -b model.blend -P bpm_cli.py -- maps --objects all --images ./mesh_maps
 bpm_procedural_metals/   the add-on (Blender extension)
   generators.py          registry of all generators
   mat_*.py               one generator per family: metal, paint, enamel, camo
-                         (military), concrete, masonry (brick and stone), terrain
-                         (terrain + lava), gradient, light, wood, plastic, glass, lens,
-                         leather, fabric, organic
+                         (military), scifi (hull plating), concrete, masonry (brick and
+                         stone), plaster, road, ground, terrain (terrain + lava),
+                         gradient, light, wood, plastic, rubber, glass, lens, leather,
+                         fabric, organic
                          (sliders + node tree)
   overlays.py            dirt, dust, moss, edge wear and scratch overlays (layer on any
                          material)
@@ -800,7 +868,7 @@ bpm_procedural_metals/   the add-on (Blender extension)
   gencommon.py           shared sliders and helpers of the generators
   features.py            shared pattern building blocks (scratches, rust, edge masks...)
   nodebuilder.py         small Python DSL that writes shader node trees
-  presets.py             the 643 presets: 605 materials + 38 overlays
+  presets.py             the 767 presets: 729 materials + 38 overlays
   user_presets.py        your own saved presets (a JSON file outside the add-on)
   library.py             creating / editing materials and overlay stacks
   bake.py                baking engine (object + seamless tile)

@@ -11,9 +11,9 @@ generators take those channels as inputs and put dirt, dust, moss, edge wear
 or scratches on top, so they can be stacked on any material.
 """
 
-from . import (mat_camo, mat_concrete, mat_enamel, mat_fabric, mat_glass, mat_gradient, mat_leather, mat_lens,
-               mat_light, mat_masonry, mat_metal, mat_organic, mat_paint, mat_plastic, mat_terrain, mat_wood,
-               overlays)
+from . import (mat_camo, mat_concrete, mat_enamel, mat_fabric, mat_glass, mat_gradient, mat_ground, mat_leather,
+               mat_lens, mat_light, mat_masonry, mat_metal, mat_organic, mat_paint, mat_plaster, mat_plastic,
+               mat_road, mat_rubber, mat_scifi, mat_terrain, mat_wood, overlays)
 from .gencommon import MACRO_BUMP, MICRO_BUMP, TILE_PARAM  # noqa: F401  (used by bake.py / tests)
 from .nodebuilder import Builder, auto_layout, create_group
 
@@ -32,7 +32,8 @@ def _register(key, spec):
     spec.setdefault('bump', MACRO_BUMP)  # relief depth of the 0..1 height range (meters at Scale 1)
     spec.setdefault('glass', False)  # transmissive: EEVEE refraction settings, IOR kept when baking
     spec.setdefault('custom', False)  # True: every use has its own node group (decals), never built here
-    spec.setdefault('glow', None)  # slider that turns the glow off at 0 (no emission map is baked then)
+    # slider that turns the glow off at 0, or a tuple of them (all 0: no emission map is baked)
+    spec.setdefault('glow', None)
     GENERATORS[key] = spec
 
 
@@ -42,6 +43,11 @@ _register('ENAMEL', mat_enamel.SPEC)
 _register('CAMO', mat_camo.SPEC)
 _register('CONCRETE', mat_concrete.SPEC)
 _register('MASONRY', mat_masonry.SPEC)
+_register('SCIFI', mat_scifi.SPEC)
+_register('ROAD', mat_road.SPEC)
+_register('PLASTER', mat_plaster.SPEC)
+_register('GROUND', mat_ground.SPEC)
+_register('RUBBER', mat_rubber.SPEC)
 _register('TERRAIN', mat_terrain.TERRAIN_SPEC)
 _register('LAVA', mat_terrain.LAVA_SPEC)
 _register('GRADIENT', mat_gradient.SPEC)

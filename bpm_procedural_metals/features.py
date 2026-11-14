@@ -447,6 +447,36 @@ def box_coords(b, space):
     return s, t
 
 
+class Plane:
+    """2D pattern coordinates for laid-out patterns (plates, road markings, treads): in object
+    mode the plane the surface faces most (box_coords), in tile mode the tile itself, where
+    every pattern must fit a whole number of times (`span`: pattern units across the tile)."""
+
+    def __init__(self, b, space, span=None):
+        self.b = b
+        self.tile = space.tile
+        self.span = span
+        if space.tile:
+            self.u, self.v = space.u, space.v
+        else:
+            self.s, self.t = box_coords(b, space)
+
+    def grid(self, cell_w, cell_h=None, mult_w=1.0, mult_h=1.0):
+        """(s, t, nw, nh): coordinates in pattern units for cells of cell_w x cell_h; tiles hold
+        nw x nh cells (multiples of mult_w / mult_h), object mode has no limits (None)."""
+        b = self.b
+        cell_h = cell_w if cell_h is None else cell_h
+        if not self.tile:
+            return self.s, self.t, None, None
+        nw = b.mul(b.maximum(1.0, b.math('ROUND', b.div(b.div(self.span, cell_w), mult_w))), mult_w)
+        nh = b.mul(b.maximum(1.0, b.math('ROUND', b.div(b.div(self.span, cell_h), mult_h))), mult_h)
+        return b.mul(self.u, b.mul(nw, cell_w)), b.mul(self.v, b.mul(nh, cell_h)), nw, nh
+
+    def wrapped(self, i, n):
+        """A cell number that repeats with the tile: the same cell on both sides of a seam."""
+        return self.b.wrap(i, n) if self.tile else i
+
+
 def squashed(b, p, direction, stretch):
     """Coordinates squashed along `direction`: patterns get `stretch` times longer that way."""
     d = b.vmath('NORMALIZE', direction)

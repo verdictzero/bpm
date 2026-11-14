@@ -16,10 +16,17 @@ CATEGORIES = (
     ('ENAMEL', 'Porcelain Enamel', 'Glassy enamel on steel: 1950s appliances, stoves, bathtubs, enamelware and '
      'signs, from showroom new to chipped, crazed and rusty', 'Enamel', 17),
     ('MILITARY', 'Military', 'Military paint and camouflage with mud, dust and edge wear built in', 'Military', 10),
+    ('SCIFI', 'Sci-Fi Hulls', 'Plated spaceship hulls, corridor walls, armor and machinery with rivets, vents, '
+     'greebles and glowing lights, from factory new to derelict', 'Sci-Fi', 20),
     ('CONCRETE', 'Concrete', 'Cast, board-formed, polished, slab and block concrete, from fresh to ruined',
      'Concrete', 13),
     ('MASONRY', 'Brick & Stone', 'Brick, cinder block, cut stone, fieldstone, cobbles, pavers and tiles for walls '
      'and floors, from new to crumbling', 'Masonry', 19),
+    ('PLASTER', 'Plaster & Wallpaper', 'Plaster, stucco, painted walls and wallpaper, smooth or textured, cracked, '
+     'peeling, moldy or crumbling off the wall', 'Plaster', 22),
+    ('ROAD', 'Asphalt & Roads', 'Asphalt, gravel and dirt roads with cracks, potholes, patches, painted markings, '
+     'oil, tire marks and puddles', 'Roads', 21),
+    ('GROUND', 'Ground, Snow & Rock', 'Soil, mud, sand, gravel, rock, forest floor, snow and ice', 'Ground', 23),
     ('TERRAIN', 'Terrain & Lava', 'Cratered ground, lunar and asteroid surfaces, molten, crusting and cooled lava',
      'Terrain', 14),
     ('GRADIENT', 'Gradients', 'Linear, radial, angular, diamond, spiral and more: color ramps projected from any '
@@ -29,6 +36,8 @@ CATEGORIES = (
     ('WOOD', 'Wood', 'Raw, varnished, painted, weathered and charred wood', 'Wood', 3),
     ('PLASTIC', 'Plastic', 'Glossy, matte, textured, marbled and glitter plastic, new, old, dirty, cracked, '
      'burnt or trashed', 'Plastic', 4),
+    ('RUBBER', 'Rubber & Tires', 'Tire treads, mats, flooring, soles, silicone, foam and sponge, new, worn, '
+     'cracked or muddy', 'Rubber', 24),
     ('GLASS', 'Glass', 'Clear, tinted, frosted, textured and stained glass, spotless or grimy', 'Glass', 9),
     ('LENS', 'Lenses & Visors', 'Camera lenses, coated optics, mirrored visors and reflectors: glossy and '
      'reflective, not see-through', 'Lenses', 11),
@@ -46,8 +55,9 @@ OVERLAY_CATEGORIES = ('OVERLAY', 'WEAR')  # presets of these categories go on to
 
 # generator -> gallery category
 GENERATOR_CATEGORY = {
-    'METAL': 'METAL', 'PAINT': 'PAINT', 'ENAMEL': 'ENAMEL', 'LIGHT': 'LIGHT', 'CAMO': 'MILITARY', 'CONCRETE': 'CONCRETE', 'MASONRY': 'MASONRY',
-    'TERRAIN': 'TERRAIN',
+    'METAL': 'METAL', 'PAINT': 'PAINT', 'ENAMEL': 'ENAMEL', 'LIGHT': 'LIGHT', 'CAMO': 'MILITARY',
+    'CONCRETE': 'CONCRETE', 'MASONRY': 'MASONRY', 'SCIFI': 'SCIFI', 'ROAD': 'ROAD', 'PLASTER': 'PLASTER',
+    'GROUND': 'GROUND', 'RUBBER': 'RUBBER', 'TERRAIN': 'TERRAIN',
     'LAVA': 'TERRAIN', 'GRADIENT': 'GRADIENT', 'WOOD': 'WOOD',
     'PLASTIC': 'PLASTIC', 'GLASS': 'GLASS', 'LENS': 'LENS', 'LEATHER': 'LEATHER', 'FABRIC': 'FABRIC',
     'ORGANIC': 'ORGANIC', 'DIRT': 'OVERLAY', 'DUST': 'OVERLAY', 'MOSS': 'OVERLAY', 'WEAR': 'WEAR', 'SCRATCH': 'WEAR',
@@ -1347,6 +1357,474 @@ _add('tiles_grimy', 'Grimy Bathroom Tiles', 'MASONRY',
      thumb=TILE_THUMB, **dict(CERAMIC, Unit_Width=0.15, Unit_Height=0.15, Row_Offset=0.0, Mortar_Width=0.003,
                               Mortar_Color=(0.18, 0.16, 0.12), Dirt=0.6, Cracks=0.25, Chipped_Edges=0.2,
                               Water_Stains=0.4, Moss=0.05, Brightness_Variation=0.15))
+
+# ------------------------------------------------------------------ sci-fi hulls
+SCIFI_THUMB = dict(zoom=0.6)
+GLOW_THUMB = dict(zoom=0.6, world=0.35)  # dim surroundings, so the lights show
+PLATES, HEXAGONS = range(2)
+
+_add('scifi_hull_white', 'White Starship Hull', 'SCIFI',
+     'Clean white hull plates with a few orange ones, light wear and grime in the seams.',
+     thumb=SCIFI_THUMB, Hull_Color=(0.50, 0.51, 0.52), Accent_Plates=0.06, Edge_Wear=0.25, Grime=0.25)
+_add('scifi_hull_grey', 'Battleship Grey Plating', 'SCIFI',
+     'Heavy grey warship plating, riveted and grimy.',
+     thumb=SCIFI_THUMB, Hull_Color=(0.16, 0.17, 0.19), Dark_Plates=0.2, Accent_Plates=0.03,
+     Accent_Color=(0.45, 0.04, 0.03), Rivets=0.8, Grime=0.4)
+_add('scifi_hull_stealth', 'Stealth Black Hull', 'SCIFI',
+     'Matte black radar-absorbing plates with fine panel lines and barely a mark.',
+     thumb=SCIFI_THUMB, Hull_Color=(0.02, 0.02, 0.023), Roughness=0.55, Accent_Plates=0.0, Dark_Plates=0.3,
+     Rivets=0.2, Plate_Variation=0.4, Edge_Wear=0.15, Grime=0.1, Streaks=0.05, Fine_Panels=0.6)
+_add('scifi_red_squadron', 'Red Squadron Hull', 'SCIFI',
+     'Off-white fighter hull with red squadron markings, chipped and dirty from service.',
+     thumb=SCIFI_THUMB, Hull_Color=(0.50, 0.50, 0.48), Accent_Plates=0.3, Accent_Color=(0.45, 0.03, 0.02),
+     Edge_Wear=0.5, Grime=0.4, Scratches=0.4)
+_add('scifi_station_blue', 'Space Station Blue', 'SCIFI',
+     'Blue station modules with pale service panels and lit windows.',
+     thumb=GLOW_THUMB, Hull_Color=(0.06, 0.13, 0.26), Accent_Plates=0.12, Accent_Color=(0.5, 0.5, 0.5), Lights=0.4,
+     Light_Color=(1.0, 0.95, 0.8), Grime=0.2)
+_add('scifi_military_olive', 'Dropship Olive Drab', 'SCIFI',
+     'Olive drab military hull: riveted, scratched, worn to the metal on every edge.',
+     thumb=SCIFI_THUMB, Hull_Color=(0.10, 0.12, 0.055), Roughness=0.6, Accent_Plates=0.03,
+     Accent_Color=(0.55, 0.45, 0.04), Hazard_Stripes=0.05, Edge_Wear=0.6, Scratches=0.4, Grime=0.5, Rivets=0.9)
+_add('scifi_industrial_yellow', 'Industrial Yellow Machinery', 'SCIFI',
+     'Yellow loader and mining rig panels with hazard stripes, vents and plenty of grime.',
+     thumb=SCIFI_THUMB, Hull_Color=(0.55, 0.36, 0.03), Hazard_Stripes=0.15, Accent_Plates=0.0, Dark_Plates=0.15,
+     Vents=0.2, Grime=0.5, Edge_Wear=0.5, Streaks=0.4)
+_add('scifi_bare_plating', 'Bare Steel Plating', 'SCIFI',
+     'Unpainted steel plates with rows of rivets and scratches.',
+     thumb=SCIFI_THUMB, Metallic=1.0, Hull_Color=(0.50, 0.50, 0.52), Roughness=0.35, Accent_Plates=0.0, Rivets=1.0,
+     Edge_Wear=0.0, Scratches=0.5, Grime=0.4)
+_add('scifi_copper_plates', 'Riveted Copper Plates', 'SCIFI',
+     'Copper hull plates with heavy riveting: steampunk airships and submarines.',
+     thumb=SCIFI_THUMB, Metallic=1.0, Hull_Color=(0.72, 0.33, 0.18), Roughness=0.3, Rivets=1.0, Rivet_Size=0.012,
+     Accent_Plates=0.0, Dark_Plates=0.2, Edge_Wear=0.0, Grime=0.45, Streaks=0.4, Plate_Variation=0.4, Vents=0.0,
+     Greebles=0.0)
+_add('scifi_cargo_floor', 'Cargo Bay Floor', 'SCIFI',
+     'Big scuffed steel deck plates with hazard-striped panels.',
+     thumb=SCIFI_THUMB, Metallic=0.9, Hull_Color=(0.20, 0.20, 0.21), Roughness=0.5, Plate_Size=0.8,
+     Plate_Variation=0.3, Height_Variation=0.1, Hazard_Stripes=0.2, Accent_Plates=0.0, Scratches=0.9, Grime=0.6,
+     Rivets=0.6, Vents=0.05, Greebles=0.0)
+_add('scifi_corridor', 'Corridor Wall Panels', 'SCIFI',
+     'Pale interior wall panels with vents and warm light strips.',
+     thumb=GLOW_THUMB, Hull_Color=(0.45, 0.46, 0.45), Plate_Size=0.8, Plate_Variation=0.4, Lights=0.5,
+     Light_Color=(1.0, 0.85, 0.65), Accent_Plates=0.05, Accent_Color=(0.08, 0.2, 0.33), Grime=0.15, Edge_Wear=0.1,
+     Height_Variation=0.3, Vents=0.15)
+_add('scifi_lab_clean', 'Clean Lab Panels', 'SCIFI',
+     'Spotless glossy white panels with cool blue indicator lights.',
+     thumb=GLOW_THUMB, Hull_Color=(0.58, 0.59, 0.60), Roughness=0.25, Accent_Plates=0.04,
+     Accent_Color=(0.04, 0.25, 0.5), Dark_Plates=0.0, Rivets=0.0, Greebles=0.0, Vents=0.05, Lights=0.3,
+     Light_Color=(0.45, 0.75, 1.0), Edge_Wear=0.0, Scratches=0.05, Grime=0.03, Streaks=0.0, Color_Variation=0.1)
+_add('scifi_greeble_city', 'Greeble City', 'SCIFI',
+     'Dense machinery, towers and trenches with hundreds of lit windows: capital ships and megastructures.',
+     thumb=GLOW_THUMB, Greebles=0.7, Plate_Variation=1.0, Lights=0.8, Light_Color=(1.0, 0.82, 0.5),
+     Hull_Color=(0.13, 0.14, 0.16), Vents=0.2, Height_Variation=0.8, Accent_Plates=0.03, Detail_Size=0.06)
+_add('scifi_engine_bay', 'Engine Bay Machinery', 'SCIFI',
+     'Dark, oily machinery: vents, greebles, rivets, leaks and scorch marks.',
+     thumb=SCIFI_THUMB, Metallic=0.7, Hull_Color=(0.16, 0.15, 0.14), Vents=0.5, Greebles=0.4, Rivets=1.0, Grime=0.8,
+     Streaks=0.7, Scorch=0.3, Hazard_Stripes=0.08, Accent_Plates=0.0)
+_add('scifi_reactor', 'Reactor Core Plating', 'SCIFI',
+     'Dark metal plates with orange light burning in every seam.',
+     thumb=GLOW_THUMB, Hull_Color=(0.05, 0.05, 0.055), Metallic=0.8, Seam_Glow=1.0, Light_Color=(1.0, 0.3, 0.04),
+     Emission_Strength=12.0, Greebles=0.25, Vents=0.25, Scorch=0.3, Accent_Plates=0.0, Seam_Width=0.01)
+_add('scifi_glowing_grid', 'Glowing Grid', 'SCIFI',
+     'Glossy black panels outlined in cyan light.',
+     thumb=GLOW_THUMB, Hull_Color=(0.01, 0.01, 0.012), Roughness=0.25, Seam_Glow=1.0, Light_Color=(0.1, 0.7, 1.0),
+     Emission_Strength=15.0, Plate_Variation=0.8, Rivets=0.0, Vents=0.0, Greebles=0.0, Fine_Panels=0.0,
+     Accent_Plates=0.0, Dark_Plates=0.0, Edge_Wear=0.0, Grime=0.0, Streaks=0.0, Scratches=0.05,
+     Color_Variation=0.1, Bevel=0.1, Seam_Width=0.01)
+_add('scifi_hex_armor', 'Hex Armor Tiles', 'SCIFI',
+     'Honeycomb armor tiles at different heights, chipped and scorched.',
+     thumb=SCIFI_THUMB, Layout=HEXAGONS, Plate_Size=0.15, Hull_Color=(0.12, 0.13, 0.12), Height_Variation=0.6,
+     Dark_Plates=0.2, Accent_Plates=0.05, Accent_Color=(0.45, 0.04, 0.03), Edge_Wear=0.5, Scorch=0.2, Grime=0.3)
+_add('scifi_alien_hull', 'Alien Hex Hull', 'SCIFI',
+     'Dark iridescent-purple hexagons with green light in the seams.',
+     thumb=GLOW_THUMB, Layout=HEXAGONS, Plate_Size=0.2, Hull_Color=(0.05, 0.03, 0.07), Metallic=0.6, Roughness=0.3,
+     Seam_Glow=0.7, Light_Color=(0.3, 1.0, 0.3), Accent_Plates=0.1, Accent_Color=(0.2, 0.02, 0.25), Grime=0.2,
+     Edge_Wear=0.1, Seam_Width=0.01)
+_add('scifi_battle_scorched', 'Battle-Scorched Armor', 'SCIFI',
+     'Armor after the fight: burn marks, deep scratches and bare edges.',
+     thumb=SCIFI_THUMB, Hull_Color=(0.33, 0.34, 0.36), Scorch=0.8, Scratches=0.8, Edge_Wear=0.7, Accent_Plates=0.1,
+     Accent_Color=(0.45, 0.03, 0.02))
+_add('scifi_freighter_rusty', 'Rusty Freighter Hull', 'SCIFI',
+     'An old ochre cargo hauler: rust in the seams, leaks, chipped paint.',
+     thumb=SCIFI_THUMB, Hull_Color=(0.38, 0.25, 0.07), Rust=0.6, Grime=0.6, Streaks=0.6, Edge_Wear=0.6,
+     Accent_Plates=0.1, Accent_Color=(0.08, 0.17, 0.2), Rivets=0.8)
+_add('scifi_derelict', 'Derelict Ship Hull', 'SCIFI',
+     'Abandoned for decades: rust, soot and grime, a few red emergency lights still on.',
+     thumb=GLOW_THUMB, Hull_Color=(0.22, 0.23, 0.22), Rust=0.5, Scorch=0.5, Grime=0.8, Streaks=0.8, Edge_Wear=0.7,
+     Lights=0.15, Light_Color=(1.0, 0.15, 0.08), Emission_Strength=4.0)
+
+# -------------------------------------------------------------- plaster and wallpaper
+PLASTER_THUMB = dict(zoom=0.7)
+STUCCO_THUMB = dict(zoom=0.35)  # close up: the texture of the finish
+RUIN_THUMB = dict(zoom=1.0)
+PAPER_THUMB = dict(zoom=0.5)
+STRIPES, DOTS, DIAMONDS, TRELLIS, QUATREFOIL = range(1, 6)
+BRICK_BEHIND, LATH_BEHIND, CONCRETE_BEHIND = range(3)
+WALLPAPER = dict(Paint=1.0, Paint_Gloss=0.0, Sand=0.0, Trowel_Marks=0.0, Cracks=0.0, Dirt=0.05)
+VENETIAN = dict(Mottling=0.8, Roughness=0.15, Sand=0.0, Trowel_Marks=0.05, Cracks=0.0, Dirt=0.0)
+
+_add('plaster_smooth_white', 'Smooth White Plaster', 'PLASTER',
+     'Freshly skimmed white plaster with the faintest trowel marks.',
+     thumb=PLASTER_THUMB, Wall_Color=(0.55, 0.54, 0.51), Trowel_Marks=0.1, Sand=0.15, Cracks=0.05, Dirt=0.05)
+_add('plaster_sand_finish', 'Sand Finish Stucco', 'PLASTER',
+     'Gritty sand-textured stucco in a warm beige.',
+     thumb=STUCCO_THUMB, Wall_Color=(0.42, 0.36, 0.27), Sand=1.0, Trowel_Marks=0.1)
+_add('plaster_roughcast', 'Roughcast Render', 'PLASTER',
+     'Lumpy pebble-dash render for outside walls.',
+     thumb=STUCCO_THUMB, Roughcast=1.0, Trowel_Marks=0.0, Wall_Color=(0.38, 0.36, 0.32), Dirt=0.2)
+_add('plaster_spanish_trowel', 'Spanish Trowel Stucco', 'PLASTER',
+     'Terracotta stucco with bold overlapping trowel sweeps.',
+     thumb=dict(zoom=0.5), Trowel_Marks=1.0, Wall_Color=(0.48, 0.26, 0.14), Mottling=0.2,
+     Second_Color=(0.32, 0.15, 0.08))
+_add('plaster_knockdown', 'Knockdown Texture', 'PLASTER',
+     'Painted knockdown texture: flattened splatter islands, as on many ceilings.',
+     thumb=STUCCO_THUMB, Knockdown=1.0, Trowel_Marks=0.0, Paint=1.0, Paint_Color=(0.50, 0.49, 0.45),
+     Paint_Gloss=0.1, Cracks=0.0)
+_add('plaster_orange_peel', 'Orange Peel Wall', 'PLASTER',
+     'Sprayed orange peel texture under satin paint.',
+     thumb=dict(zoom=0.25), Orange_Peel=1.0, Trowel_Marks=0.0, Paint=1.0, Paint_Color=(0.42, 0.45, 0.38),
+     Paint_Gloss=0.4, Cracks=0.0, Sand=0.1)
+_add('plaster_pink_stucco', 'Pink Stucco', 'PLASTER',
+     'Sun-bleached pink stucco with a few stains.',
+     thumb=dict(zoom=0.5), Wall_Color=(0.52, 0.28, 0.24), Roughcast=0.4, Sand=0.6, Trowel_Marks=0.2, Dirt=0.2,
+     Water_Stains=0.15)
+_add('plaster_adobe', 'Adobe Mud Plaster', 'PLASTER',
+     'Hand-smeared mud plaster, cracked by the sun.',
+     thumb=dict(zoom=0.5), Wall_Color=(0.30, 0.19, 0.11), Sand=0.8, Trowel_Marks=0.6, Cracks=0.5,
+     Color_Variation=0.5)
+_add('plaster_venetian_ochre', 'Venetian Plaster (Ochre)', 'PLASTER',
+     'Polished ochre Venetian plaster with cloudy depth.',
+     thumb=PLASTER_THUMB, Wall_Color=(0.45, 0.26, 0.08), Second_Color=(0.22, 0.10, 0.035), **VENETIAN)
+_add('plaster_venetian_grey', 'Venetian Plaster (Grey)', 'PLASTER',
+     'Polished grey Venetian plaster: modern lobbies and bathrooms.',
+     thumb=PLASTER_THUMB, Wall_Color=(0.27, 0.28, 0.29), Second_Color=(0.12, 0.13, 0.14), **VENETIAN)
+_add('plaster_tadelakt', 'Tadelakt (Moroccan Red)', 'PLASTER',
+     'Burnished deep red Moroccan lime plaster.',
+     thumb=PLASTER_THUMB, Wall_Color=(0.36, 0.07, 0.04), Second_Color=(0.18, 0.035, 0.025),
+     **dict(VENETIAN, Mottling=0.6, Roughness=0.25))
+_add('plaster_limewash_blue', 'Mediterranean Blue Limewash', 'PLASTER',
+     'Chalky blue limewash, uneven and fading to white.',
+     thumb=PLASTER_THUMB, Wall_Color=(0.16, 0.32, 0.50), Second_Color=(0.45, 0.50, 0.55), Mottling=0.7,
+     Trowel_Marks=0.4, Cracks=0.3, Dirt=0.2, Roughness=0.9)
+_add('plaster_cracked_old', 'Cracked Old Plaster', 'PLASTER',
+     'Yellowed old plaster covered in a web of cracks.',
+     thumb=PLASTER_THUMB, Cracks=0.9, Crack_Scale=2.5, Wall_Color=(0.42, 0.39, 0.32), Dirt=0.4, Water_Stains=0.2,
+     Mottling=0.2)
+_add('plaster_crumbling_brick', 'Crumbling Plaster on Brick', 'PLASTER',
+     'Plaster falling off in sheets, red brick showing behind it.',
+     thumb=RUIN_THUMB, Crumbling=0.5, Cracks=0.6, Dirt=0.4)
+_add('plaster_lath', 'Broken Lath and Plaster', 'PLASTER',
+     'Old lath-and-plaster with holes down to the wooden slats.',
+     thumb=RUIN_THUMB, Crumbling=0.5, Wall_Behind=LATH_BEHIND, Cracks=0.7, Dirt=0.3)
+_add('plaster_peeling_green', 'Peeling Hospital Green', 'PLASTER',
+     'Glossy institutional green paint flaking off the plaster.',
+     thumb=PLASTER_THUMB, Paint=1.0, Paint_Color=(0.22, 0.36, 0.28), Peeling=0.4, Paint_Gloss=0.5, Cracks=0.4,
+     Dirt=0.3)
+_add('plaster_flaking_ceiling', 'Flaking Ceiling Paint', 'PLASTER',
+     'White paint curling off a damp ceiling.',
+     thumb=PLASTER_THUMB, Paint=1.0, Paint_Color=(0.52, 0.52, 0.50), Peeling=0.6, Water_Stains=0.4, Mold=0.2)
+_add('plaster_water_damaged', 'Water-Damaged Wall', 'PLASTER',
+     'Brown water stains with dark tide lines, a little mold and lifting paint.',
+     thumb=PLASTER_THUMB, Water_Stains=0.8, Paint=1.0, Paint_Color=(0.47, 0.45, 0.38), Peeling=0.2, Mold=0.3,
+     Cracks=0.3)
+_add('plaster_moldy', 'Moldy Bathroom Wall', 'PLASTER',
+     'Black mold spreading over a damp painted wall.',
+     thumb=PLASTER_THUMB, Mold=0.8, Damp=0.4, Paint=1.0, Paint_Color=(0.45, 0.50, 0.50), Paint_Gloss=0.5,
+     Peeling=0.15)
+_add('plaster_rising_damp', 'Rising Damp', 'PLASTER',
+     'A wet, salt-crusted band along the bottom of the wall, plaster starting to fall.',
+     thumb=RUIN_THUMB, Damp=0.8, Mold=0.3, Crumbling=0.15, Wall_Color=(0.42, 0.40, 0.35))
+_add('plaster_smoke_stained', 'Smoke-Stained Wall', 'PLASTER',
+     'Blackened by fire and smoke, darkest near the ceiling.',
+     thumb=RUIN_THUMB, Soot=0.7, Dirt=0.4, Paint=1.0, Paint_Color=(0.42, 0.40, 0.33), Peeling=0.1)
+_add('plaster_derelict', 'Derelict Room Wall', 'PLASTER',
+     'Everything at once: peeling teal paint, cracks, stains, mold and fallen plaster.',
+     thumb=RUIN_THUMB, Paint=1.0, Paint_Color=(0.18, 0.32, 0.34), Peeling=0.5, Crumbling=0.3, Cracks=0.8,
+     Water_Stains=0.5, Mold=0.4, Dirt=0.6, Damp=0.3)
+_add('wallpaper_stripes', 'Striped Wallpaper', 'PLASTER',
+     'Cream and burgundy striped wallpaper.',
+     thumb=PAPER_THUMB, Paint_Color=(0.42, 0.35, 0.24), Pattern=STRIPES, Pattern_Color=(0.26, 0.09, 0.08),
+     Pattern_Size=0.1, **WALLPAPER)
+_add('wallpaper_quatrefoil', 'Vintage Quatrefoil Wallpaper', 'PLASTER',
+     'Deep red wallpaper printed with gold quatrefoils.',
+     thumb=PAPER_THUMB, Paint_Color=(0.28, 0.08, 0.07), Pattern=QUATREFOIL, Pattern_Color=(0.50, 0.36, 0.12),
+     Pattern_Size=0.14, **WALLPAPER)
+_add('wallpaper_dots', 'Polka Dot Wallpaper', 'PLASTER',
+     'Pale blue wallpaper with pink polka dots.',
+     thumb=PAPER_THUMB, Paint_Color=(0.42, 0.48, 0.52), Pattern=DOTS, Pattern_Color=(0.55, 0.2, 0.25),
+     Pattern_Size=0.08, **WALLPAPER)
+_add('wallpaper_harlequin', 'Retro Harlequin Wallpaper', 'PLASTER',
+     'Mustard and brown diamonds from the 1970s.',
+     thumb=PAPER_THUMB, Paint_Color=(0.48, 0.30, 0.04), Pattern=DIAMONDS, Pattern_Color=(0.16, 0.08, 0.03),
+     Pattern_Size=0.12, **WALLPAPER)
+_add('wallpaper_trellis', 'Green Trellis Wallpaper', 'PLASTER',
+     'A dark green garden trellis on cream.',
+     thumb=PAPER_THUMB, Paint_Color=(0.45, 0.46, 0.36), Pattern=TRELLIS, Pattern_Color=(0.07, 0.2, 0.08),
+     Pattern_Size=0.16, **WALLPAPER)
+_add('wallpaper_peeling', 'Peeling Old Wallpaper', 'PLASTER',
+     'Stained striped wallpaper hanging off a damp wall.',
+     thumb=PLASTER_THUMB, Pattern=STRIPES, Paint_Color=(0.38, 0.33, 0.22), Pattern_Color=(0.24, 0.27, 0.2),
+     **dict(WALLPAPER, Peeling=0.45, Water_Stains=0.5, Mold=0.2, Dirt=0.4, Cracks=0.3))
+
+# ------------------------------------------------------------------ asphalt and roads
+ROAD_THUMB = dict(zoom=0.7)
+LANE_THUMB = dict(zoom=2.2)  # far enough away for the road markings
+SOLID, DASHED, DOUBLE, CROSSWALK, PARKING, HATCHING = range(1, 7)
+ROAD_YELLOW = (0.62, 0.42, 0.03)
+
+_add('road_fresh_asphalt', 'Fresh Asphalt', 'ROAD',
+     'Just laid: black, slightly oily, not a crack in it.',
+     thumb=ROAD_THUMB, Age=0.0, Cracks=0.0, Oil_Stains=0.0)
+_add('road_asphalt', 'Asphalt Road', 'ROAD',
+     'An ordinary road a few years old: greying, a few cracks and oil spots.',
+     thumb=ROAD_THUMB)
+_add('road_old_grey', 'Old Grey Asphalt', 'ROAD',
+     'Dry, grey asphalt worn down to its stones.',
+     thumb=ROAD_THUMB, Age=0.9, Cracks=0.5, Aggregate=0.9)
+_add('road_cracked', 'Cracked Asphalt', 'ROAD',
+     'Long cracks running everywhere, breaking into fine cracking.',
+     thumb=ROAD_THUMB, Age=0.6, Cracks=0.9, Alligator_Cracks=0.3)
+_add('road_alligator', 'Alligator Cracking', 'ROAD',
+     'The surface broken into small scales like crocodile skin.',
+     thumb=ROAD_THUMB, Age=0.7, Cracks=0.5, Alligator_Cracks=0.9)
+_add('road_tar_snakes', 'Tar-Sealed Cracks', 'ROAD',
+     'Cracks sealed with wandering lines of shiny black tar.',
+     thumb=dict(zoom=1.2), Cracks=0.9, Crack_Sealant=1.0, Age=0.6, Crack_Scale=1.0)
+_add('road_patched', 'Patched Road', 'ROAD',
+     'Old asphalt with rectangular repair patches and sealed cracks.',
+     thumb=dict(zoom=1.6), Patches=0.9, Age=0.7, Cracks=0.4, Crack_Sealant=0.5)
+_add('road_potholes', 'Potholed Road', 'ROAD',
+     'Neglected road with potholes down to the gravel, some holding water.',
+     thumb=dict(zoom=1.0), Age=0.7, Potholes=0.7, Cracks=0.6, Alligator_Cracks=0.4, Puddles=0.3)
+_add('road_double_yellow', 'Double Yellow Line', 'ROAD',
+     'Two-lane road with a double yellow center line.',
+     thumb=LANE_THUMB, Marking=DOUBLE, Marking_Color=ROAD_YELLOW, Age=0.4)
+_add('road_dashed_white', 'Dashed Center Line', 'ROAD',
+     'Asphalt with a dashed white lane line.',
+     thumb=LANE_THUMB, Marking=DASHED)
+_add('road_faded_lines', 'Faded Road Markings', 'ROAD',
+     'An old road whose white line has nearly worn away.',
+     thumb=LANE_THUMB, Marking=SOLID, Marking_Wear=0.85, Age=0.8, Cracks=0.5)
+_add('road_crosswalk', 'Zebra Crossing', 'ROAD',
+     'White crosswalk bars, scuffed by traffic.',
+     thumb=dict(zoom=2.6), Marking=CROSSWALK, Line_Width=0.06, Lane_Width=4.0, Marking_Wear=0.4)
+_add('road_parking', 'Car Park Bays', 'ROAD',
+     'White parking bays with oil spots where the cars stand.',
+     thumb=dict(zoom=3.0), Marking=PARKING, Lane_Width=2.5, Line_Width=0.1, Oil_Stains=0.6, Age=0.5)
+_add('road_hatching', 'Yellow Hatching', 'ROAD',
+     'Diagonal yellow no-parking hatching.',
+     thumb=dict(zoom=1.6), Marking=HATCHING, Marking_Color=ROAD_YELLOW, Line_Width=0.1)
+_add('road_cycle_lane', 'Red Cycle Lane', 'ROAD',
+     'Red asphalt with a white edge line.',
+     thumb=dict(zoom=1.2), Asphalt_Color=(0.22, 0.04, 0.025), Aggregate_Color=(0.38, 0.13, 0.09), Age=0.3,
+     Marking=SOLID, Line_Width=0.1, Lane_Width=1.5, Cracks=0.1)
+_add('road_runway', 'Airport Runway', 'ROAD',
+     'Pale runway surface with a wide center line and black rubber from landings.',
+     thumb=dict(zoom=4.0), Asphalt_Color=(0.07, 0.07, 0.07), Age=0.7, Tire_Marks=0.8, Marking=SOLID,
+     Line_Width=0.45, Lane_Width=6.0, Cracks=0.3)
+_add('road_racetrack', 'Racetrack Tarmac', 'ROAD',
+     'Smooth dark tarmac covered in rubber streaks.',
+     thumb=dict(zoom=1.4), Age=0.2, Tire_Marks=0.9, Cracks=0.0)
+_add('road_oil_stained', 'Oil-Stained Asphalt', 'ROAD',
+     'A workshop yard: dark oil spots all over the asphalt.',
+     thumb=dict(zoom=1.2), Oil_Stains=1.0, Tire_Marks=0.3, Age=0.5)
+_add('road_rain_soaked', 'Rain-Soaked Road', 'ROAD',
+     'Wet, shiny asphalt in the rain with a dashed line and standing water.',
+     thumb=LANE_THUMB, Wetness=1.0, Puddles=0.5, Marking=DASHED)
+_add('road_puddles', 'Puddled Asphalt', 'ROAD',
+     'Uneven asphalt after the rain: puddles in every dip.',
+     thumb=dict(zoom=1.2), Puddles=0.8, Wetness=0.4, Age=0.5, Unevenness=0.6)
+_add('road_dusty', 'Dusty Desert Road', 'ROAD',
+     'Sun-baked, cracked asphalt half covered in sand.',
+     thumb=dict(zoom=1.2), Dirt=0.5, Dirt_Color=(0.32, 0.23, 0.13), Age=0.8, Cracks=0.6)
+_add('road_gravel', 'Gravel Road', 'ROAD',
+     'Loose grey gravel over a dusty bed.',
+     thumb=dict(zoom=0.5), Gravel=1.0, Dirt=0.3, Aggregate_Size=0.02, Cracks=0.0, Oil_Stains=0.0)
+_add('road_dirt_track', 'Dirt Track', 'ROAD',
+     'A bumpy dirt road with stones and a few puddles.',
+     thumb=dict(zoom=1.0), Dirt=1.0, Gravel=0.25, Puddles=0.2, Unevenness=0.8, Cracks=0.0, Oil_Stains=0.0)
+
+# ------------------------------------------------------------- ground, snow and rock
+SOIL_THUMB = dict(zoom=0.6)
+ROCK_THUMB = dict(zoom=1.0)
+
+_add('ground_topsoil', 'Garden Topsoil', 'GROUND',
+     'Dark, crumbly earth with a few small stones.',
+     thumb=SOIL_THUMB, Soil_Color=(0.05, 0.033, 0.02), Clumps=0.8, Pebbles=0.1)
+_add('ground_dry_dirt', 'Dry Dirt', 'GROUND',
+     'Pale, dusty ground with stones, starting to crack.',
+     thumb=SOIL_THUMB, Soil_Color=(0.2, 0.15, 0.1), Clumps=0.4, Pebbles=0.3, Mud_Cracks=0.2)
+_add('ground_rocky_soil', 'Rocky Soil', 'GROUND',
+     'Stony ground with bedrock breaking through.',
+     thumb=ROCK_THUMB, Rock=0.4, Pebbles=0.5, Clumps=0.6)
+_add('ground_cracked_mud', 'Cracked Dry Mud', 'GROUND',
+     'A dried-out lake bed cracked into curling plates.',
+     thumb=SOIL_THUMB, Mud_Cracks=1.0, Soil_Color=(0.25, 0.2, 0.14), Pebbles=0.0, Clumps=0.2, Grain=0.4)
+_add('ground_red_desert', 'Red Desert Earth', 'GROUND',
+     'Cracked red outback earth scattered with stones.',
+     thumb=SOIL_THUMB, Soil_Color=(0.33, 0.11, 0.045), Mud_Cracks=0.4, Pebbles=0.25,
+     Pebble_Color=(0.28, 0.14, 0.09), Clumps=0.3)
+_add('ground_red_clay', 'Red Clay', 'GROUND',
+     'Smooth, damp red clay with drying cracks.',
+     thumb=SOIL_THUMB, Soil_Color=(0.28, 0.09, 0.045), Clumps=0.3, Wetness=0.3, Mud_Cracks=0.5, Pebbles=0.0,
+     Roughness=0.7)
+_add('ground_salt_flat', 'Salt Flat', 'GROUND',
+     'A white salt pan cracked into big polygons.',
+     thumb=dict(zoom=1.2), Soil_Color=(0.62, 0.60, 0.56), Mud_Cracks=0.8, Crack_Size=0.35, Clumps=0.05,
+     Pebbles=0.0, Grain=0.8, Roughness=0.7, Color_Variation=0.2)
+_add('ground_wet_mud', 'Wet Mud', 'GROUND',
+     'Sticky, glistening mud with water in the hollows.',
+     thumb=SOIL_THUMB, Soil_Color=(0.07, 0.05, 0.03), Wetness=0.8, Puddles=0.4, Clumps=0.9, Pebbles=0.05, Hills=0.6)
+_add('ground_muddy_tracks', 'Muddy Tire Tracks', 'GROUND',
+     'Deep tread marks pressed into wet mud.',
+     thumb=ROCK_THUMB, Tracks=1.0, Wetness=0.6, Puddles=0.3, Soil_Color=(0.08, 0.055, 0.035), Pebbles=0.05)
+_add('ground_puddles', 'Puddled Dirt Yard', 'GROUND',
+     'A stony yard after the rain, half under muddy water.',
+     thumb=ROCK_THUMB, Puddles=0.7, Wetness=0.3, Pebbles=0.3, Tracks=0.3, Hills=0.6)
+_add('ground_beach_sand', 'Beach Sand', 'GROUND',
+     'Fine, pale beach sand.',
+     thumb=SOIL_THUMB, Soil_Color=(0.42, 0.33, 0.22), Clumps=0.05, Grain=1.0, Pebbles=0.03, Ripples=0.15,
+     Color_Variation=0.2)
+_add('ground_wet_sand', 'Wet Beach Sand', 'GROUND',
+     'Dark, wet sand at the water\'s edge with fine ripples and shiny pebbles.',
+     thumb=SOIL_THUMB, Soil_Color=(0.28, 0.22, 0.15), Wetness=0.7, Ripples=0.5, Ripple_Size=0.04, Clumps=0.0,
+     Pebbles=0.08, Smooth_Pebbles=0.8)
+_add('ground_sand_ripples', 'Rippled Desert Sand', 'GROUND',
+     'Wind-blown desert sand in long ripples.',
+     thumb=SOIL_THUMB, Soil_Color=(0.46, 0.30, 0.15), Ripples=1.0, Clumps=0.0, Pebbles=0.0, Hills=0.5)
+_add('ground_black_sand', 'Black Volcanic Sand', 'GROUND',
+     'Coarse black sand from a volcanic beach.',
+     thumb=SOIL_THUMB, Soil_Color=(0.02, 0.02, 0.022), Grain=1.0, Ripples=0.4, Pebbles=0.1,
+     Pebble_Color=(0.05, 0.05, 0.05), Clumps=0.1)
+_add('ground_gravel', 'Gravel', 'GROUND',
+     'A bed of grey crushed stone.',
+     thumb=dict(zoom=0.4), Pebbles=1.0, Pebble_Color=(0.25, 0.24, 0.22))
+_add('ground_river_pebbles', 'River Pebbles', 'GROUND',
+     'Smooth, wet, rounded pebbles from a river bed.',
+     thumb=dict(zoom=0.5), Pebbles=1.0, Pebble_Size=0.07, Smooth_Pebbles=1.0, Wetness=0.5,
+     Pebble_Color=(0.22, 0.2, 0.17))
+_add('ground_forest_floor', 'Forest Floor', 'GROUND',
+     'Dark woodland soil with moss, old leaves and stones.',
+     thumb=SOIL_THUMB, Soil_Color=(0.04, 0.028, 0.018), Leaves=0.35, Leaf_Color=(0.12, 0.06, 0.02), Moss=0.4,
+     Pebbles=0.1, Clumps=0.7, Leaf_Size=0.06)
+_add('ground_autumn_leaves', 'Autumn Leaves', 'GROUND',
+     'A thick carpet of red, gold and brown leaves.',
+     thumb=dict(zoom=0.5), Leaves=1.0, Leaf_Size=0.09, Leaf_Color=(0.4, 0.1, 0.02), Pebbles=0.0)
+_add('ground_mossy', 'Mossy Ground', 'GROUND',
+     'Soft green moss over soil and stones.',
+     thumb=SOIL_THUMB, Moss=0.9, Pebbles=0.15, Rock=0.15)
+_add('ground_cliff_rock', 'Layered Cliff Rock', 'GROUND',
+     'Sedimentary rock in clear layers and ledges.',
+     thumb=ROCK_THUMB, Rock=1.0, Strata=1.0, Rock_Color=(0.25, 0.2, 0.15), Pebbles=0.0)
+_add('ground_grey_rock', 'Grey Rock Face', 'GROUND',
+     'Hard grey rock, heavily jointed, with a touch of moss.',
+     thumb=ROCK_THUMB, Rock=1.0, Strata=0.1, Rock_Cracks=0.8, Rock_Color=(0.2, 0.2, 0.21), Moss=0.1, Pebbles=0.0)
+_add('ground_red_sandstone', 'Red Sandstone', 'GROUND',
+     'Banded red canyon sandstone.',
+     thumb=ROCK_THUMB, Rock=1.0, Strata=0.8, Rock_Color=(0.4, 0.14, 0.06), Rock_Cracks=0.3, Pebbles=0.0)
+_add('ground_dark_slate', 'Dark Slate Rock', 'GROUND',
+     'Dark, layered, damp slate.',
+     thumb=ROCK_THUMB, Rock=1.0, Strata=0.6, Rock_Color=(0.05, 0.055, 0.06), Rock_Cracks=0.6, Wetness=0.3,
+     Pebbles=0.0)
+_add('ground_mossy_rock', 'Mossy Rock', 'GROUND',
+     'Rock half hidden under cushions of moss.',
+     thumb=ROCK_THUMB, Rock=1.0, Moss=0.5, Strata=0.3, Pebbles=0.0)
+_add('ground_fresh_snow', 'Fresh Snow', 'GROUND',
+     'Untouched, sparkling fresh snow.',
+     thumb=SOIL_THUMB, Snow=1.0)
+_add('ground_snow_tracks', 'Tire Tracks in Snow', 'GROUND',
+     'Tread marks pressed into deep snow.',
+     thumb=ROCK_THUMB, Snow=1.0, Tracks=1.0)
+_add('ground_melting_snow', 'Melting Snow', 'GROUND',
+     'Patches of old snow on wet, dark ground.',
+     thumb=ROCK_THUMB, Snow=0.5, Wetness=0.6, Puddles=0.2, Soil_Color=(0.06, 0.045, 0.03), Pebbles=0.15)
+_add('ground_frozen_lake', 'Frozen Lake', 'GROUND',
+     'Dark lake ice with white cracks, bubbles and a dusting of snow.',
+     thumb=ROCK_THUMB, Ice=1.0, Snow=0.12)
+_add('ground_frozen_puddles', 'Frozen Puddles', 'GROUND',
+     'Frozen ground with ice in the hollows and frost on the clods.',
+     thumb=SOIL_THUMB, Ice=0.4, Snow=0.2, Soil_Color=(0.1, 0.08, 0.06), Clumps=0.7)
+
+# ------------------------------------------------------------------ rubber and tires
+RUBBER_THUMB = dict(zoom=0.15)
+TIRE_THUMB = dict(zoom=0.2)
+BALL_THUMB = dict(shape='sphere', zoom=0.15)
+RIBS, BLOCKS, CHEVRONS, KNOBS, COINS, DIAMOND_PLATE, WAFFLE = range(1, 8)
+
+_add('rubber_black', 'Black Rubber', 'RUBBER',
+     'Plain black rubber sheet.',
+     thumb=RUBBER_THUMB, Dust=0.05)
+_add('rubber_tire_tread', 'Car Tire Tread', 'RUBBER',
+     'New car tire: staggered tread blocks with fine zigzag sipes.',
+     thumb=TIRE_THUMB, Pattern=BLOCKS, Sipes=1.0, Depth=0.8)
+_add('rubber_tire_worn', 'Worn Tire', 'RUBBER',
+     'A tire near the end of its life: shallow tread, polished tops, dust in the grooves.',
+     thumb=TIRE_THUMB, Pattern=BLOCKS, Sipes=0.6, Wear=0.8, Dust=0.3)
+_add('rubber_tire_dry_rot', 'Dry-Rotted Tire', 'RUBBER',
+     'An old tire left in the sun: grey, chalky and covered in fine cracks.',
+     thumb=TIRE_THUMB, Pattern=BLOCKS, Cracking=0.9, Chalking=0.7, Wear=0.3, Dust=0.2)
+_add('rubber_tire_tractor', 'Tractor Tire Lugs', 'RUBBER',
+     'Big V-shaped tractor lugs with mud between them.',
+     thumb=dict(zoom=0.4), Pattern=CHEVRONS, Pattern_Size=0.06, Depth=1.0, Mud=0.5, Dust=0.4)
+_add('rubber_tire_offroad', 'Muddy Off-Road Tire', 'RUBBER',
+     'Chunky off-road knobs packed with mud.',
+     thumb=TIRE_THUMB, Pattern=KNOBS, Pattern_Size=0.035, Depth=1.0, Groove_Width=0.5, Mud=0.8, Dust=0.5)
+_add('rubber_tire_bike', 'Mountain Bike Tire', 'RUBBER',
+     'Small square knobs of a mountain bike tire.',
+     thumb=dict(zoom=0.06), Pattern=KNOBS, Pattern_Size=0.009, Depth=0.9, Groove_Width=0.45, Dust=0.3)
+_add('rubber_tire_slick', 'Racing Slick', 'RUBBER',
+     'Treadless racing rubber, scuffed and polished by the track.',
+     thumb=RUBBER_THUMB, Roughness=0.45, Wear=0.5, Scuffs=0.6, Dust=0.15)
+_add('rubber_inner_tube', 'Old Inner Tube', 'RUBBER',
+     'Thin, smooth old rubber going grey and starting to crack.',
+     thumb=BALL_THUMB, Roughness=0.5, Chalking=0.5, Cracking=0.4, Scuffs=0.4)
+_add('rubber_conveyor', 'Worn Conveyor Belt', 'RUBBER',
+     'A hard-working belt: scuffed, dusty and cracking.',
+     thumb=RUBBER_THUMB, Wear=0.6, Scuffs=0.9, Dust=0.5, Cracking=0.3)
+_add('rubber_mat_ribbed', 'Ribbed Rubber Mat', 'RUBBER',
+     'Fine-ribbed black matting for floors and workbenches.',
+     thumb=RUBBER_THUMB, Pattern=RIBS, Pattern_Size=0.01, Depth=0.5, Dust=0.3)
+_add('rubber_mat_coin', 'Coin Stud Flooring', 'RUBBER',
+     'Round studded rubber flooring, as in stations and airports.',
+     thumb=TIRE_THUMB, Pattern=COINS, Depth=0.25, Rounding=0.2, Rubber_Color=(0.03, 0.03, 0.035), Roughness=0.5)
+_add('rubber_mat_diamond', 'Diamond Plate Mat', 'RUBBER',
+     'Rubber matting with a raised diamond plate pattern.',
+     thumb=TIRE_THUMB, Pattern=DIAMOND_PLATE, Depth=0.3)
+_add('rubber_mat_waffle', 'Anti-Fatigue Mat', 'RUBBER',
+     'Thick workshop mat with deep square pockets.',
+     thumb=TIRE_THUMB, Pattern=WAFFLE, Pattern_Size=0.025, Depth=0.8, Dust=0.3)
+_add('rubber_boot_sole', 'Gum Boot Sole', 'RUBBER',
+     'Tan gum-rubber sole with a zigzag grip, dirt in the grooves.',
+     thumb=dict(zoom=0.08), Pattern=CHEVRONS, Pattern_Size=0.012, Rubber_Color=(0.14, 0.085, 0.045), Depth=0.9,
+     Dust=0.5, Wear=0.3)
+_add('rubber_gym_floor', 'Speckled Gym Flooring', 'RUBBER',
+     'Black recycled-rubber flooring with blue flecks.',
+     thumb=RUBBER_THUMB, Speckles=0.25, Speckle_Color=(0.12, 0.3, 0.55), Grain=0.8, Roughness=0.8)
+_add('rubber_playground', 'Playground Safety Surface', 'RUBBER',
+     'Soft red surfacing made of bound rubber granules.',
+     thumb=RUBBER_THUMB, Rubber_Color=(0.26, 0.045, 0.03), Speckles=0.6, Speckle_Color=(0.42, 0.09, 0.05),
+     Grain=1.0, Roughness=0.9, Foam=0.2)
+_add('rubber_silicone_red', 'Red Silicone', 'RUBBER',
+     'Smooth, glossy red silicone: baking mats, seals and buttons.',
+     thumb=BALL_THUMB, Rubber_Color=(0.45, 0.02, 0.02), Roughness=0.3, Grain=0.05, Scuffs=0.0, Dust=0.0)
+_add('rubber_nitrile_blue', 'Blue Nitrile', 'RUBBER',
+     'The slightly textured blue of disposable gloves.',
+     thumb=BALL_THUMB, Rubber_Color=(0.04, 0.17, 0.45), Roughness=0.35, Grain=0.6, Scuffs=0.0, Dust=0.0)
+_add('rubber_eraser', 'Pink Eraser', 'RUBBER',
+     'Soft pink eraser rubber with grey graphite smudges.',
+     thumb=RUBBER_THUMB, Rubber_Color=(0.55, 0.22, 0.22), Roughness=0.8, Grain=0.7, Scuffs=0.5, Dust=0.3,
+     Dust_Color=(0.1, 0.1, 0.1))
+_add('rubber_neoprene', 'Neoprene', 'RUBBER',
+     'Dull black wetsuit rubber with a fine spongy grain.',
+     thumb=RUBBER_THUMB, Roughness=0.95, Grain=1.0, Foam=0.15, Pore_Size=0.001, Dust=0.05)
+_add('rubber_foam_grey', 'Grey Foam Rubber', 'RUBBER',
+     'Open-cell grey packing foam.',
+     thumb=dict(zoom=0.1), Foam=0.7, Rubber_Color=(0.12, 0.12, 0.13), Pore_Size=0.003, Roughness=0.95, Dust=0.0,
+     Scuffs=0.0)
+_add('rubber_sponge', 'Yellow Sponge', 'RUBBER',
+     'A kitchen sponge full of holes.',
+     thumb=dict(zoom=0.1), Foam=1.0, Rubber_Color=(0.55, 0.40, 0.04), Roughness=0.95, Dust=0.0, Scuffs=0.0)
 
 # ------------------------------------------------------------------- gradients
 def _hex(code):

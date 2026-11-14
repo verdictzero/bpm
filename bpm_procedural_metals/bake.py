@@ -495,10 +495,13 @@ class MaterialRig:
             return False
         if self.bpm is not None:  # the material's own sliders say it doesn't glow
             spec = G.GENERATORS.get(self.bpm.node_tree.get('bpm_generator'), {})
-            for name in (spec.get('glow'), 'Emission Strength'):
+            def off(name):
                 sock = self.bpm.inputs.get(name) if name else None
-                if sock is not None and not sock.is_linked and float(sock.default_value) <= 0.0:
-                    return False
+                return sock is not None and not sock.is_linked and float(sock.default_value) <= 0.0
+            glow = spec.get('glow')  # one slider, or several that must all be off
+            glow = glow if isinstance(glow, tuple) else (glow,)
+            if off('Emission Strength') or all(off(name) for name in glow):
+                return False
         strength = self.bsdf.inputs.get('Emission Strength')
         if strength is None or (not strength.is_linked and float(strength.default_value) <= 0.0):
             return False
