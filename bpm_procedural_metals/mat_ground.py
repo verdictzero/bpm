@@ -20,7 +20,7 @@ GROUND_BUMP = 0.08  # relief depth of the full 0..1 height range (meters at Scal
 
 LEAF_GOLD = (0.38, 0.22, 0.03)
 LEAF_BROWN = (0.07, 0.035, 0.015)
-FROST = (0.80, 0.84, 0.88)
+FROST = (0.66, 0.70, 0.75)
 
 GROUND_PARAMS = [
     # -- Soil
@@ -55,7 +55,7 @@ GROUND_PARAMS = [
     C.color('Leaf Color', (0.26, 0.085, 0.02), 'Cover', 'Color of the leaves (they vary from gold to brown)'),
     C.Param('Leaf Size', 'FLOAT', 0.05, 0.005, 1.0, 'Cover', 'Size of the leaves', subtype='DISTANCE'),
     C.fac('Snow', 0.0, 'Cover', 'Snow: first in the hollows, then over everything', key=True),
-    C.color('Snow Color', (0.80, 0.82, 0.85), 'Cover', 'Color of the snow'),
+    C.color('Snow Color', (0.62, 0.65, 0.70), 'Cover', 'Color of the snow'),
     C.fac('Ice', 0.0, 'Cover', 'Ice: frozen puddles, then a sheet of ice over everything', key=True),
     C.color('Ice Color', (0.10, 0.19, 0.22), 'Cover', 'Color of the ice'),
     # -- Water
@@ -154,10 +154,10 @@ def build_ground(b, I, gout, tile):
         leaves = S.voronoi(b.div(0.75, I['Leaf Size']), 16 + index, aniso=aniso if tile else aniso + (1.4,),
                            label='Leaves')
         lr, lg, lb = b.separate_color(leaves.outputs['Color'])
-        leaf = b.mul(b.one_minus(b.smoothstep(0.3, 0.36, leaves.outputs['Distance'])),
+        leaf = b.mul(b.one_minus(b.smoothstep(0.4, 0.47, leaves.outputs['Distance'])),
                      b.math('LESS_THAN', lr, b.mul(I['Leaves'], 0.95)))
         leaf_col = b.mix_color(lg, b.mix_color(b.smoothstep(0.5, 1.0, lb), I['Leaf Color'], LEAF_GOLD), LEAF_BROWN)
-        vein = b.smoothstep(0.0, 0.3, leaves.outputs['Distance'])  # darker towards the rim
+        vein = b.smoothstep(0.0, 0.4, leaves.outputs['Distance'])  # darker towards the rim
         col = b.mix_color(leaf, col, b.color_scale(leaf_col, b.madd(vein, -0.35, 1.1)))
         rough = b.mix(leaf, rough, 0.7)
         h = b.madd(leaf, b.madd(vein, -0.015, 0.035), h)
@@ -180,8 +180,8 @@ def build_ground(b, I, gout, tile):
     track = b.mul(b.one_minus(b.smoothstep(0.85, 1.0, off)), I['Tracks'])
     berm = b.mul(b.mul(b.smoothstep(0.85, 1.05, off), b.one_minus(b.smoothstep(1.05, 1.5, off))), I['Tracks'])
     lug = b.math('LESS_THAN', b.fract(b.add(b.div(tt, I['Track Width']), b.mul(off, 0.35))), 0.5)
-    h = b.madd(track, b.madd(lug, -0.06, -0.1), b.madd(berm, 0.05, h))
-    col = b.color_scale(col, b.madd(track, b.madd(snow, 0.12, b.madd(lug, -0.08, -0.22)), 1.0))
+    h = b.madd(track, b.madd(lug, -0.14, -0.16), b.madd(berm, 0.07, h))
+    col = b.color_scale(col, b.madd(track, b.madd(snow, 0.18, b.madd(lug, -0.12, -0.3)), 1.0))
     rough = b.madd(b.mul(track, b.one_minus(snow)), -0.12, rough)
     hm = b.mul(hm, b.madd(track, -0.5, 1.0))
 
@@ -203,8 +203,8 @@ def build_ground(b, I, gout, tile):
     # ---- water: puddles in the hollows, wetness
     puddle = b.mul(F.cover(b, low, b.mul(I['Puddles'], 0.55), 0.1), b.one_minus(ice))
     wet = b.mul(b.maximum(I['Wetness'], b.smoothstep(0.0, 0.5, puddle)), b.one_minus(b.maximum(snow, ice)))
-    col = b.color_scale(col, b.madd(wet, -0.45, 1.0))
-    rough = b.mix(wet, rough, b.madd(sand, 0.1, 0.18))
+    col = b.color_scale(col, b.madd(wet, -0.4, 1.0))
+    rough = b.mix(wet, rough, b.madd(sand, 0.2, 0.25))
     col = b.mix_color(b.mul(puddle, 0.9), col, I['Water Color'])
     rough = b.mix(puddle, rough, 0.02)
     flat = b.maximum(ice, puddle)

@@ -1359,8 +1359,8 @@ _add('tiles_grimy', 'Grimy Bathroom Tiles', 'MASONRY',
                               Water_Stains=0.4, Moss=0.05, Brightness_Variation=0.15))
 
 # ------------------------------------------------------------------ sci-fi hulls
-SCIFI_THUMB = dict(zoom=0.6)
-GLOW_THUMB = dict(zoom=0.6, world=0.35)  # dim surroundings, so the lights show
+SCIFI_THUMB = dict(zoom=1.0)
+GLOW_THUMB = dict(zoom=1.0, world=0.5, view='Standard')  # dim surroundings, so the lights show
 PLATES, HEXAGONS = range(2)
 
 _add('scifi_hull_white', 'White Starship Hull', 'SCIFI',
@@ -1434,11 +1434,12 @@ _add('scifi_glowing_grid', 'Glowing Grid', 'SCIFI',
      Color_Variation=0.1, Bevel=0.1, Seam_Width=0.01)
 _add('scifi_hex_armor', 'Hex Armor Tiles', 'SCIFI',
      'Honeycomb armor tiles at different heights, chipped and scorched.',
-     thumb=SCIFI_THUMB, Layout=HEXAGONS, Plate_Size=0.15, Hull_Color=(0.12, 0.13, 0.12), Height_Variation=0.6,
-     Dark_Plates=0.2, Accent_Plates=0.05, Accent_Color=(0.45, 0.04, 0.03), Edge_Wear=0.5, Scorch=0.2, Grime=0.3)
+     thumb=dict(zoom=0.6), Layout=HEXAGONS, Plate_Size=0.15, Hull_Color=(0.10, 0.11, 0.10), Height_Variation=0.8,
+     Bevel=1.0, Seam_Width=0.008, Seam_Depth=1.0, Dark_Plates=0.25, Accent_Plates=0.05,
+     Accent_Color=(0.45, 0.04, 0.03), Edge_Wear=0.5, Scorch=0.2, Grime=0.4)
 _add('scifi_alien_hull', 'Alien Hex Hull', 'SCIFI',
      'Dark iridescent-purple hexagons with green light in the seams.',
-     thumb=GLOW_THUMB, Layout=HEXAGONS, Plate_Size=0.2, Hull_Color=(0.05, 0.03, 0.07), Metallic=0.6, Roughness=0.3,
+     thumb=dict(GLOW_THUMB, zoom=0.7), Layout=HEXAGONS, Plate_Size=0.2, Hull_Color=(0.05, 0.03, 0.07), Metallic=0.6, Roughness=0.3,
      Seam_Glow=0.7, Light_Color=(0.3, 1.0, 0.3), Accent_Plates=0.1, Accent_Color=(0.2, 0.02, 0.25), Grime=0.2,
      Edge_Wear=0.1, Seam_Width=0.01)
 _add('scifi_battle_scorched', 'Battle-Scorched Armor', 'SCIFI',
@@ -1447,7 +1448,7 @@ _add('scifi_battle_scorched', 'Battle-Scorched Armor', 'SCIFI',
      Accent_Color=(0.45, 0.03, 0.02))
 _add('scifi_freighter_rusty', 'Rusty Freighter Hull', 'SCIFI',
      'An old ochre cargo hauler: rust in the seams, leaks, chipped paint.',
-     thumb=SCIFI_THUMB, Hull_Color=(0.38, 0.25, 0.07), Rust=0.6, Grime=0.6, Streaks=0.6, Edge_Wear=0.6,
+     thumb=SCIFI_THUMB, Hull_Color=(0.38, 0.25, 0.07), Rust=0.45, Grime=0.5, Streaks=0.6, Edge_Wear=0.6,
      Accent_Plates=0.1, Accent_Color=(0.08, 0.17, 0.2), Rivets=0.8)
 _add('scifi_derelict', 'Derelict Ship Hull', 'SCIFI',
      'Abandoned for decades: rust, soot and grime, a few red emergency lights still on.',
@@ -1505,7 +1506,7 @@ _add('plaster_tadelakt', 'Tadelakt (Moroccan Red)', 'PLASTER',
      **dict(VENETIAN, Mottling=0.6, Roughness=0.25))
 _add('plaster_limewash_blue', 'Mediterranean Blue Limewash', 'PLASTER',
      'Chalky blue limewash, uneven and fading to white.',
-     thumb=PLASTER_THUMB, Wall_Color=(0.16, 0.32, 0.50), Second_Color=(0.45, 0.50, 0.55), Mottling=0.7,
+     thumb=PLASTER_THUMB, Wall_Color=(0.16, 0.32, 0.50), Second_Color=(0.32, 0.43, 0.54), Mottling=0.6,
      Trowel_Marks=0.4, Cracks=0.3, Dirt=0.2, Roughness=0.9)
 _add('plaster_cracked_old', 'Cracked Old Plaster', 'PLASTER',
      'Yellowed old plaster covered in a web of cracks.',
@@ -1625,7 +1626,7 @@ _add('road_runway', 'Airport Runway', 'ROAD',
      Line_Width=0.45, Lane_Width=6.0, Cracks=0.3)
 _add('road_racetrack', 'Racetrack Tarmac', 'ROAD',
      'Smooth dark tarmac covered in rubber streaks.',
-     thumb=dict(zoom=1.4), Age=0.2, Tire_Marks=0.9, Cracks=0.0)
+     thumb=dict(zoom=1.4), Age=0.55, Aggregate=0.3, Tire_Marks=1.0, Cracks=0.0)
 _add('road_oil_stained', 'Oil-Stained Asphalt', 'ROAD',
      'A workshop yard: dark oil spots all over the asphalt.',
      thumb=dict(zoom=1.2), Oil_Stains=1.0, Tire_Marks=0.3, Age=0.5)
@@ -1640,7 +1641,7 @@ _add('road_dusty', 'Dusty Desert Road', 'ROAD',
      thumb=dict(zoom=1.2), Dirt=0.5, Dirt_Color=(0.32, 0.23, 0.13), Age=0.8, Cracks=0.6)
 _add('road_gravel', 'Gravel Road', 'ROAD',
      'Loose grey gravel over a dusty bed.',
-     thumb=dict(zoom=0.5), Gravel=1.0, Dirt=0.3, Aggregate_Size=0.02, Cracks=0.0, Oil_Stains=0.0)
+     thumb=dict(zoom=0.5), Gravel=1.0, Dirt=0.1, Aggregate_Size=0.02, Cracks=0.0, Oil_Stains=0.0)
 _add('road_dirt_track', 'Dirt Track', 'ROAD',
      'A bumpy dirt road with stones and a few puddles.',
      thumb=dict(zoom=1.0), Dirt=1.0, Gravel=0.25, Puddles=0.2, Unevenness=0.8, Cracks=0.0, Oil_Stains=0.0)
@@ -1678,10 +1679,10 @@ _add('ground_wet_mud', 'Wet Mud', 'GROUND',
      thumb=SOIL_THUMB, Soil_Color=(0.07, 0.05, 0.03), Wetness=0.8, Puddles=0.4, Clumps=0.9, Pebbles=0.05, Hills=0.6)
 _add('ground_muddy_tracks', 'Muddy Tire Tracks', 'GROUND',
      'Deep tread marks pressed into wet mud.',
-     thumb=ROCK_THUMB, Tracks=1.0, Wetness=0.6, Puddles=0.3, Soil_Color=(0.08, 0.055, 0.035), Pebbles=0.05)
+     thumb=dict(zoom=0.8), Tracks=1.0, Wetness=0.25, Puddles=0.1, Soil_Color=(0.08, 0.055, 0.035), Pebbles=0.05)
 _add('ground_puddles', 'Puddled Dirt Yard', 'GROUND',
      'A stony yard after the rain, half under muddy water.',
-     thumb=ROCK_THUMB, Puddles=0.7, Wetness=0.3, Pebbles=0.3, Tracks=0.3, Hills=0.6)
+     thumb=ROCK_THUMB, Puddles=0.6, Wetness=0.3, Pebbles=0.3, Hills=0.6)
 _add('ground_beach_sand', 'Beach Sand', 'GROUND',
      'Fine, pale beach sand.',
      thumb=SOIL_THUMB, Soil_Color=(0.42, 0.33, 0.22), Clumps=0.05, Grain=1.0, Pebbles=0.03, Ripples=0.15,
@@ -1710,7 +1711,7 @@ _add('ground_forest_floor', 'Forest Floor', 'GROUND',
      Pebbles=0.1, Clumps=0.7, Leaf_Size=0.06)
 _add('ground_autumn_leaves', 'Autumn Leaves', 'GROUND',
      'A thick carpet of red, gold and brown leaves.',
-     thumb=dict(zoom=0.5), Leaves=1.0, Leaf_Size=0.09, Leaf_Color=(0.4, 0.1, 0.02), Pebbles=0.0)
+     thumb=dict(zoom=0.4), Leaves=1.0, Leaf_Size=0.09, Leaf_Color=(0.4, 0.1, 0.02), Pebbles=0.0)
 _add('ground_mossy', 'Mossy Ground', 'GROUND',
      'Soft green moss over soil and stones.',
      thumb=SOIL_THUMB, Moss=0.9, Pebbles=0.15, Rock=0.15)
@@ -1735,7 +1736,7 @@ _add('ground_fresh_snow', 'Fresh Snow', 'GROUND',
      thumb=SOIL_THUMB, Snow=1.0)
 _add('ground_snow_tracks', 'Tire Tracks in Snow', 'GROUND',
      'Tread marks pressed into deep snow.',
-     thumb=ROCK_THUMB, Snow=1.0, Tracks=1.0)
+     thumb=dict(zoom=0.8), Snow=1.0, Tracks=1.0)
 _add('ground_melting_snow', 'Melting Snow', 'GROUND',
      'Patches of old snow on wet, dark ground.',
      thumb=ROCK_THUMB, Snow=0.5, Wetness=0.6, Puddles=0.2, Soil_Color=(0.06, 0.045, 0.03), Pebbles=0.15)
@@ -1757,19 +1758,19 @@ _add('rubber_black', 'Black Rubber', 'RUBBER',
      thumb=RUBBER_THUMB, Dust=0.05)
 _add('rubber_tire_tread', 'Car Tire Tread', 'RUBBER',
      'New car tire: staggered tread blocks with fine zigzag sipes.',
-     thumb=TIRE_THUMB, Pattern=BLOCKS, Sipes=1.0, Depth=0.8)
+     thumb=TIRE_THUMB, Pattern=BLOCKS, Pattern_Size=0.045, Sipes=1.0, Depth=0.8)
 _add('rubber_tire_worn', 'Worn Tire', 'RUBBER',
      'A tire near the end of its life: shallow tread, polished tops, dust in the grooves.',
-     thumb=TIRE_THUMB, Pattern=BLOCKS, Sipes=0.6, Wear=0.8, Dust=0.3)
+     thumb=TIRE_THUMB, Pattern=BLOCKS, Pattern_Size=0.045, Sipes=0.6, Wear=0.8, Dust=0.3)
 _add('rubber_tire_dry_rot', 'Dry-Rotted Tire', 'RUBBER',
      'An old tire left in the sun: grey, chalky and covered in fine cracks.',
-     thumb=TIRE_THUMB, Pattern=BLOCKS, Cracking=0.9, Chalking=0.7, Wear=0.3, Dust=0.2)
+     thumb=TIRE_THUMB, Pattern=BLOCKS, Pattern_Size=0.045, Cracking=0.9, Chalking=0.7, Wear=0.3, Dust=0.2)
 _add('rubber_tire_tractor', 'Tractor Tire Lugs', 'RUBBER',
      'Big V-shaped tractor lugs with mud between them.',
      thumb=dict(zoom=0.4), Pattern=CHEVRONS, Pattern_Size=0.06, Depth=1.0, Mud=0.5, Dust=0.4)
 _add('rubber_tire_offroad', 'Muddy Off-Road Tire', 'RUBBER',
      'Chunky off-road knobs packed with mud.',
-     thumb=TIRE_THUMB, Pattern=KNOBS, Pattern_Size=0.035, Depth=1.0, Groove_Width=0.5, Mud=0.8, Dust=0.5)
+     thumb=TIRE_THUMB, Pattern=KNOBS, Pattern_Size=0.035, Depth=1.0, Groove_Width=0.5, Mud=0.5, Dust=0.4)
 _add('rubber_tire_bike', 'Mountain Bike Tire', 'RUBBER',
      'Small square knobs of a mountain bike tire.',
      thumb=dict(zoom=0.06), Pattern=KNOBS, Pattern_Size=0.009, Depth=0.9, Groove_Width=0.45, Dust=0.3)

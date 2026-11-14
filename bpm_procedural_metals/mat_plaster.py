@@ -217,7 +217,7 @@ def build_plaster(b, I, gout, tile):
     body = b.mul(b.smoothstep(b.sub(level, 0.05), b.add(level, 0.9), leak), on)
     tide = b.mul(b.mul(b.smoothstep(b.sub(level, 0.08), level, leak),
                        b.one_minus(b.smoothstep(level, b.add(level, 0.16), leak))), on)
-    stain = b.mul(b.clamp01(b.madd(tide, 0.9, b.mul(body, 0.5))), b.madd(there, 0.6, 0.4))
+    stain = b.mul(b.clamp01(b.madd(tide, 0.8, b.mul(body, 0.75))), b.madd(there, 0.6, 0.4))
     col = b.mix_color(stain, col, STAIN, blend='MULTIPLY')
 
     damp_z = S.znoise(1.3, 17, detail=4.0, roughness=0.6, label='Damp')
@@ -242,7 +242,7 @@ def build_plaster(b, I, gout, tile):
         mold_where = b.madd(cav, 1.5, mold_where)
     colony = F.cover(b, mold_where, b.mul(I['Mold'], 0.55), 0.6)
     spot = b.one_minus(b.smoothstep(b.madd(sg, 0.25, 0.1), b.madd(sg, 0.3, 0.3), spots.outputs['Distance']))
-    mold = b.mul(colony, b.clamp01(b.madd(spot, b.madd(colony, 0.5, 0.5), b.mul(colony, 0.3))))
+    mold = b.mul(colony, b.clamp01(b.madd(spot, b.madd(colony, 0.5, 0.5), b.mul(b.smoothstep(0.4, 1.0, colony), 0.85))))
     col = b.mix_color(b.mul(mold, 0.92), col, b.mix_color(b.mul(sr, 0.6), MOLD, (0.03, 0.05, 0.02)))
     rough = b.mix(mold, rough, 0.95)
 

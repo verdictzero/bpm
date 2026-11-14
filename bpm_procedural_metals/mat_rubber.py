@@ -77,8 +77,11 @@ def build_rubber(b, I, gout, tile):
     half = b.mul(groove, 0.5)
 
     ribs = b.sub(b.sub(0.5, ax), half)
-    long_x = b.absolute(b.sub(b.fract(b.mul(xo, 0.5)), 0.5))  # blocks twice as long as wide
-    blocks = b.minimum(b.sub(b.mul(b.sub(0.5, long_x), 2.0), half), b.sub(b.sub(0.5, ay), half))
+    # tread blocks: straight grooves along the tire, slanted narrower ones across, staggered from row to row
+    slant = b.madd(b.sub(b.fract(x), 0.5), 0.45, b.madd(b.wrap(b.floor(x), 2.0), 0.5, b.mul(y, 1.5)))
+    across = b.sub(b.fract(slant), 0.5)
+    blocks = b.minimum(b.sub(b.sub(0.5, ax), half),
+                       b.sub(b.div(b.sub(0.5, b.absolute(across)), 1.5), b.mul(half, 0.5)))
     arm = b.mul(b.absolute(b.sub(b.fract(b.div(x, 3.0)), 0.5)), 2.0)  # 0 at the point of a V, 1 at its ends
     lug = b.absolute(b.sub(b.fract(b.madd(arm, 1.1, b.mul(y, 0.5))), 0.5))
     chevrons = b.mul(b.sub(b.sub(0.5, lug), b.madd(groove, 0.35, 0.12)), 1.4)
@@ -102,8 +105,8 @@ def build_rubber(b, I, gout, tile):
     raised = b.clamp01(b.div(into, soft))
     raised = b.one_minus(b.mul(b.one_minus(raised), b.one_minus(raised)))  # quarter-round edges
     top = b.smoothstep(0.6, 1.0, raised)
-    zig = b.absolute(b.sub(b.fract(b.mul(xo, 4.0)), 0.5))
-    sipe = b.one_minus(b.smoothstep(0.012, 0.03, b.absolute(b.sub(b.sub(ay, 0.17), b.mul(zig, 0.08)))))
+    zig = b.absolute(b.sub(b.fract(b.mul(x, 4.0)), 0.5))
+    sipe = b.one_minus(b.smoothstep(0.03, 0.07, b.absolute(b.madd(b.sub(zig, 0.25), 0.3, across))))
     sipe = b.mul(b.mul(sipe, top), b.mul(I['Sipes'], b.math('COMPARE', pattern, 2.0, 0.5)))
     tall = b.mul(I['Depth'], b.madd(wear, -0.7, 1.0))  # worn patterns are shallower
     h = b.madd(raised, b.mul(tall, 0.5), b.madd(tall, -0.5, 0.75))
@@ -148,10 +151,10 @@ def build_rubber(b, I, gout, tile):
     col = b.mix_color(b.mul(scuff, 0.3), col, b.gray(0.3))
     rough = b.madd(scuff, 0.12, rough)
 
-    crack_d = F.crack_distance(b, S, 55.0, 24, warp=0.3, label='Dry Rot')
+    crack_d = F.crack_distance(b, S, 120.0, 24, warp=0.3, label='Dry Rot')
     crack_on = F.cover(b, b.madd(low, 0.8, S.znoise(3.0, 18, detail=3.0, roughness=0.6, label='Crack Areas')),
                        b.mul(I['Cracking'], 0.85), 0.5)
-    crack = b.mul(b.one_minus(b.smoothstep(0.02, 0.07, crack_d)), crack_on)
+    crack = b.mul(b.one_minus(b.smoothstep(0.02, 0.09, crack_d)), crack_on)
     col = b.color_scale(col, b.madd(crack, -0.6, 1.0))
     h = b.madd(crack, -0.08, h)
     rough = b.madd(crack, 0.1, rough)

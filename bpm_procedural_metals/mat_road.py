@@ -178,7 +178,7 @@ def build_road(b, I, gout, tile):
     pebbles = S.voronoi(b.div(0.4, I['Aggregate Size']), 14, label='Gravel')
     gr, gg, gb = b.separate_color(pebbles.outputs['Color'])
     gravel_on = F.cover(b, b.madd(depth, 2.0, b.madd(cloud, 0.8, b.mul(bumps, -0.6))), I['Gravel'], 0.5)
-    pebble = b.mul(b.one_minus(b.smoothstep(0.22, b.madd(gg, 0.14, 0.34), pebbles.outputs['Distance'])),
+    pebble = b.mul(b.one_minus(b.smoothstep(0.3, b.madd(gg, 0.15, 0.48), pebbles.outputs['Distance'])),
                    b.mul(gravel_on, b.math('LESS_THAN', gb, b.madd(gravel_on, 0.75, 0.2))))
     dusty = b.mul(gravel_on, b.mul(I['Gravel'], 0.8))  # the fines between the pebbles
     col = b.mix_color(dusty, col, b.color_scale(I['Aggregate Color'], b.madd(sand, 0.3, 0.45)))
@@ -213,7 +213,7 @@ def build_road(b, I, gout, tile):
 
     # ---- water: puddles in the dips, wetness
     low = b.madd(b.sub(level, h), 18.0, b.madd(bumps, -0.85, b.mul(cloud, 0.3)))  # high in dips and holes
-    puddle = F.cover(b, low, b.mul(I['Puddles'], 0.5), 0.12)
+    puddle = F.cover(b, low, b.mul(I['Puddles'], 0.4), 0.12)
     wet = b.maximum(I['Wetness'], b.smoothstep(0.0, 0.5, puddle))
     col = b.color_scale(col, b.madd(wet, -0.45, 1.0))
     rough = b.mix(wet, rough, b.madd(stone, 0.12, 0.2))
