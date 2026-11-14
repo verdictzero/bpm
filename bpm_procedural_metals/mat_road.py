@@ -203,12 +203,12 @@ def build_road(b, I, gout, tile):
     col = b.color_scale(col, b.madd(oil, -0.6, 1.0))
     rough = b.madd(oil, -0.3, rough)
     tire_aniso = (1.0, 1.0 / 40.0) if tile else (1.0, 1.0 / 40.0, 1.0)
-    tire_z = S.znoise(6.0, 18, detail=2.0, roughness=0.5, aniso=tire_aniso, label='Tire Marks')
-    tire_on = F.cover(b, S.znoise(0.6, 19, detail=2.0, aniso=tire_aniso, label='Tire Mark Runs'), 0.5, 0.6,
+    tire_z = S.znoise(11.0, 18, detail=3.0, roughness=0.6, aniso=tire_aniso, label='Tire Marks')
+    tire_on = F.cover(b, S.znoise(1.6, 19, detail=2.0, aniso=tire_aniso, label='Tire Mark Runs'), 0.55, 0.5,
                       gate=False)
-    tires = b.mul(b.mul(F.cover(b, tire_z, b.mul(I['Tire Marks'], 0.45), 0.5), tire_on),
-                  b.madd(stone, 0.4, 0.5))
-    col = b.mix_color(tires, col, b.color_scale(TAR, 1.6))
+    tires = b.mul(b.mul(F.cover(b, tire_z, b.mul(I['Tire Marks'], 0.45), 0.3), tire_on),
+                  b.madd(stone, 0.3, 0.65))
+    col = b.mix_color(tires, col, TAR)
     rough = b.madd(tires, -0.08, rough)
 
     # ---- water: puddles in the dips, wetness

@@ -181,7 +181,7 @@ def build_ground(b, I, gout, tile):
     berm = b.mul(b.mul(b.smoothstep(0.85, 1.05, off), b.one_minus(b.smoothstep(1.05, 1.5, off))), I['Tracks'])
     lug = b.math('LESS_THAN', b.fract(b.add(b.div(tt, I['Track Width']), b.mul(off, 0.35))), 0.5)
     h = b.madd(track, b.madd(lug, -0.14, -0.16), b.madd(berm, 0.07, h))
-    col = b.color_scale(col, b.madd(track, b.madd(snow, 0.18, b.madd(lug, -0.12, -0.3)), 1.0))
+    col = b.color_scale(col, b.madd(track, b.madd(snow, 0.05, b.madd(lug, -0.14, -0.3)), 1.0))
     rough = b.madd(b.mul(track, b.one_minus(snow)), -0.12, rough)
     hm = b.mul(hm, b.madd(track, -0.5, 1.0))
 

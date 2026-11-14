@@ -1380,7 +1380,7 @@ _add('scifi_red_squadron', 'Red Squadron Hull', 'SCIFI',
      Edge_Wear=0.5, Grime=0.4, Scratches=0.4)
 _add('scifi_station_blue', 'Space Station Blue', 'SCIFI',
      'Blue station modules with pale service panels and lit windows.',
-     thumb=GLOW_THUMB, Hull_Color=(0.06, 0.13, 0.26), Accent_Plates=0.12, Accent_Color=(0.5, 0.5, 0.5), Lights=0.4,
+     thumb=GLOW_THUMB, Hull_Color=(0.06, 0.13, 0.26), Accent_Plates=0.12, Accent_Color=(0.5, 0.5, 0.5), Lights=0.25,
      Light_Color=(1.0, 0.95, 0.8), Grime=0.2)
 _add('scifi_military_olive', 'Dropship Olive Drab', 'SCIFI',
      'Olive drab military hull: riveted, scratched, worn to the metal on every edge.',
@@ -1406,13 +1406,13 @@ _add('scifi_cargo_floor', 'Cargo Bay Floor', 'SCIFI',
      Rivets=0.6, Vents=0.05, Greebles=0.0)
 _add('scifi_corridor', 'Corridor Wall Panels', 'SCIFI',
      'Pale interior wall panels with vents and warm light strips.',
-     thumb=GLOW_THUMB, Hull_Color=(0.45, 0.46, 0.45), Plate_Size=0.8, Plate_Variation=0.4, Lights=0.5,
+     thumb=GLOW_THUMB, Hull_Color=(0.45, 0.46, 0.45), Plate_Size=0.8, Plate_Variation=0.4, Lights=0.3,
      Light_Color=(1.0, 0.85, 0.65), Accent_Plates=0.05, Accent_Color=(0.08, 0.2, 0.33), Grime=0.15, Edge_Wear=0.1,
      Height_Variation=0.3, Vents=0.15)
 _add('scifi_lab_clean', 'Clean Lab Panels', 'SCIFI',
      'Spotless glossy white panels with cool blue indicator lights.',
      thumb=GLOW_THUMB, Hull_Color=(0.58, 0.59, 0.60), Roughness=0.25, Accent_Plates=0.04,
-     Accent_Color=(0.04, 0.25, 0.5), Dark_Plates=0.0, Rivets=0.0, Greebles=0.0, Vents=0.05, Lights=0.3,
+     Accent_Color=(0.04, 0.25, 0.5), Dark_Plates=0.0, Rivets=0.0, Greebles=0.0, Vents=0.05, Lights=0.2,
      Light_Color=(0.45, 0.75, 1.0), Edge_Wear=0.0, Scratches=0.05, Grime=0.03, Streaks=0.0, Color_Variation=0.1)
 _add('scifi_greeble_city', 'Greeble City', 'SCIFI',
      'Dense machinery, towers and trenches with hundreds of lit windows: capital ships and megastructures.',
@@ -1627,7 +1627,7 @@ _add('road_runway', 'Airport Runway', 'ROAD',
      Line_Width=0.45, Lane_Width=6.0, Cracks=0.3)
 _add('road_racetrack', 'Racetrack Tarmac', 'ROAD',
      'Smooth dark tarmac covered in rubber streaks.',
-     thumb=dict(zoom=1.4), Age=0.55, Aggregate=0.3, Tire_Marks=1.0, Cracks=0.0)
+     thumb=dict(zoom=1.4), Age=0.6, Aggregate=0.3, Tire_Marks=1.0, Cracks=0.0)
 _add('road_oil_stained', 'Oil-Stained Asphalt', 'ROAD',
      'A workshop yard: dark oil spots all over the asphalt.',
      thumb=dict(zoom=1.2), Oil_Stains=1.0, Tire_Marks=0.3, Age=0.5)
