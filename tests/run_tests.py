@@ -652,18 +652,19 @@ def hulls_roads_walls_ground_and_rubber():
         assert all(np.abs(h - other).mean() > 0.02 for other in heights[:index]), index
     # hull lights: an emission map only when something glows
     out = os.path.join(TMP, 'scifi')
-    grid = add_cube('Grid')
+    grid = add_cube('Grid', size=0.5)  # small: its 1 cm seams are several pixels wide in the maps
     grid.data.materials.append(L.create_material('scifi_glowing_grid'))
-    plain = add_cube('Plain', location=(5, 0, 0))
+    plain = add_cube('Plain', size=0.5, location=(5, 0, 0))
     plain.data.materials.append(L.create_material('scifi_hull_white'))
     bsdf = L.find_principled(grid.active_material.node_tree)
     assert bsdf.inputs['Emission Color'].is_linked and bsdf.inputs['Emission Strength'].is_linked
-    job = B.ObjectBakeJob(bpy.context, [grid, plain], settings(resolution=128, output_dir=out, assign_baked=False))
+    job = B.ObjectBakeJob(bpy.context, [grid, plain], settings(resolution=256, output_dir=out, assign_baked=False))
     B.run_to_end(job)
     names = sorted(os.path.basename(p) for p in job.written)
     assert 'Grid_Emission.png' in names and 'Plain_Emission.png' not in names, names
     glow = read_png(os.path.join(out, 'Grid_Emission.png'))[..., :3]
-    assert glow[..., 2].max() > 0.5 and glow[..., 2].mean() > 2.0 * glow[..., 0].mean(), 'the seams glow cyan'
+    assert glow[..., 2].max() > 0.5 and glow[..., 2].mean() > 2.0 * glow[..., 0].mean() > 0.0, \
+        ('the seams glow cyan', glow.max(axis=(0, 1)), glow.mean(axis=(0, 1)))
     metal = read_png(os.path.join(out, 'Plain_Metallic.png'))[..., 0]
     assert 0.0 < metal.mean() < 0.3 and metal.max() > 0.9, 'paint worn to bare metal on the plate edges'
 
