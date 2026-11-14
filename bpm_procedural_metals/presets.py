@@ -1439,7 +1439,8 @@ _add('scifi_hex_armor', 'Hex Armor Tiles', 'SCIFI',
      Accent_Color=(0.45, 0.04, 0.03), Edge_Wear=0.5, Scorch=0.2, Grime=0.4)
 _add('scifi_alien_hull', 'Alien Hex Hull', 'SCIFI',
      'Dark iridescent-purple hexagons with green light in the seams.',
-     thumb=dict(GLOW_THUMB, zoom=0.7), Layout=HEXAGONS, Plate_Size=0.2, Hull_Color=(0.05, 0.03, 0.07), Metallic=0.6, Roughness=0.3,
+     thumb=dict(GLOW_THUMB, zoom=0.7), Layout=HEXAGONS, Plate_Size=0.2, Hull_Color=(0.05, 0.03, 0.07),
+     Metallic=0.6, Roughness=0.3,
      Seam_Glow=0.7, Light_Color=(0.3, 1.0, 0.3), Accent_Plates=0.1, Accent_Color=(0.2, 0.02, 0.25), Grime=0.2,
      Edge_Wear=0.1, Seam_Width=0.01)
 _add('scifi_battle_scorched', 'Battle-Scorched Armor', 'SCIFI',
@@ -1764,7 +1765,8 @@ _add('rubber_tire_worn', 'Worn Tire', 'RUBBER',
      thumb=TIRE_THUMB, Pattern=BLOCKS, Pattern_Size=0.045, Sipes=0.6, Wear=0.8, Dust=0.3)
 _add('rubber_tire_dry_rot', 'Dry-Rotted Tire', 'RUBBER',
      'An old tire left in the sun: grey, chalky and covered in fine cracks.',
-     thumb=TIRE_THUMB, Pattern=BLOCKS, Pattern_Size=0.045, Cracking=0.9, Chalking=0.7, Wear=0.3, Dust=0.2)
+     thumb=TIRE_THUMB, Pattern=BLOCKS, Pattern_Size=0.045, Cracking=0.9, Chalking=0.7, Wear=0.3,
+     Dust=0.2)
 _add('rubber_tire_tractor', 'Tractor Tire Lugs', 'RUBBER',
      'Big V-shaped tractor lugs with mud between them.',
      thumb=dict(zoom=0.4), Pattern=CHEVRONS, Pattern_Size=0.06, Depth=1.0, Mud=0.5, Dust=0.4)
